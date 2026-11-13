@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { CalendarEntry, CalendarFormState } from './types';
 import { PRESET_COLORS } from './utils';
 
@@ -19,8 +20,8 @@ const TOGGLES = [
 ];
 
 export function CreateEditCalendarModal({ editingCalendar, form, onChange, onSave, onClose }: Props) {
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 bg-black/40 z-[250]" dir="rtl" onClick={onClose}>
       <div
         className="absolute inset-y-0 left-0 w-full max-w-md bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-slideInLeft"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
@@ -105,6 +106,6 @@ export function CreateEditCalendarModal({ editingCalendar, form, onChange, onSav
           </button>
         </div>
       </div>
-    </div>
+    </div>, document.body,
   );
 }
