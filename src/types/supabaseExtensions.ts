@@ -294,6 +294,10 @@ export type Database = Omit<BaseDatabase, 'public'> & {
         Args: Record<PropertyKey, never>;
         Returns: unknown;
       };
+      get_my_calendar_meetings_v1: {
+        Args: { p_from: string; p_to: string };
+        Returns: PublicSchema['Tables']['meetings']['Row'][];
+      };
       manage_management_task_v1: {
         Args: {
           p_task_id: string;

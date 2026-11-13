@@ -1,6 +1,8 @@
 export type ViewMode = 'day' | '3-day' | '4-day' | 'work-week' | 'week' | 'month' | 'year' | 'schedule';
 
 export interface MeetingData {
+  /** Local display relationship; never grants database access. */
+  personal_calendar_direct_access?: boolean;
   id: string;
   subject: string;
   request_date: string;

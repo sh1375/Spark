@@ -1,4 +1,5 @@
 import { dispatchRecurringMeetingDelivery } from '../../features/meetings/services/dispatchRecurringMeetingDelivery';
+import { isPersonalCalendarMeetingVisible } from './personalCalendarVisibility';
 import { mergeLiveSelection } from '../../shared/realtime/mergeLiveSelection';
 import { useLiveData } from '../../shared/realtime/useLiveData';
 import { buildCalendarGoogleEventUrl, openGoogleCalendarWindow } from './googleCalendarExport';
@@ -74,15 +75,13 @@ export function useCalendarDataActions(scope: Record<string, any>) {
 
       const [
         { data, error },
-        { data: inboxRows },
+        { data: inboxRows, error: inboxError },
         { data: ownerDelegateRows, error: ownerDelegateError },
         { data: exclusionRows, error: exclusionError },
+        { data: ownedCalendars, error: ownedCalendarsError },
+        { data: calendarMemberships, error: calendarMembershipsError },
       ] = await Promise.all([
-        supabase.from('meetings')
-          .select('id,series_id,subject,request_date,start_time,end_time,duration,location,representative,phone,notes,priority,status,status_type,created_at,user_id,calendar_id,external_participants,participant_user_ids,repeat_type,repeat_interval,repeat_end_date,repeat_weekday,reminder_minutes,notify_users,members_only,meeting_manager,is_online,conference_room_id')
-          .neq('status', 'closed')
-          .gte('request_local_date', queryFrom)
-          .lte('request_local_date', queryTo)
+        supabase.rpc('get_my_calendar_meetings_v1', { p_from: queryFrom, p_to: queryTo })
           .order('start_time', { ascending: true }),
         supabase.from('meeting_inbox')
           .select('meeting_id, status')
@@ -91,10 +90,16 @@ export function useCalendarDataActions(scope: Record<string, any>) {
         supabase.from('meeting_calendar_exclusions')
           .select('meeting_id')
           .eq('user_id', userId),
+        supabase.from('calendars').select('id').eq('user_id', userId),
+        supabase.from('calendar_subscriptions').select('calendar_id,permission,calendars(user_id,type)')
+          .eq('user_id', userId).in('permission', ['view', 'edit']),
       ]);
 
       if (error) throw error;
+      if (inboxError) throw inboxError;
       if (exclusionError) throw exclusionError;
+      if (ownedCalendarsError) throw ownedCalendarsError;
+      if (calendarMembershipsError) throw calendarMembershipsError;
       if (ownerDelegateError) {
         console.warn('[CalendarPage] meeting delegation status enrichment unavailable:', ownerDelegateError);
       }
@@ -106,30 +111,21 @@ export function useCalendarDataActions(scope: Record<string, any>) {
         (exclusionRows || []).map((r: any) => r.meeting_id)
       );
 
-      // Visibility rules (mirrors the required calendar query):
-      //   Personal exclusion → never visible in this user's calendar
-      //   Creator      → visible unless personally excluded
-      //   Participant  → visible unless inbox is explicitly 'pending' or 'declined'
-      //                  (accepted ✓, no-entry = directly added/delegated ✓, delegated ✓)
-      //   Observer /
-      //   Subscribed   → visible unless explicitly pending or declined
+      // Defense in depth: monitoring access never implies personal calendar membership.
+      const ownedIds = new Set<string>((ownedCalendars || []).map((c: any) => c.id));
+      const subscribedIds = new Set<string>((calendarMemberships || []).map((s: any) => s.calendar_id));
+      const publicOwnerIds = new Set<string>((calendarMemberships || [])
+        .filter((s: any) => s.calendars?.type === 'public').map((s: any) => s.calendars.user_id));
       const filtered = (data || []).filter((m: any) => {
         if (excludedMeetingIds.has(m.id)) return false;
-        if (m.user_id === userId) return true; // creator
-
-        const isParticipant = (m.participant_user_ids || []).includes(userId);
-        if (isParticipant) {
-          const s = inboxStatus.get(m.id);
-          return s !== 'pending' && s !== 'declined';
-        }
-
-        const s = inboxStatus.get(m.id);
-        return s !== 'pending' && s !== 'declined';
+        return isPersonalCalendarMeetingVisible(m, userId, inboxStatus.get(m.id), ownedIds, subscribedIds, publicOwnerIds);
       });
       const ownerDelegateByMeeting = new Map<string, any>(
         (!ownerDelegateError && ownerDelegateRows ? ownerDelegateRows : []).map((row: any) => [row.meeting_id, row])
       );
-      const enriched = filtered.map((meeting: any) => {
+      const enriched = filtered.map((row: any) => {
+        const status = inboxStatus.get(row.id);
+        const meeting = { ...row, personal_calendar_direct_access: status === 'accepted' || status === 'delegated' };
         if (meeting.user_id !== userId) return meeting;
         const delegation = ownerDelegateByMeeting.get(meeting.id);
         if (!delegation) return meeting;
@@ -152,7 +148,10 @@ export function useCalendarDataActions(scope: Record<string, any>) {
         console.log('[CalendarPage] sample meeting:', m.subject, '| request_date raw:', m.request_date, '| parsedGreg:', groupKey, '| jalali:', jalKey, '| rawDateUTC:', rawDate.toISOString(), '| start_time:', m.start_time);
       });
       setMeetings(enriched);
-    } catch { toast.error('خطا در دریافت جلسات'); }
+    } catch {
+      if (version === fetchVersionRef.current) setMeetings([]);
+      toast.error('خطا در دریافت جلسات');
+    }
     finally { if (version === fetchVersionRef.current) setIsRefreshing(false); }
   }, [currentJy, currentJm, currentUserId, providedUserId]);
 

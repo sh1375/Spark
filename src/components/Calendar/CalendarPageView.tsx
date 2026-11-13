@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronRight, Calendar, RefreshCw, X, Plus, Users, CalendarPlus } from 'lucide-react';
 import { CalendarViews } from './CalendarViews';
 import { supabase } from '../../lib/supabase';
@@ -69,8 +70,8 @@ export function CalendarPageView({ model }: { model: Record<string, any> }) {
       )}
 
       {/* Meeting form */}
-      {showMeetingForm && (
-        <div className="fixed inset-0 bg-black/40 z-50" onClick={() => { setShowMeetingForm(false); setActivePendingSchedule(null); setPrefillData(null); }}>
+      {showMeetingForm && createPortal(
+        <div className="fixed inset-0 bg-black/40 z-[250]" dir="rtl" onClick={() => { setShowMeetingForm(false); setActivePendingSchedule(null); setPrefillData(null); }}>
           <div
             className="absolute inset-y-0 left-0 w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-slideInLeft"
             style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
@@ -86,7 +87,7 @@ export function CalendarPageView({ model }: { model: Record<string, any> }) {
               />
             </Suspense>
           </div>
-        </div>
+        </div>, document.body,
       )}
 
       {/* Meeting detail */}

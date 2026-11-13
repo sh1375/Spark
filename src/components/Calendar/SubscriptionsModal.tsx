@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Plus, Search, User, Trash2, ChevronDown } from 'lucide-react';
 import { CalendarEntry, CalendarSubscription } from './types';
 import type { OrgUserProfile } from '../../lib/useOrgUsers';
@@ -52,8 +53,8 @@ export function SubscriptionsModal({
 
   const displayUsers = subSearch.trim() ? availableUsers : availableUsers.slice(0, 20);
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[60]" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 bg-black/50 z-[250]" dir="rtl" onClick={onClose}>
       <div
         className="absolute inset-y-0 left-0 w-full max-w-lg bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-slideInLeft"
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
@@ -202,6 +203,6 @@ export function SubscriptionsModal({
           </table>
         </div>
       </div>
-    </div>
+    </div>, document.body,
   );
 }

@@ -617,7 +617,7 @@ export function CalendarPage({
   const getMeetingColor = useCallback((m: MeetingData): string => {
     // Meetings assigned to me by others → always show in my personal public calendar color
     if (currentUserId && m.user_id !== currentUserId &&
-      ((m.participant_user_ids || []).includes(currentUserId) ||
+      (m.personal_calendar_direct_access || (m.participant_user_ids || []).includes(currentUserId) ||
        ((m.notify_users || []) as string[]).includes(currentUserId))) {
       if (myPublicCalendar) return myPublicCalendar.color;
     }
@@ -641,6 +641,7 @@ export function CalendarPage({
   const subscribedOwnerCalendarIds = useMemo(() => {
     const map = new Map<string, string[]>();
     subscribedCalendars.forEach(c => {
+      if (c.type !== 'public') return;
       if (!map.has(c.user_id)) map.set(c.user_id, []);
       map.get(c.user_id)!.push(c.id);
     });
@@ -665,6 +666,7 @@ export function CalendarPage({
     visibleMeetings.forEach(m => {
       const isCreator = !!currentUserId && m.user_id === currentUserId;
       const isAssigned = !!currentUserId && !isCreator && (
+        m.personal_calendar_direct_access ||
         (m.participant_user_ids || []).includes(currentUserId) ||
         ((m.notify_users || []) as string[]).includes(currentUserId)
       );
@@ -698,7 +700,7 @@ export function CalendarPage({
         // If this calendar has a direct checkbox (owned or subscribed), respect its toggle strictly
         if (knownCalendarIds.has(m.calendar_id)) {
           if (!enabledCalendarIds.has(m.calendar_id)) { hiddenCalId++; return; }
-        } else if (!isViaSubscription) {
+        } else if (!isCreator) {
           hiddenCalId++; return;
         }
       } else {
