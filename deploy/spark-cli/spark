@@ -4,8 +4,8 @@ IFS=$'\n\t'
 
 SPARK_MANAGER_VERSION="4.0.0"
 SPARK_UI_VERSION="3.1.0+20260910.1"
-REPO_URL="https://github.com/hamedplay/Spark.git"
-RAW_BASE="https://raw.githubusercontent.com/hamedplay/Spark/main/deploy/spark-cli"
+REPO_URL="https://github.com/sh1375/Spark.git"
+RAW_BASE="https://raw.githubusercontent.com/sh1375/Spark/main/deploy/spark-cli"
 SPARK_ROOT="/opt/spark"
 SUPABASE_SOURCE="/opt/supabase-source"
 SUPABASE_ROOT="/opt/spark-supabase"
@@ -111,7 +111,7 @@ self_update() {
   tmp="$(mktemp)"
   if ! run_logged "Download latest Spark Manager installer" \
     curl -fsSL --retry 3 --retry-delay 1 \
-      "https://raw.githubusercontent.com/hamedplay/Spark/main/deploy/spark-cli/bootstrap.sh" \
+      "https://raw.githubusercontent.com/sh1375/Spark/main/deploy/spark-cli/bootstrap.sh" \
       -o "$tmp"; then
     rm -f "$tmp"
     return 1

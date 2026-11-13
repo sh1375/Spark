@@ -60,7 +60,7 @@ spark_manager_airgap_build() (
 
   mkdir -p "$root/metadata" "$root/manager" "$root/sources"
 
-  # Create a real Git bundle containing the complete hamedplay/Spark main
+  # Create a real Git bundle containing the complete sh1375/Spark main
   # history reachable from the exact fetched revision. The temporary bare repo
   # gives the bundle a canonical refs/heads/main without mutating /opt/spark.
   command git init --bare -q "$bundle_repo" || return 1
@@ -98,7 +98,7 @@ with open(path, 'w', encoding='utf-8') as f:
     json.dump({
         'format_version': 2,
         'spark_revision': revision,
-        'spark_repository': 'https://github.com/hamedplay/Spark.git',
+        'spark_repository': 'https://github.com/sh1375/Spark.git',
         'spark_branch': 'main',
         'ubuntu': ubuntu,
         'architecture': 'amd64',
@@ -117,7 +117,7 @@ PY
   rm -rf "$root" "$source_root" "$bundle_repo"
   trap - EXIT
   ok "Spark full-repository + Manager Air-Gap bundle created: $archive"
-  printf 'Revision: %s\nRepository: https://github.com/hamedplay/Spark.git (main)\nTarget: Ubuntu %s / amd64\n' "$revision" "$target_release"
+  printf 'Revision: %s\nRepository: https://github.com/sh1375/Spark.git (main)\nTarget: Ubuntu %s / amd64\n' "$revision" "$target_release"
 )
 
 spark_manager_airgap_inventory() {

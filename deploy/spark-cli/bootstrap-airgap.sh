@@ -127,7 +127,7 @@ git clone --branch main "$root/sources/spark.git.bundle" "$SPARK_ROOT"
 git -C "$SPARK_ROOT" checkout "$spark_commit"
 git -C "$SPARK_ROOT" branch -f main "$spark_commit"
 git -C "$SPARK_ROOT" checkout main
-git -C "$SPARK_ROOT" remote set-url origin https://github.com/hamedplay/Spark.git
+git -C "$SPARK_ROOT" remote set-url origin https://github.com/sh1375/Spark.git
 git -C "$SPARK_ROOT" update-ref refs/remotes/origin/main "$spark_commit"
 
 source_dir="$SPARK_ROOT/deploy/spark-cli"

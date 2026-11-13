@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-REPO_API="https://api.github.com/repos/hamedplay/Spark"
+REPO_API="https://api.github.com/repos/sh1375/Spark"
 TARGET="/usr/local/lib/spark-manager"
 CLI_PATH="/usr/local/bin/spark"
 AIRGAP_CLI_PATH="/usr/local/bin/spark-airgap"
@@ -50,7 +50,7 @@ resolve_main_sha() {
 }
 
 MAIN_SHA="$(resolve_main_sha)"
-RAW_ROOT="https://raw.githubusercontent.com/hamedplay/Spark/${MAIN_SHA}"
+RAW_ROOT="https://raw.githubusercontent.com/sh1375/Spark/${MAIN_SHA}"
 RAW_BASE="${RAW_ROOT}/deploy/spark-cli"
 LIVEKIT_RAW_BASE="${RAW_ROOT}/deploy/spark-cli/livekit"
 printf 'Resolved Spark Manager revision: %s\n' "${MAIN_SHA:0:12}"

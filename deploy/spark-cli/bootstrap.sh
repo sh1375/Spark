@@ -6,7 +6,7 @@ TARGET="/usr/local/lib/spark-manager"
 MIGRATE_TARGET="/usr/local/lib/spark-migrate"
 BIN_DIR="/usr/local/bin"
 INBOX="/var/tmp/spark-manager-inbox"
-REPO_URL="https://github.com/hamedplay/Spark.git"
+REPO_URL="https://github.com/sh1375/Spark.git"
 
 if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   echo 'Run this installer as root (example: curl -fsSL .../bootstrap.sh | sudo bash).' >&2

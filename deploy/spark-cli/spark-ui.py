@@ -22,7 +22,7 @@ def _resolve_base() -> Path:
     if BASE_PATH.is_file():
         return BASE_PATH
     revision = os.environ.get("SPARK_MANAGER_REVISION", "main").strip() or "main"
-    url = f"https://raw.githubusercontent.com/hamedplay/Spark/{revision}/deploy/spark-cli/spark-ui-base.py"
+    url = f"https://raw.githubusercontent.com/sh1375/Spark/{revision}/deploy/spark-cli/spark-ui-base.py"
     request = urllib.request.Request(url, headers={"User-Agent": "spark-manager-ui"})
     with urllib.request.urlopen(request, timeout=30) as response:
         payload = response.read()

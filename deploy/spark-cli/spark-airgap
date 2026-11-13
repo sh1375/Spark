@@ -3,7 +3,7 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 
 SPARK_MANAGER_VERSION="3.1.0+20260916.4"
-REPO_URL="https://github.com/hamedplay/Spark.git"
+REPO_URL="https://github.com/sh1375/Spark.git"
 SPARK_ROOT="/opt/spark"
 SUPABASE_SOURCE="/opt/supabase-source"
 SUPABASE_ROOT="/opt/spark-supabase"
@@ -121,7 +121,7 @@ spark_airgap_sync_source_main() {
   [[ "$branch" == "main" ]] || { fail "Spark source must be on branch main before building an Air-Gap bundle."; return 1; }
   [[ -z "$(command git -C "$SPARK_ROOT" status --porcelain 2>/dev/null)" ]] || { fail "Spark source has uncommitted changes; refusing to update or build the bundle."; return 1; }
   origin_url="$(command git -C "$SPARK_ROOT" remote get-url origin 2>/dev/null || true)"
-  [[ "$origin_url" == "https://github.com/hamedplay/Spark.git" || "$origin_url" == "git@github.com:hamedplay/Spark.git" ]] || { fail "Unexpected Spark origin remote: ${origin_url:-missing}"; return 1; }
+  [[ "$origin_url" == "https://github.com/sh1375/Spark.git" || "$origin_url" == "git@github.com:sh1375/Spark.git" ]] || { fail "Unexpected Spark origin remote: ${origin_url:-missing}"; return 1; }
   info "Synchronizing clean Spark main before Air-Gap bundle generation."
   GIT_TERMINAL_PROMPT=0 command git -c http.version=HTTP/1.1 -C "$SPARK_ROOT" fetch --prune origin main || { fail "Unable to fetch the latest Spark main branch."; return 1; }
   local_head="$(command git -C "$SPARK_ROOT" rev-parse HEAD)"

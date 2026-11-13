@@ -85,7 +85,7 @@ with open(path, 'w', encoding='utf-8') as f:
     json.dump({
         'format_version': 3,
         'spark_revision': revision,
-        'spark_repository': 'https://github.com/hamedplay/Spark.git',
+        'spark_repository': 'https://github.com/sh1375/Spark.git',
         'spark_branch': 'main',
         'spark_source_archive': 'sources/Spark-main.zip',
         'ubuntu': ubuntu,

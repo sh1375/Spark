@@ -149,7 +149,7 @@ def environment_from_mapping(data: dict[str, Any]) -> EnvironmentConfig:
     coturn_data = app_data.get("coturn", {}) or {}
     application = ApplicationConfig(
         source=ApplicationSourceConfig(
-            repository=str(source_data.get("repository", "https://github.com/hamedplay/Spark.git")), revision=str(source_data.get("revision", "main")),
+            repository=str(source_data.get("repository", "https://github.com/sh1375/Spark.git")), revision=str(source_data.get("revision", "main")),
             releases_root=str(source_data.get("releases_root", "/opt/spark/application/releases")),
             current_link=str(source_data.get("current_link", "/opt/spark/application/current")),
             shared_root=str(source_data.get("shared_root", "/opt/spark/application/shared")),

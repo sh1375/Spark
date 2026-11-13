@@ -128,7 +128,7 @@ class DatabaseConfig:
 
 @dataclass(frozen=True)
 class ApplicationSourceConfig:
-    repository: str = "https://github.com/hamedplay/Spark.git"
+    repository: str = "https://github.com/sh1375/Spark.git"
     revision: str = "main"
     releases_root: str = "/opt/spark/application/releases"
     current_link: str = "/opt/spark/application/current"

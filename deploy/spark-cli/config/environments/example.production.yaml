@@ -54,7 +54,7 @@ database:
     image_pull_timeout_seconds: 900
 application:
   source:
-    repository: https://github.com/hamedplay/Spark.git
+    repository: https://github.com/sh1375/Spark.git
     revision: main
     releases_root: /opt/spark/application/releases
     current_link: /opt/spark/application/current

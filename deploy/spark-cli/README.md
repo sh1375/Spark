@@ -9,7 +9,7 @@ Action و خروجی/Prompt عملیات همگی در همان صفحه باق�
 ## نصب
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/hamedplay/Spark/main/deploy/spark-cli/bootstrap.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/sh1375/Spark/main/deploy/spark-cli/bootstrap.sh | sudo bash
 ```
 
 سپس:

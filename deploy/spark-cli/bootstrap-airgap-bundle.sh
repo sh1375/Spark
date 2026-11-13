@@ -116,7 +116,7 @@ git clone --branch main "${root}/sources/spark.git.bundle" "${restore_stage}/spa
 git -C "${restore_stage}/spark" checkout "$spark_commit"
 git -C "${restore_stage}/spark" branch -f main "$spark_commit"
 git -C "${restore_stage}/spark" checkout main
-git -C "${restore_stage}/spark" remote set-url origin https://github.com/hamedplay/Spark.git
+git -C "${restore_stage}/spark" remote set-url origin https://github.com/sh1375/Spark.git
 git -C "${restore_stage}/spark" update-ref refs/remotes/origin/main "$spark_commit"
 [[ "$(git -C "${restore_stage}/spark" rev-parse HEAD)" == "$spark_commit" ]] || {
   echo "Restored Spark source commit does not match bundle manifest." >&2
