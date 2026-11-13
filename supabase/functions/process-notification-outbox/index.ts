@@ -1,4 +1,6 @@
 import { runMeetingNotificationBatch } from '../_shared/recurringDelivery.ts';
+import { handleSendSms } from '../send-sms/handler.ts';
+import { dispatchDelegationSms } from './delegationSms.ts';
 import { createClient } from "npm:@supabase/supabase-js@2.110.2";
 import { deferredSmsFailure } from "../_shared/deferredSmsFailure.ts";
 import { timingSafeCompare } from "../_shared/crypto.ts";
@@ -595,8 +597,7 @@ async function dispatchSms(
   context: Record<string, unknown>,
 ): Promise<{ status: string; sent: boolean; error?: string }> {
   try {
-    const { data: result, error } = await supabase.functions.invoke("send-sms", {
-      body: {
+    const body = {
         mode: "dispatch",
         targetUserId: row.recipient_id,
         category: row.category,
@@ -604,9 +605,14 @@ async function dispatchSms(
         audience: row.audience,
         context,
         meetingId,
-        triggeredByUserId: null,
-      },
-    });
+        triggeredByUserId: row.actor_user_id,
+        eventKey: row.idempotency_key,
+    };
+    const { data: result, error } = eventType === 'meeting_invitation_delegate_selected'
+      ? await dispatchDelegationSms(handleSendSms, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, body)
+      : await supabase.functions.invoke("send-sms", {
+          body: { ...body, triggeredByUserId: null, eventKey: undefined },
+        });
 
     if (error) return { status: "failed", sent: false, error: error.message };
 

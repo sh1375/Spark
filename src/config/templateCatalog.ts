@@ -743,7 +743,7 @@ export const TEMPLATE_EVENTS: TemplateEventDefinition[] = [
     key: 'meeting_invitation_delegate_selected',
     category: 'meeting',
     label: 'انتخاب جانشین دعوت جلسه',
-    supportedChannels: ['notification'],
+    supportedChannels: ['notification', 'sms'],
     audiences: ['all', 'participants', 'observers', 'organizer'],
     requiredPlaceholders: ['meeting_subject', 'represented_person_name', 'representative_name'],
     optionalPlaceholders: ['meeting_date', 'start_time', 'end_time', 'location', 'organizer_name', 'recipient_greeting', 'full_name', 'meeting_link'],
