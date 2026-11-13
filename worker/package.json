@@ -10,10 +10,10 @@
     "test": "node test.js"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.45.0",
-    "sharp": "^0.33.5"
+    "@supabase/supabase-js": "2.119.0",
+    "sharp": "^0.35.5"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   }
 }
