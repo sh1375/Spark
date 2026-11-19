@@ -9,6 +9,16 @@ Send JSON to `POST /functions/v1/external-call-inbound` with `X-Spark-Timestamp`
 
 The bridge secret belongs on the trusted adapter only. Provider-native webhooks should be authenticated and translated by that adapter before it calls Spark.
 
+## Daily Video free allowance and Spark setup
+
+[Daily Video pricing](https://www.daily.co/pricing/video-sdk/) lists 10,000 free participant-minutes per month. A 30-minute call with two participants consumes 60 participant-minutes. Check the pricing page before exceeding the allowance.
+
+1. Create an account and a Daily domain in the [Daily Dashboard](https://dashboard.daily.co/) and copy the API key from the dashboard.
+2. In Spark's administration settings, select **Daily** for each capability you want to configure (audio, video, or conference). The selector fills in `https://api.daily.co/v1`. Save the corresponding API key server-side through the settings form.
+3. For one-to-one calls, start the call from the Spark chat. For a group conference, mark the calendar meeting as online and open it from the meeting details as the host.
+
+The native Daily integration creates private rooms and issues a room-specific token per participant. The provider API references are [Create room](https://docs.daily.co/reference/rest-api/rooms/create-room) and [Create meeting token](https://docs.daily.co/reference/rest-api/meeting-tokens/create-meeting-token).
+
 ## LiveKit through a hosted adapter
 
 Use this inbound flow when the call starts in an external system that uses LiveKit. The adapter runs alongside the hosted call page and maps its users to Spark UUIDs.
