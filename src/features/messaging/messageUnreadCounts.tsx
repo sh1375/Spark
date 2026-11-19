@@ -11,6 +11,7 @@ const emptyCounts = {
   groupTotal: 0,
   channelTotal: 0,
 };
+const SCHEMA_RETRY_INTERVAL_MS = 60_000;
 const noop = () => {};
 const UnreadContext = createContext({ ...emptyCounts, refresh: noop });
 
@@ -22,9 +23,16 @@ export function MessageUnreadProvider({ userId, children }: { userId?: string | 
   useEffect(() => {
     if (!userId) return;
     let active = true;
+    let nextSchemaCheckAt = 0;
     const queue = createLiveDataQueue(async () => {
+      if (Date.now() < nextSchemaCheckAt) return;
       const { data, error } = await supabase.rpc('get_message_unread_counts_v1');
-      if (!active || error) return;
+      if (!active) return;
+      if (error) {
+        if (error.code === 'PGRST202') nextSchemaCheckAt = Date.now() + SCHEMA_RETRY_INTERVAL_MS;
+        return;
+      }
+      nextSchemaCheckAt = 0;
 
       const counts = { ...emptyCounts, direct: new Map<string, number>(), channels: new Map<string, number>() };
       for (const row of data || []) {
