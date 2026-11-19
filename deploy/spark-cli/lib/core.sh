@@ -12,12 +12,9 @@ save_config() {
     printf 'APP_DOMAIN=%q\n' "${APP_DOMAIN:-}"
     printf 'WWW_DOMAIN=%q\n' "${WWW_DOMAIN:-}"
     printf 'API_DOMAIN=%q\n' "${API_DOMAIN:-}"
-    printf 'TURN_DOMAIN=%q\n' "${TURN_DOMAIN:-}"
     printf 'TURN_PUBLIC_IP=%q\n' "${TURN_PUBLIC_IP:-}"
     printf 'TURN_PRIVATE_IP=%q\n' "${TURN_PRIVATE_IP:-}"
     printf 'LE_EMAIL=%q\n' "${LE_EMAIL:-}"
-    printf 'TURN_MIN_PORT=%q\n' "${TURN_MIN_PORT:-49160}"
-    printf 'TURN_MAX_PORT=%q\n' "${TURN_MAX_PORT:-49200}"
     printf 'SUPABASE_REF=%q\n' "${SUPABASE_REF:-}"
     printf 'SUPABASE_COMMIT=%q\n' "${SUPABASE_COMMIT:-}"
   } >"$tmp"
@@ -383,9 +380,6 @@ ensure_values() {
   if [[ -z "${APP_DOMAIN:-}" ]]; then APP_DOMAIN="shahrmeeting.ir"; changed=1; fi
   if [[ -z "${WWW_DOMAIN:-}" ]]; then WWW_DOMAIN="www.${APP_DOMAIN}"; changed=1; fi
   if [[ -z "${API_DOMAIN:-}" ]]; then API_DOMAIN="api.${APP_DOMAIN}"; changed=1; fi
-  if [[ -z "${TURN_DOMAIN:-}" ]]; then TURN_DOMAIN="turn.${APP_DOMAIN}"; changed=1; fi
-  if [[ -z "${TURN_MIN_PORT:-}" ]]; then TURN_MIN_PORT="49160"; changed=1; fi
-  if [[ -z "${TURN_MAX_PORT:-}" ]]; then TURN_MAX_PORT="49200"; changed=1; fi
   (( changed )) && save_config
 }
 
@@ -408,11 +402,6 @@ configure_values_interactive() {
     fail "The domain is invalid."
   done
   while true; do
-    prompt_default v "TURN domain" "${TURN_DOMAIN:-turn.$APP_DOMAIN}"
-    valid_domain "$v" && { TURN_DOMAIN="$v"; break; }
-    fail "The domain is invalid."
-  done
-  while true; do
     prompt_default v "Server public IPv4" "${TURN_PUBLIC_IP:-}"
     valid_ipv4 "$v" && { TURN_PUBLIC_IP="$v"; break; }
     fail "The IPv4 address is invalid."
@@ -427,16 +416,6 @@ configure_values_interactive() {
     valid_email "$v" && { LE_EMAIL="$v"; break; }
     fail "The email address is invalid."
   done
-  prompt_default TURN_MIN_PORT "TURN minimum relay port" "${TURN_MIN_PORT:-49160}"
-  prompt_default TURN_MAX_PORT "TURN maximum relay port" "${TURN_MAX_PORT:-49200}"
-  [[ "$TURN_MIN_PORT" =~ ^[0-9]+$ && "$TURN_MAX_PORT" =~ ^[0-9]+$ ]] || {
-    fail "TURN ports must be numeric."
-    return 1
-  }
-  (( TURN_MIN_PORT < TURN_MAX_PORT && TURN_MIN_PORT >= 1024 && TURN_MAX_PORT <= 65535 )) || {
-    fail "The TURN relay port range is invalid."
-    return 1
-  }
   save_config
   ok "Configuration saved to ${MANAGER_CONF} (mode 600)."
 }
@@ -495,7 +474,7 @@ env_has_nonempty() {
 require_manager_values() {
   local missing=()
   local key
-  for key in APP_DOMAIN WWW_DOMAIN API_DOMAIN TURN_DOMAIN TURN_PUBLIC_IP TURN_PRIVATE_IP LE_EMAIL TURN_MIN_PORT TURN_MAX_PORT; do
+  for key in APP_DOMAIN WWW_DOMAIN API_DOMAIN TURN_PUBLIC_IP TURN_PRIVATE_IP LE_EMAIL; do
     [[ -n "${!key:-}" ]] || missing+=("$key")
   done
   if ((${#missing[@]})); then

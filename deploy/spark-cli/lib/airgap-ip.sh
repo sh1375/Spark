@@ -30,12 +30,9 @@ airgap_ip_apply_compat_values() {
   APP_DOMAIN="$ip"
   WWW_DOMAIN="$ip"
   API_DOMAIN="$ip"
-  TURN_DOMAIN="$ip"
   TURN_PUBLIC_IP="$ip"
   TURN_PRIVATE_IP="$ip"
   LE_EMAIL="airgap@localhost.invalid"
-  TURN_MIN_PORT="${TURN_MIN_PORT:-49160}"
-  TURN_MAX_PORT="${TURN_MAX_PORT:-49200}"
 }
 airgap_ip_apply_compat_values
 
@@ -87,8 +84,6 @@ save_config() {
   {
     printf 'AIRGAP_MODE=%q\n' "$AIRGAP_IP_MODE"
     printf 'AIRGAP_SERVER_IP=%q\n' "$AIRGAP_SERVER_IP"
-    printf 'TURN_MIN_PORT=%q\n' "${TURN_MIN_PORT:-49160}"
-    printf 'TURN_MAX_PORT=%q\n' "${TURN_MAX_PORT:-49200}"
   } >"$tmp"
   install -m 0600 "$tmp" "$AIRGAP_IP_CONF"
   rm -f "$tmp"

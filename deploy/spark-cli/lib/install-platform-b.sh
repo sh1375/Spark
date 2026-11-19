@@ -2,7 +2,7 @@ write_nginx_bootstrap() {
   cat >/etc/nginx/sites-available/spark-bootstrap <<EOF
 server {
     listen 80;
-    server_name ${APP_DOMAIN} ${WWW_DOMAIN} ${API_DOMAIN} ${TURN_DOMAIN};
+    server_name ${APP_DOMAIN} ${WWW_DOMAIN} ${API_DOMAIN};
     server_tokens off;
 
     location ^~ /.well-known/acme-challenge/ {
@@ -54,7 +54,6 @@ test_certificates() {
   certbot certificates || return 1
   cert_live_dir_for_domain "$APP_DOMAIN" >/dev/null || return 1
   cert_live_dir_for_domain "$API_DOMAIN" >/dev/null || return 1
-  cert_live_dir_for_domain "$TURN_DOMAIN" >/dev/null || return 1
 }
 
 install_step_13() {
@@ -64,7 +63,6 @@ install_step_13() {
   test_values || { fail "Domain settings are not valid; First step 01 – Configuration correct the."; return 1; }
   run_logged "Certificate domain Frontend" certbot certonly --webroot -w /var/www/acme -d "$APP_DOMAIN" -d "$WWW_DOMAIN" --email "$LE_EMAIL" --agree-tos --non-interactive --keep-until-expiring || return 1
   run_logged "Certificate domain API" certbot certonly --webroot -w /var/www/acme -d "$API_DOMAIN" --email "$LE_EMAIL" --agree-tos --non-interactive --keep-until-expiring || return 1
-  run_logged "Certificate domain TURN" certbot certonly --webroot -w /var/www/acme -d "$TURN_DOMAIN" --email "$LE_EMAIL" --agree-tos --non-interactive --keep-until-expiring || return 1
   if run_logged "test Certificates" test_certificates; then
     mark_step 13
   else
@@ -96,14 +94,13 @@ map \$http_upgrade \$spark_connection_upgrade {
 
 server {
     listen 80;
-    server_name ${APP_DOMAIN} ${WWW_DOMAIN} ${API_DOMAIN} ${TURN_DOMAIN};
+    server_name ${APP_DOMAIN} ${WWW_DOMAIN} ${API_DOMAIN};
 
     location ^~ /.well-known/acme-challenge/ {
         root /var/www/acme;
     }
 
     location / {
-        if (\$host = ${TURN_DOMAIN}) { return 404; }
         return 301 https://\$host\$request_uri;
     }
 }

@@ -1,7 +1,5 @@
 # Air-gap installation overrides. Sourced by lib/airgap.sh.
 
-# Preserve the standard LiveKit runtime step before Air-Gap adds content-store
-# integrity checks. The online installer remains unchanged.
 
 airgap_cert_source_dir() {
   local root="$1" domain="$2" src="${1}/certificates/${2}"
@@ -154,7 +152,6 @@ install_step_13() {
   root="$(airgap_current_root)" || { fail "No active air-gap bundle."; return 1; }
   run_logged "Install frontend TLS certificate from bundle" airgap_install_certificate "$root" "$APP_DOMAIN" "$WWW_DOMAIN" || return 1
   run_logged "Install API TLS certificate from bundle" airgap_install_certificate "$root" "$API_DOMAIN" || return 1
-  run_logged "Install TURN TLS certificate from bundle" airgap_install_certificate "$root" "$TURN_DOMAIN" || return 1
   run_logged "Install local Nginx TLS options" airgap_install_nginx_tls_options || return 1
   mark_step 13
   ok "TLS certificates imported from verified offline bundle; no ACME request was made."

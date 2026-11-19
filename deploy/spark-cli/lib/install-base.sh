@@ -24,7 +24,7 @@ check_supported_ubuntu() {
 test_dns() {
   local d ip resolved
   ip="$TURN_PUBLIC_IP"
-  for d in "$APP_DOMAIN" "$WWW_DOMAIN" "$API_DOMAIN" "$TURN_DOMAIN"; do
+  for d in "$APP_DOMAIN" "$WWW_DOMAIN" "$API_DOMAIN"; do
     resolved="$(getent ahostsv4 "$d" 2>>"$CURRENT_LOG" | awk '{print $1}' | sort -u || true)"
     printf '%s -> %s\n' "$d" "$resolved" >>"$CURRENT_LOG"
     grep -Fxq "$ip" <<<"$resolved" || return 1
@@ -36,7 +36,6 @@ test_values() {
   valid_domain "$APP_DOMAIN" || return 1
   valid_domain "$WWW_DOMAIN" || return 1
   valid_domain "$API_DOMAIN" || return 1
-  valid_domain "$TURN_DOMAIN" || return 1
   valid_ipv4 "$TURN_PUBLIC_IP" || return 1
   valid_ipv4 "$TURN_PRIVATE_IP" || return 1
   valid_email "$LE_EMAIL" || return 1
@@ -59,7 +58,6 @@ test_base_packages() {
   docker compose version || return 1
   command -v nginx || return 1
   command -v certbot || return 1
-  command -v turnserver || return 1
   command -v rsync || return 1
   command -v jq || return 1
   command -v python3 || return 1
@@ -461,7 +459,7 @@ configure_optional_function_env() {
   local extra="${CONFIG_DIR}/functions-extra.env"
   touch "$extra"
   chmod 600 "$extra"
-  local core='^(SUPABASE_URL|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|JWT_SECRET|SEND_SMS_HOOK_SECRET|PHONE_RATE_LIMIT_PEPPER|PHONE_PASSWORD_RESET_SECRET|PHONE_LOGIN_ALLOWED_ORIGINS|DAILY_REPORT_CRON_SECRET|NOTIFICATION_OUTBOX_CRON_SECRET|MINUTES_REMINDER_CRON_SECRET|DECISION_DUE_CRON_SECRET|TURN_DOMAIN|TURN_SHARED_SECRET|TURN_URL|TURN_TCP_URL|TURNS_URL)$'
+  local core='^(SUPABASE_URL|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|JWT_SECRET|SEND_SMS_HOOK_SECRET|PHONE_RATE_LIMIT_PEPPER|PHONE_PASSWORD_RESET_SECRET|PHONE_LOGIN_ALLOWED_ORIGINS|DAILY_REPORT_CRON_SECRET|NOTIFICATION_OUTBOX_CRON_SECRET|MINUTES_REMINDER_CRON_SECRET|DECISION_DUE_CRON_SECRET)$'
   local key existing base_value answer
   mapfile -t detected < <(scan_function_env_names)
   if ((${#detected[@]} == 0)); then

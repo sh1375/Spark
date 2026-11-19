@@ -31,15 +31,12 @@ spark_universal_apply_compat_values() {
   AIRGAP_SERVER_IP="$ip"
   TURN_PRIVATE_IP="$ip"
   TURN_PUBLIC_IP="${TURN_PUBLIC_IP:-$ip}"
-  TURN_MIN_PORT="${TURN_MIN_PORT:-49160}"
-  TURN_MAX_PORT="${TURN_MAX_PORT:-49200}"
 
   # Compatibility-only values for legacy helpers. They are never used to bind
   # the frontend/API public origin or Nginx server_name.
   APP_DOMAIN="$ip"
   WWW_DOMAIN="$ip"
   API_DOMAIN="$ip"
-  TURN_DOMAIN="$ip"
   LE_EMAIL=""
 }
 
@@ -54,14 +51,12 @@ configure_values_interactive() {
 }
 
 test_values() {
-  spark_universal_apply_compat_values || return 1
-  [[ "$TURN_MIN_PORT" =~ ^[0-9]+$ && "$TURN_MAX_PORT" =~ ^[0-9]+$ ]] || return 1
-  (( TURN_MIN_PORT >= 1024 && TURN_MIN_PORT < TURN_MAX_PORT && TURN_MAX_PORT <= 65535 ))
+  spark_universal_apply_compat_values
 }
 
 require_manager_values() {
   test_values || {
-    fail "Internal IP/TURN defaults are not valid. Run installation step 01."
+    fail "Internal IP settings are not valid. Run installation step 01."
     return 1
   }
 }

@@ -483,13 +483,10 @@ airgap_copy_certificate_pack() {
 
   # Certbot root is accepted only when manager.conf identifies exact Spark domains.
   if [[ -d "${source}/live" && -f "$MANAGER_CONF" ]]; then
-    local app api turn meet ingress cert_dir
+    local app api cert_dir
     app="$(sed -n 's/^APP_DOMAIN=//p' "$MANAGER_CONF" | tail -n1)"
     api="$(sed -n 's/^API_DOMAIN=//p' "$MANAGER_CONF" | tail -n1)"
-    turn="$(sed -n 's/^TURN_DOMAIN=//p' "$MANAGER_CONF" | tail -n1)"
-    meet="meet.${app}"
-    ingress="ingress.${app}"
-    for domain in "$app" "$api" "$turn" "$meet" "$ingress"; do
+    for domain in "$app" "$api"; do
       [[ -n "$domain" ]] || continue
       cert_dir=""
       for src in "${source}/live/${domain}" "${source}/live/${domain}-"*; do

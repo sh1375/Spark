@@ -333,7 +333,7 @@ cleanup_nginx_internal() {
 cleanup_certificates_internal() {
   local cert
   command -v certbot >/dev/null 2>&1 || return 0
-  for cert in "${APP_DOMAIN:-}" "${API_DOMAIN:-}" "${TURN_DOMAIN:-}"; do
+  for cert in "${APP_DOMAIN:-}" "${API_DOMAIN:-}"; do
     [[ -n "$cert" ]] || continue
     certbot delete --cert-name "$cert" --non-interactive >>"$CURRENT_LOG" 2>&1 || true
   done
@@ -344,18 +344,12 @@ cleanup_firewall_runtime_rules_internal() {
   set +e
   ufw --force delete allow 5432/tcp >>"$CURRENT_LOG" 2>&1
   ufw --force delete allow 8443/tcp >>"$CURRENT_LOG" 2>&1
-  ufw --force delete allow 3478/tcp >>"$CURRENT_LOG" 2>&1
-  ufw --force delete allow 3478/udp >>"$CURRENT_LOG" 2>&1
-  ufw --force delete allow 5349/tcp >>"$CURRENT_LOG" 2>&1
-  if [[ -n "${TURN_MIN_PORT:-}" && -n "${TURN_MAX_PORT:-}" ]]; then
-    ufw --force delete allow "${TURN_MIN_PORT}:${TURN_MAX_PORT}/udp" >>"$CURRENT_LOG" 2>&1
-  fi
   set -e
 }
 
 cleanup_full_project() {
   new_log "cleanup-full-project"
-  warn "This operation removes all Spark components from this server: source, Supabase runtime/data, frontend, Spark configuration/secrets, Nginx configuration, schedulers, TURN configuration, Spark-domain certificates, backups, and logs."
+  warn "This operation removes all Spark components from this server: source, Supabase runtime/data, frontend, Spark configuration/secrets, Nginx configuration, schedulers, Spark-domain certificates, backups, and logs."
   info "Docker/Nginx/Node/Certbot packages, public SSH/HTTP/HTTPS UFW rules, and Spark Manager itself are preserved so the platform can be installed again."
   if ! confirm_word "First confirmation: completely remove the Spark project from this server." "DELETE-SPARK"; then
     warn "Complete project removal cancelled."

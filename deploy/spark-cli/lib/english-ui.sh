@@ -144,11 +144,6 @@ configure_values_interactive() {
     fail "The domain is invalid."
   done
   while true; do
-    prompt_default v "TURN domain" "${TURN_DOMAIN:-turn.$APP_DOMAIN}"
-    valid_domain "$v" && { TURN_DOMAIN="$v"; break; }
-    fail "The domain is invalid."
-  done
-  while true; do
     prompt_default v "Server public IPv4" "${TURN_PUBLIC_IP:-}"
     valid_ipv4 "$v" && { TURN_PUBLIC_IP="$v"; break; }
     fail "The IPv4 address is invalid."
@@ -163,23 +158,13 @@ configure_values_interactive() {
     valid_email "$v" && { LE_EMAIL="$v"; break; }
     fail "The email address is invalid."
   done
-  prompt_default TURN_MIN_PORT "TURN minimum relay port" "${TURN_MIN_PORT:-49160}"
-  prompt_default TURN_MAX_PORT "TURN maximum relay port" "${TURN_MAX_PORT:-49200}"
-  [[ "$TURN_MIN_PORT" =~ ^[0-9]+$ && "$TURN_MAX_PORT" =~ ^[0-9]+$ ]] || {
-    fail "TURN ports must be numeric."
-    return 1
-  }
-  (( TURN_MIN_PORT < TURN_MAX_PORT && TURN_MIN_PORT >= 1024 && TURN_MAX_PORT <= 65535 )) || {
-    fail "The TURN relay port range is invalid."
-    return 1
-  }
   save_config
   ok "Configuration saved to ${MANAGER_CONF} (mode 600)."
 }
 
 require_manager_values() {
   local missing=() key
-  for key in APP_DOMAIN WWW_DOMAIN API_DOMAIN TURN_DOMAIN TURN_PUBLIC_IP TURN_PRIVATE_IP LE_EMAIL TURN_MIN_PORT TURN_MAX_PORT; do
+  for key in APP_DOMAIN WWW_DOMAIN API_DOMAIN TURN_PUBLIC_IP TURN_PRIVATE_IP LE_EMAIL; do
     [[ -n "${!key:-}" ]] || missing+=("$key")
   done
   if ((${#missing[@]})); then

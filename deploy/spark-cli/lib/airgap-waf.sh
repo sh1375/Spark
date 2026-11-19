@@ -218,11 +218,6 @@ server {
     location / { return 404; }
 }
 
-server {
-    listen 80;
-    server_name ${TURN_DOMAIN};
-    location / { return 404; }
-}
 EOF
   ln -sfn /etc/nginx/sites-available/spark /etc/nginx/sites-enabled/spark
   rm -f /etc/nginx/sites-enabled/spark-bootstrap

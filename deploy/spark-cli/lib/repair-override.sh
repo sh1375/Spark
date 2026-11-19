@@ -252,7 +252,7 @@ supabase_bootstrap_ready() {
 # Spark uses dedicated www/api/turn hosts below the main application domain.
 # The old generic domain regex accepted values such as turn.shahr even when the
 # application domain was shahrmeeting.ir. Keep the syntax check, but also enforce
-# the service-domain relationship used by Nginx, Certbot and Coturn.
+# the service-domain relationship used by Nginx and Certbot.
 valid_service_domain() {
   local child="$1" parent="$2"
   valid_domain "$child" || return 1
@@ -265,7 +265,6 @@ test_values() {
   valid_domain "$APP_DOMAIN" || return 1
   valid_service_domain "$WWW_DOMAIN" "$APP_DOMAIN" || return 1
   valid_service_domain "$API_DOMAIN" "$APP_DOMAIN" || return 1
-  valid_service_domain "$TURN_DOMAIN" "$APP_DOMAIN" || return 1
   valid_ipv4 "$TURN_PUBLIC_IP" || return 1
   valid_ipv4 "$TURN_PRIVATE_IP" || return 1
   valid_email "$LE_EMAIL" || return 1
@@ -297,14 +296,6 @@ configure_values_interactive() {
     fail "domain API Must be a subdomain ${APP_DOMAIN} be; Example: api.${APP_DOMAIN}"
   done
 
-  default_value="${TURN_DOMAIN:-}"
-  valid_service_domain "$default_value" "$APP_DOMAIN" || default_value="turn.${APP_DOMAIN}"
-  while true; do
-    prompt_default v "domain TURN" "$default_value"
-    valid_service_domain "$v" "$APP_DOMAIN" && { TURN_DOMAIN="$v"; break; }
-    fail "domain TURN Must be a subdomain ${APP_DOMAIN} be; Example: turn.${APP_DOMAIN}"
-  done
-
   while true; do
     prompt_default v "Public IPv4 server" "${TURN_PUBLIC_IP:-}"
     valid_ipv4 "$v" && { TURN_PUBLIC_IP="$v"; break; }
@@ -321,17 +312,6 @@ configure_values_interactive() {
     fail "Email not valid."
   done
 
-  prompt_default TURN_MIN_PORT "TURN minimum relay port" "${TURN_MIN_PORT:-49160}"
-  prompt_default TURN_MAX_PORT "TURN maximum relay port" "${TURN_MAX_PORT:-49200}"
-  [[ "$TURN_MIN_PORT" =~ ^[0-9]+$ && "$TURN_MAX_PORT" =~ ^[0-9]+$ ]] || {
-    fail "Port TURN Must be numeric."
-    return 1
-  }
-  (( TURN_MIN_PORT < TURN_MAX_PORT && TURN_MIN_PORT >= 1024 && TURN_MAX_PORT <= 65535 )) || {
-    fail "interval TURN It is invalid."
-    return 1
-  }
-
   save_config
   ok "Settings in ${MANAGER_CONF} saved (mode 600)."
 }
@@ -342,12 +322,10 @@ install_step_13() {
   require_manager_values || return 1
   if ! test_values; then
     fail "Domain settings are not valid; stage 01 – Configuration Run it again."
-    info "TURN A suggestion for the current domain: turn.${APP_DOMAIN}"
     return 1
   fi
   run_logged "Certificate domain Frontend" certbot certonly --webroot -w /var/www/acme -d "$APP_DOMAIN" -d "$WWW_DOMAIN" --email "$LE_EMAIL" --agree-tos --non-interactive --keep-until-expiring || return 1
   run_logged "Certificate domain API" certbot certonly --webroot -w /var/www/acme -d "$API_DOMAIN" --email "$LE_EMAIL" --agree-tos --non-interactive --keep-until-expiring || return 1
-  run_logged "Certificate domain TURN" certbot certonly --webroot -w /var/www/acme -d "$TURN_DOMAIN" --email "$LE_EMAIL" --agree-tos --non-interactive --keep-until-expiring || return 1
   if run_logged "test Certificates" test_certificates; then
     mark_step 13
   else

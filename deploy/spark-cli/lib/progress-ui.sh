@@ -86,7 +86,7 @@ spark_progress_run_logged_command() {
 }
 
 # Override the common silent runner used across Installation, Update, Supabase,
-# LiveKit and repair flows. Command output remains in CURRENT_LOG exactly as
+# installation and repair flows. Command output remains in CURRENT_LOG exactly as
 # before, so failure diagnostics and automation contracts are preserved.
 run_logged() {
   local label="$1"
