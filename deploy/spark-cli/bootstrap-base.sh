@@ -52,12 +52,11 @@ resolve_main_sha() {
 MAIN_SHA="$(resolve_main_sha)"
 RAW_ROOT="https://raw.githubusercontent.com/sh1375/Spark/${MAIN_SHA}"
 RAW_BASE="${RAW_ROOT}/deploy/spark-cli"
-LIVEKIT_RAW_BASE="${RAW_ROOT}/deploy/spark-cli/livekit"
 printf 'Resolved Spark Manager revision: %s\n' "${MAIN_SHA:0:12}"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-mkdir -p "$tmp/lib" "$tmp/livekit" "$tmp/architecture" "$tmp/config/environments" "$tmp/roles/database/tasks" "$tmp/secrets" "$tmp/roles/database/package" "$tmp/adapters" "$tmp/roles/database/runtime" "$tmp/roles/database/lifecycle" "$tmp/roles/database/schema" "$tmp/roles/application/tasks" "$tmp/roles/application/build" "$tmp/roles/application/deployment"
+mkdir -p "$tmp/lib" "$tmp/architecture" "$tmp/config/environments" "$tmp/roles/database/tasks" "$tmp/secrets" "$tmp/roles/database/package" "$tmp/adapters" "$tmp/roles/database/runtime" "$tmp/roles/database/lifecycle" "$tmp/roles/database/schema" "$tmp/roles/application/tasks" "$tmp/roles/application/build" "$tmp/roles/application/deployment"
 
 files=(
   spark
@@ -182,7 +181,6 @@ bootstrap-airgap.sh
   lib/database.sh
   lib/same-origin.sh
   lib/studio-session.sh
-  lib/install-livekit.sh
   lib/airgap.sh
   lib/airgap-build.sh
   lib/airgap-packages.sh
@@ -201,49 +199,6 @@ bootstrap-airgap.sh
 for file in "${files[@]}"; do
   echo "Downloading ${file}..."
   curl -fsSL -H 'Cache-Control: no-cache' "${RAW_BASE}/${file}" -o "${tmp}/${file}"
-done
-
-livekit_files=(
-  .env.example
-  docker-compose.yml
-  docker-compose.spark-cli.yml
-  Caddyfile
-  redis.conf
-  livekit.yaml
-  egress.yaml
-  ingress.yaml
-  README.md
-  monitoring/prometheus.yml
-  monitoring/rules/livekit-alerts.yml
-  monitoring/alertmanager.yml
-  monitoring/blackbox.yml
-  monitoring/loki.yml
-  monitoring/alloy.alloy
-  monitoring/grafana/provisioning/datasources/datasources.yml
-  monitoring/grafana/provisioning/dashboards/dashboards.yml
-  monitoring/grafana/dashboards/spark-livekit-overview.json
-  monitoring/grafana/dashboards/spark-livekit-operations.json
-  monitoring/targets/blackbox.json
-)
-for file in "${livekit_files[@]}"; do
-  echo "Downloading LiveKit asset ${file}..."
-  install -d -m 0755 "$(dirname "${tmp}/livekit/${file}")"
-  curl -fsSL -H 'Cache-Control: no-cache' "${LIVEKIT_RAW_BASE}/${file}" -o "${tmp}/livekit/${file}"
-done
-
-grep -q '^  minio:' "$tmp/livekit/docker-compose.yml" || {
-  echo "Spark LiveKit MinIO service is missing from deployment assets." >&2
-  exit 1
-}
-grep -q '^  minio-init:' "$tmp/livekit/docker-compose.yml" || {
-  echo "Spark LiveKit MinIO initialization service is missing." >&2
-  exit 1
-}
-for file in   monitoring/prometheus.yml   monitoring/rules/livekit-alerts.yml   monitoring/alertmanager.yml   monitoring/blackbox.yml   monitoring/loki.yml   monitoring/alloy.alloy   monitoring/grafana/provisioning/datasources/datasources.yml   monitoring/grafana/provisioning/dashboards/dashboards.yml   monitoring/grafana/dashboards/spark-livekit-overview.json   monitoring/grafana/dashboards/spark-livekit-operations.json   monitoring/targets/blackbox.json; do
-  [[ -f "$tmp/livekit/$file" ]] || {
-    echo "Spark LiveKit observability asset is missing: $file" >&2
-    exit 1
-  }
 done
 
 bash -n "$tmp/spark"
@@ -369,12 +324,8 @@ grep -q 'spark_studio_session' "$tmp/lib/studio-session.sh" || {
   echo "Spark Studio session auth module is missing." >&2
   exit 1
 }
-grep -q 'env-modern runtime-fixes studio-session install-livekit' "$tmp/spark" || {
+grep -q 'env-modern runtime-fixes studio-session' "$tmp/spark" || {
   echo "Spark loader does not source Studio session auth natively." >&2
-  exit 1
-}
-grep -q 'install_step_21' "$tmp/lib/install-livekit.sh" || {
-  echo "Spark LiveKit installer module is incomplete." >&2
   exit 1
 }
 grep -q 'pty.openpty()' "$tmp/spark-ui.py" || {
@@ -395,7 +346,7 @@ migrate_stage="$(mktemp -d /usr/local/lib/spark-migrate.new.XXXXXX)"
 chmod 0755 "$stage" "$migrate_stage"
 backup="/usr/local/lib/spark-manager.previous.$$"
 migrate_backup="/usr/local/lib/spark-migrate.previous.$$"
-install -d -m 0755 "$stage/lib" "$stage/livekit" "$stage/architecture" "$stage/config/environments" "$stage/roles/database/tasks" "$stage/secrets" "$stage/roles/database/package" "$stage/adapters" "$stage/roles/database/runtime" "$stage/roles/database/lifecycle" "$stage/roles/database/schema" "$stage/roles/application/tasks" "$stage/roles/application/build" "$stage/roles/application/deployment"
+install -d -m 0755 "$stage/lib" "$stage/architecture" "$stage/config/environments" "$stage/roles/database/tasks" "$stage/secrets" "$stage/roles/database/package" "$stage/adapters" "$stage/roles/database/runtime" "$stage/roles/database/lifecycle" "$stage/roles/database/schema" "$stage/roles/application/tasks" "$stage/roles/application/build" "$stage/roles/application/deployment"
 install -m 0755 "$tmp/spark" "$stage/spark"
 install -m 0755 "$tmp/spark-airgap" "$stage/spark-airgap"
 install -m 0755 "$tmp/spark-architecture" "$stage/spark-architecture"
@@ -426,7 +377,6 @@ install -m 0755 "$tmp/spark-migrate" "$migrate_stage/spark-migrate"
 for file in "$tmp"/lib/*.sh; do
   install -m 0644 "$file" "$stage/lib/$(basename "$file")"
 done
-rsync -a --delete "$tmp/livekit/" "$stage/livekit/"
 
 if [[ -d "$TARGET" ]]; then
   mv "$TARGET" "$backup"

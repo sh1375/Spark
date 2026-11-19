@@ -10,11 +10,6 @@
 eval "$(declare -f install_step_2 | sed '1s/install_step_2/install_step_2_universal_base/')"
 eval "$(declare -f install_step_6 | sed '1s/install_step_6/install_step_6_universal_base/')"
 eval "$(declare -f install_step_11 | sed '1s/install_step_11/install_step_11_universal_base/')"
-eval "$(declare -f install_step_19 | sed '1s/install_step_19/install_step_19_universal_base/')"
-eval "$(declare -f install_step_20 | sed '1s/install_step_20/install_step_20_universal_base/')"
-eval "$(declare -f install_step_21 | sed '1s/install_step_21/install_step_21_universal_base/')"
-eval "$(declare -f install_step_22 | sed '1s/install_step_22/install_step_22_universal_base/')"
-eval "$(declare -f installation_step_probe | sed '1s/installation_step_probe/installation_step_probe_universal_base/')"
 
 spark_universal_is_airgap() {
   [[ "${SPARK_AIRGAP_CONTEXT:-0}" == "1" ]] && return 0
@@ -116,7 +111,7 @@ spark_install_latest_connected_packages() {
   # Full OS upgrades belong to Linux System maintenance. Installation only
   # installs/upgrades the packages Spark actually requires so first startup is fast.
   run_logged "Install latest required base packages" apt-get install -y \
-    ca-certificates curl git gnupg jq openssl ufw rsync python3 python3-yaml nginx certbot coturn || return 1
+    ca-certificates curl git gnupg jq openssl ufw rsync python3 python3-yaml nginx certbot || return 1
 
   run_logged "Configure latest Docker repository" bash -c '
     set -Eeuo pipefail
@@ -417,49 +412,6 @@ install_step_14() {
   mark_step 14
 }
 
-install_step_16() {
-  title
-  new_log "install-16-turn-local-ip"
-  spark_universal_apply_compat_values || return 1
-  local ip="$TURN_PRIVATE_IP" turn_env="${CONFIG_DIR}/turn-secret.env" secret
-  secret="$(env_get "$turn_env" TURN_SHARED_SECRET)"
-  [[ -n "$secret" ]] || secret="$(openssl rand -base64 48 | tr -d '\n')"
-  env_set "$turn_env" TURN_DOMAIN "$ip"
-  env_set "$turn_env" TURN_SHARED_SECRET "$secret"
-  env_set "$turn_env" TURN_URL "turn:$ip:3478?transport=udp"
-  env_set "$turn_env" TURN_TCP_URL "turn:$ip:3478?transport=tcp"
-  env_set "$turn_env" TURNS_URL ""
-  chmod 600 "$turn_env"
-
-  cat >/etc/turnserver.conf <<EOF_TURN
-listening-port=3478
-listening-ip=$ip
-relay-ip=$ip
-fingerprint
-use-auth-secret
-static-auth-secret=$secret
-realm=$ip
-server-name=$ip
-min-port=$TURN_MIN_PORT
-max-port=$TURN_MAX_PORT
-no-tls
-no-dtls
-no-cli
-no-loopback-peers
-no-multicast-peers
-stale-nonce=600
-EOF_TURN
-  chown root:turnserver /etc/turnserver.conf
-  chmod 0640 /etc/turnserver.conf
-  if grep -q '^TURNSERVER_ENABLED=' /etc/default/coturn 2>/dev/null; then
-    sed -i 's/^TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
-  else
-    printf '\nTURNSERVER_ENABLED=1\n' >>/etc/default/coturn
-  fi
-  run_logged "Enable local-IP Coturn" systemctl enable --now coturn || return 1
-  mark_step 16
-}
-
 install_step_17() {
   title
   new_log "install-17-no-certbot"
@@ -468,56 +420,6 @@ install_step_17() {
   systemctl daemon-reload || return 1
   mark_step 17
   ok "Certificate lifecycle is external to Spark installation."
-}
-
-spark_universal_deferred_video_step() {
-  local step="$1"
-  title
-  new_log "install-${step}-video-deferred"
-  mark_step "$step"
-  ok "Video-conference provisioning is intentionally deferred while the feature is disabled; no DNS/TLS dependency was introduced."
-}
-
-install_step_19() {
-  if spark_universal_is_airgap; then
-    install_step_19_universal_base
-  else
-    spark_universal_deferred_video_step 19
-  fi
-}
-install_step_20() {
-  if spark_universal_is_airgap; then
-    install_step_20_universal_base
-  else
-    spark_universal_deferred_video_step 20
-  fi
-}
-install_step_21() {
-  if spark_universal_is_airgap; then
-    install_step_21_universal_base
-  else
-    spark_universal_deferred_video_step 21
-  fi
-}
-install_step_22() {
-  if spark_universal_is_airgap; then
-    install_step_22_universal_base
-  else
-    spark_universal_deferred_video_step 22
-  fi
-}
-
-installation_step_probe() {
-  case "$1" in
-    19|20|21|22)
-      if spark_universal_is_airgap; then
-        installation_step_probe_universal_base "$1"
-      else
-        [[ -f "${STEP_DIR}/$1.ok" ]]
-      fi
-      ;;
-    *) installation_step_probe_universal_base "$1" ;;
-  esac
 }
 
 test_full_validation() {

@@ -2,7 +2,6 @@
 
 # Preserve the standard LiveKit runtime step before Air-Gap adds content-store
 # integrity checks. The online installer remains unchanged.
-eval "$(declare -f install_step_20 | sed '1s/install_step_20/install_step_20_online/')"
 
 airgap_cert_source_dir() {
   local root="$1" domain="$2" src="${1}/certificates/${2}"
@@ -166,14 +165,6 @@ install_step_17() {
   title
   new_log "install-17-cert-renewal-airgap"
   require_manager_values || return 1
-  mkdir -p /etc/systemd/system/certbot.service.d
-  cat >/etc/systemd/system/certbot.service.d/spark-turn.conf <<EOF_CERTBOT
-[Service]
-ExecStartPost=/usr/bin/install -m 0640 -o turnserver -g turnserver /etc/letsencrypt/live/${TURN_DOMAIN}/fullchain.pem /etc/coturn/certs/fullchain.pem
-ExecStartPost=/usr/bin/install -m 0640 -o turnserver -g turnserver /etc/letsencrypt/live/${TURN_DOMAIN}/privkey.pem /etc/coturn/certs/privkey.pem
-ExecStartPost=/usr/bin/systemctl try-restart coturn.service
-EOF_CERTBOT
-  systemctl daemon-reload || return 1
   systemctl disable --now certbot.timer >/dev/null 2>&1 || true
   install -d -m 0700 "$CONFIG_DIR"
   printf 'Certificate renewal is external in air-gapped mode. Import a renewed certificate pack before expiry.\n' \
@@ -181,165 +172,6 @@ EOF_CERTBOT
   chmod 0600 "${CONFIG_DIR}/airgap-certificate-renewal.txt"
   mark_step 17
   warn "Certbot network renewal/dry-run is intentionally disabled in air-gapped mode; certificate rotation is an offline bundle operation."
-}
-
-livekit_prepare_nginx_tls() {
-  airgap_is_active || { livekit_prepare_nginx_tls_online; return; }
-  local root meet ingress
-  root="$(airgap_current_root)" || return 1
-  meet="$(livekit_env_value LIVEKIT_DOMAIN)"
-  ingress="$(livekit_env_value LIVEKIT_INGRESS_DOMAIN)"
-  livekit_write_nginx_bootstrap || return 1
-  nginx -t || return 1
-  systemctl reload nginx || return 1
-  airgap_install_certificate "$root" "$meet" || return 1
-  airgap_install_certificate "$root" "$ingress" || return 1
-  airgap_install_nginx_tls_options || return 1
-  livekit_write_nginx_production || return 1
-  nginx -t || return 1
-  systemctl reload nginx || return 1
-}
-
-livekit_public_tls_probe() {
-  if airgap_is_active; then
-    local domain="$1" code
-    code="$(curl --noproxy '*' -sS --resolve "${domain}:443:127.0.0.1" --connect-timeout 8 -o /dev/null -w '%{http_code}' "https://${domain}/" || true)"
-    [[ "$code" =~ ^[1-5][0-9][0-9]$ && "$code" != "000" ]]
-    return
-  fi
-  livekit_public_tls_probe_online "$@"
-}
-
-livekit_turn_tls_probe() {
-  if airgap_is_active; then
-    local domain
-    domain="$(livekit_env_value LIVEKIT_TURN_DOMAIN)"
-    timeout 12 openssl s_client -connect "127.0.0.1:${LIVEKIT_TURN_TLS_PORT}" -servername "$domain" -verify_return_error </dev/null 2>&1 \
-      | grep -Eq 'Verification: OK|Verify return code: 0'
-    return
-  fi
-  livekit_turn_tls_probe_online "$@"
-}
-
-airgap_livekit_image_list() {
-  local output="$1"
-  livekit_compose config --images 2>>"${CURRENT_LOG:-/dev/null}" \
-    | sed '/^[[:space:]]*$/d' | sort -u >"$output"
-  [[ -s "$output" ]]
-}
-
-airgap_probe_image_container_create() {
-  local image="$1" cid
-  if [[ -n "${CURRENT_LOG:-}" ]]; then
-    cid="$("$AIRGAP_REAL_DOCKER" create --pull=never --entrypoint /bin/true "$image" 2>>"$CURRENT_LOG")" || return 1
-  else
-    cid="$("$AIRGAP_REAL_DOCKER" create --pull=never --entrypoint /bin/true "$image" 2>/dev/null)" || return 1
-  fi
-  [[ -n "$cid" ]] || return 1
-  "$AIRGAP_REAL_DOCKER" rm -f "$cid" >/dev/null 2>&1 || true
-}
-
-airgap_verify_image_list_container_create() {
-  local list_file="$1" image failed=0
-  [[ -f "$list_file" ]] || return 1
-  while IFS= read -r image; do
-    [[ -n "$image" ]] || continue
-    if ! airgap_probe_image_container_create "$image"; then
-      [[ -n "${CURRENT_LOG:-}" ]] && echo "Docker container-create probe failed for image: $image" >>"$CURRENT_LOG"
-      failed=1
-    fi
-  done <"$list_file"
-  (( failed == 0 ))
-}
-
-airgap_livekit_compose_create_probe() {
-  local report="$1" rc
-  : >"$report"
-  if livekit_compose create --no-build --pull never >"$report" 2>&1; then
-    [[ -n "${CURRENT_LOG:-}" ]] && cat "$report" >>"$CURRENT_LOG"
-    livekit_compose rm -sf >>"${CURRENT_LOG:-/dev/null}" 2>&1 || true
-    return 0
-  else
-    rc=$?
-    [[ -n "${CURRENT_LOG:-}" ]] && cat "$report" >>"$CURRENT_LOG"
-    livekit_compose rm -sf >>"${CURRENT_LOG:-/dev/null}" 2>&1 || true
-    return "$rc"
-  fi
-}
-
-airgap_livekit_create_failure_is_content_store() {
-  local report="$1"
-  grep -Eqi 'failed to read config content|content digest sha256:[0-9a-f]+.*not found|NotFound: content digest' "$report"
-}
-
-airgap_repair_livekit_container_create() {
-  local root="$1" list_file="$2" image removed=0
-  while IFS= read -r image; do
-    [[ -n "$image" ]] || continue
-    if ! airgap_probe_image_container_create "$image"; then
-      "$AIRGAP_REAL_DOCKER" image rm -f "$image" >/dev/null 2>&1 || true
-      removed=1
-    fi
-  done <"$list_file"
-  if (( removed == 0 )); then
-    while IFS= read -r image; do
-      [[ -n "$image" ]] || continue
-      "$AIRGAP_REAL_DOCKER" image rm -f "$image" >/dev/null 2>&1 || true
-    done <"$list_file"
-  fi
-  airgap_reload_image_archive "$root" || return 1
-  airgap_verify_image_list_content "$list_file" || return 1
-  airgap_verify_image_list_container_create "$list_file"
-}
-
-install_step_20() {
-  airgap_is_active || { install_step_20_online; return; }
-  local root list report
-  root="$(airgap_current_root)" || { fail "No active air-gap bundle."; return 1; }
-  list="$(mktemp)"
-  report="$(mktemp)"
-  new_log "install-20-livekit-image-preflight"
-  if ! airgap_livekit_image_list "$list"; then
-    rm -f "$list" "$report"
-    fail "Unable to resolve LiveKit Docker image list from the offline Compose configuration."
-    return 1
-  fi
-  if ! airgap_verify_image_list_content "$list"; then
-    warn "One or more LiveKit images have unreadable Docker content; reloading them from the verified Air-Gap archive."
-    livekit_compose down --remove-orphans >>"$CURRENT_LOG" 2>&1 || true
-    if ! run_logged "Repair bundled LiveKit Docker image content" airgap_repair_image_list_content "$root" "$list"; then
-      rm -f "$list" "$report"
-      fail "LiveKit Docker image content remains unreadable after offline reload. Rebuild/import the Air-Gap bundle."
-      return 1
-    fi
-  fi
-  livekit_compose down --remove-orphans >>"$CURRENT_LOG" 2>&1 || true
-  if ! airgap_livekit_compose_create_probe "$report"; then
-    if airgap_livekit_create_failure_is_content_store "$report"; then
-      warn "LiveKit container-create detected missing Docker content; refreshing the LiveKit image set from the verified Air-Gap archive."
-      if ! run_logged "Repair LiveKit images after container-create failure" airgap_repair_livekit_container_create "$root" "$list"; then
-        rm -f "$list" "$report"
-        fail "LiveKit images still fail container-create after offline reload. Rebuild/import the Air-Gap bundle."
-        return 1
-      fi
-      if ! airgap_livekit_compose_create_probe "$report"; then
-        rm -f "$list" "$report"
-        fail "LiveKit Compose container-create still fails after image repair. See the Step 20 preflight log."
-        return 1
-      fi
-    else
-      rm -f "$list" "$report"
-      fail "LiveKit Compose container-create preflight failed for a non-image-content reason. See the Step 20 preflight log."
-      return 1
-    fi
-  fi
-  rm -f "$list" "$report"
-  install_step_20_online || return 1
-  if ! _airgap_edge_runtime_probe "$SUPABASE_ROOT"; then
-    unmark_step 20
-    _airgap_edge_capture_logs "${BACKUP_DIR}/edge-runtime-step20-$(date -u +%Y%m%d-%H%M%S).log"
-    return 1
-  fi
 }
 
 AIRGAP_INSTALL_STEPS=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 21)

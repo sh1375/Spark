@@ -18,9 +18,6 @@ eval "$(declare -f install_step_10 | sed '1s/install_step_10/install_step_10_onl
 eval "$(declare -f install_step_11 | sed '1s/install_step_11/install_step_11_online/')"
 eval "$(declare -f install_step_13 | sed '1s/install_step_13/install_step_13_online/')"
 eval "$(declare -f install_step_17 | sed '1s/install_step_17/install_step_17_online/')"
-eval "$(declare -f livekit_prepare_nginx_tls | sed '1s/livekit_prepare_nginx_tls/livekit_prepare_nginx_tls_online/')"
-eval "$(declare -f livekit_public_tls_probe | sed '1s/livekit_public_tls_probe/livekit_public_tls_probe_online/')"
-eval "$(declare -f livekit_turn_tls_probe | sed '1s/livekit_turn_tls_probe/livekit_turn_tls_probe_online/')"
 
 airgap_is_active() {
   [[ "${SPARK_AIRGAP_ACTIVE:-0}" == "1" ]]

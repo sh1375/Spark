@@ -12,7 +12,6 @@ import { computeExternalDiff } from '../../lib/meetingEditDiff';
 import type { ContactEmail } from '../../types';
 import type { CommitSnapshot } from './types';
 import {
-  createConferenceRoom,
   sendSmsToExternals,
   showSmsSummary,
   type ExternalSmsResult,
@@ -87,14 +86,8 @@ export async function commitCalendarMeetingEdit({
     if (identityError) throw identityError;
     const managedSeries = Boolean((identity as any)?.series_id);
     const queuedTimingIds = new Set<string>();
-    let seriesRoomId: string | null = null;
-    if (managedSeries && snapshot.isOnline && !snapshot.wasOnline) {
-      const room = await createConferenceRoom(userId, subject);
-      if (!room?.id) throw new Error('خطا در ایجاد اتاق جلسه آنلاین؛ لطفاً دوباره تلاش کنید');
-      seriesRoomId = room.id;
-    }
     if (managedSeries) {
-      const patch = { ...(baseFields && prefillEditAllIds?.length ? baseFields : updateRecord), participant_user_ids: selectedParticipantIds, ...(seriesRoomId ? { conference_room_id: seriesRoomId } : {}) };
+      const patch = { ...(baseFields && prefillEditAllIds?.length ? baseFields : updateRecord), participant_user_ids: selectedParticipantIds };
       const { error } = await (supabase as any).rpc('update_meeting_series', {
         p_ids: prefillEditAllIds?.length ? prefillEditAllIds : [prefillMeetingId],
         p_patch: patch,
@@ -113,16 +106,6 @@ export async function commitCalendarMeetingEdit({
         }
         await Promise.all([...queuedTimingIds].map(dispatchRecurringMeetingDelivery));
       }
-    }
-
-    if (!managedSeries && snapshot.isOnline && !snapshot.wasOnline) {
-      const room = await createConferenceRoom(userId, subject);
-      if (!room?.id) throw new Error('خطا در ایجاد اتاق جلسه آنلاین؛ لطفاً دوباره تلاش کنید');
-      const { error: roomUpdateError } = await supabase
-        .from('meetings')
-        .update({ conference_room_id: room.id })
-        .eq('id', prefillMeetingId);
-      if (roomUpdateError) throw roomUpdateError;
     }
 
     const { error: agendaSyncError } = await (supabase as any).rpc('sync_linked_meeting_agenda_v1', {

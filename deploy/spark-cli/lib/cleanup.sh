@@ -330,21 +330,6 @@ cleanup_nginx_internal() {
   fi
 }
 
-cleanup_turn_internal() {
-  set +e
-  systemctl disable --now coturn >>"$CURRENT_LOG" 2>&1
-  rm -f /etc/turnserver.conf
-  rm -rf /etc/coturn/certs
-  rm -f /etc/systemd/system/certbot.service.d/spark-turn.conf
-  if [[ -f /etc/default/coturn ]]; then
-    if grep -q '^TURNSERVER_ENABLED=' /etc/default/coturn; then
-      sed -i 's/^TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=0/' /etc/default/coturn
-    fi
-  fi
-  systemctl daemon-reload >>"$CURRENT_LOG" 2>&1
-  set -e
-}
-
 cleanup_certificates_internal() {
   local cert
   command -v certbot >/dev/null 2>&1 || return 0
@@ -384,8 +369,6 @@ cleanup_full_project() {
   close_database_external_access >/dev/null 2>&1 || true
   close_supabase_studio_access >/dev/null 2>&1 || true
   cleanup_stop_schedulers_internal
-  if declare -F livekit_cleanup_internal >/dev/null 2>&1; then livekit_cleanup_internal; fi
-  cleanup_turn_internal
   cleanup_nginx_internal
   cleanup_certificates_internal
   cleanup_firewall_runtime_rules_internal
@@ -408,7 +391,7 @@ cleanup_full_project() {
   chmod 700 "$STATE_DIR" "$STEP_DIR" "$LOG_DIR" "$BACKUP_DIR" "$CONFIG_DIR"
 
   ok "All Spark project components were removed from the server. Spark Manager and shared system packages remain installed."
-  info "To reinstall, open Spark Manager and run the Spark + LiveKit installation sequence."
+  info "To reinstall, open Spark Manager and run the Spark installation sequence."
 }
 
 cleanup_uninstall_manager() {

@@ -75,7 +75,7 @@ install_step_2() {
   run_logged "check Ubuntu 24.04/26.04 x86_64" check_supported_ubuntu || return 1
   run_logged "apt update" apt update || return 1
   run_logged "apt upgrade" apt upgrade -y || return 1
-  run_logged "Installation packageBasics" apt install -y ca-certificates curl git gnupg jq openssl ufw rsync python3 python3-yaml nginx certbot coturn || return 1
+  run_logged "Installation packageBasics" apt install -y ca-certificates curl git gnupg jq openssl ufw rsync python3 python3-yaml nginx certbot || return 1
 
   run_logged "setting repository official Docker" bash -c '
     . /etc/os-release

@@ -51,7 +51,6 @@ run_install_step() { return 1; }
 if airgap_install_one_step 10; then exit 1; fi
 [[ -f "$STEP_DIR/9.ok" ]]
 for n in 10 11 12 13 14 15 17 21; do [[ ! -f "$STEP_DIR/$n.ok" ]]; done
-if spark_airgap_step21_prerequisite; then exit 1; fi
 ''')
 
     def test_both_modes_share_exclusive_lock_and_release_after_failure(self):

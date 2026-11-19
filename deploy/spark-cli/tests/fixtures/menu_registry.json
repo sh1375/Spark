@@ -21,13 +21,8 @@
     "install-13",
     "install-14",
     "install-15",
-    "install-16",
     "install-17",
     "install-18",
-    "install-19",
-    "install-20",
-    "install-21",
-    "install-22",
     "install-all"
   ],
   "Installation Air-Gapped": [
@@ -57,8 +52,6 @@
     "@docker-logs",
     "diagnostic-nginx",
     "diagnostic-schedulers",
-    "diagnostic-turn",
-    "diagnostic-livekit",
     "diagnostic-exposure",
     "diagnostic-dns-ssl",
     "diagnostic-ports",
@@ -91,10 +84,8 @@
     "service-status",
     "service-functions",
     "service-nginx",
-    "service-coturn",
     "service-supabase",
-    "service-timers",
-    "service-livekit"
+    "service-timers"
   ],
   "Backups": [
     "backup-create",
@@ -111,7 +102,6 @@
     "cleanup-logs",
     "backup-restore-plain",
     "cleanup-history",
-    "cleanup-livekit",
     "cleanup-full",
     "cleanup-manager"
   ],

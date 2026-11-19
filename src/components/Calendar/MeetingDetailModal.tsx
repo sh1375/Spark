@@ -1,13 +1,12 @@
 import { dispatchRecurringMeetingDelivery } from '../../features/meetings/services/dispatchRecurringMeetingDelivery';
 import { useLiveRevision, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useState, useEffect, useRef } from 'react';
-import { X, Clock, MapPin, Users, User, Phone, Bell, RefreshCw, UserPlus, Share2, ExternalLink, Trash2, CreditCard as Edit2, Video, Copy, Check, FileText, Image, CalendarDays, CircleCheck as CheckCircle2, Circle as XCircle, Circle as HelpCircle, UserCheck, ClipboardList, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react';
+import { X, Clock, MapPin, Users, User, Phone, Bell, RefreshCw, UserPlus, Share2, ExternalLink, Trash2, CreditCard as Edit2, Video, Copy, FileText, Image, CalendarDays, CircleCheck as CheckCircle2, Circle as XCircle, Circle as HelpCircle, UserCheck, ClipboardList, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react';
 import { MeetingData, CalendarEntry } from './types';
 import { supabase } from '../../lib/supabase';
 import { isMeetingEligibleForMinutes } from '../../lib/isMeetingEligibleForMinutes';
 import toast from 'react-hot-toast';
 import { toPng } from 'html-to-image';
-import { meetingStartInstant } from '../../features/meetings/meetingStartInstant';
 import { shareMeetingText, shareMeetingImage } from '../../features/meetings/sharing/nativeMeetingShare';
 import { normalizeMeetingDate, normalizeClockTime } from '../../lib/minutesDate';
 import { MeetingOwnerDelegateModal } from './MeetingOwnerDelegateModal';
@@ -74,8 +73,6 @@ export function MeetingDetailModal({
   const cal = [...calendars, ...subscribedCalendars].find(c => c.id === m.calendar_id);
 
   const liveRevision = useLiveRevision([...LIVE_DATA.meetings, ...LIVE_DATA.minutes]);
-  const [roomCode, setRoomCode] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState(false);
   const [showShareChoice, setShowShareChoice] = useState(false);
   const [shareTextFallback, setShareTextFallback] = useState<string | null>(null);
   const [shareImageUrl, setShareImageUrl] = useState<string | null>(null);
@@ -296,70 +293,6 @@ export function MeetingDetailModal({
     (m.notify_users || []).includes(currentUserId)
   );
 
-  useEffect(() => {
-    if (m.is_online && m.conference_room_id) {
-      supabase
-        .from('conference_rooms')
-        .select('code')
-        .eq('id', m.conference_room_id)
-        .maybeSingle()
-        .then(({ data }) => { if (data) setRoomCode(data.code); });
-    }
-  }, [m.conference_room_id, m.is_online]);
-
-  // Check if it's within 10 minutes before start time
-  const canJoinNow = (): boolean => {
-    const meetingStart = meetingStartInstant(m);
-    if (!meetingStart) return false;
-    try {
-      const tenMinBefore = new Date(meetingStart.getTime() - 10 * 60 * 1000);
-      return new Date() >= tenMinBefore;
-    } catch {
-      return false;
-    }
-  };
-
-  const joinAllowed = canJoinNow();
-
-  const handleJoinRoom = () => {
-    if (!roomCode) return;
-    if (!joinAllowed) {
-      toast.error('ورود به جلسه تا ۱۰ دقیقه قبل از شروع امکان‌پذیر نیست');
-      return;
-    }
-    window.open(`/?conference=${roomCode}`, '_blank');
-  };
-
-  const guestLink = roomCode ? `${window.location.origin}/?conference=${roomCode}` : null;
-
-  const copyGuestLink = async () => {
-    if (!guestLink) return;
-    try {
-      await navigator.clipboard.writeText(guestLink);
-      setCopiedLink(true);
-      toast.success('لینک مهمان کپی شد');
-      setTimeout(() => setCopiedLink(false), 2500);
-    } catch {
-      toast.error('خطا در کپی لینک');
-    }
-  };
-
-  const getMeetingTimeInfo = (): string => {
-    const meetingStart = meetingStartInstant(m);
-    if (!meetingStart) return '';
-    try {
-      const tenMinBefore = new Date(meetingStart.getTime() - 10 * 60 * 1000);
-      const now = new Date();
-      if (now < tenMinBefore) {
-        const diff = Math.ceil((tenMinBefore.getTime() - now.getTime()) / 60000);
-        return `ورود ${diff} دقیقه دیگر فعال می‌شود`;
-      }
-      return '';
-    } catch {
-      return '';
-    }
-  };
-
 const getJalaliDate = (): string => {
   // Priority: request_jalaali_date (already Jalali) → request_date (Gregorian).
   // Uses the shared stage-1 utility — no local moment, no timezone shift.
@@ -402,7 +335,6 @@ const getJalaliDate = (): string => {
       notifyNames ? `🔔 مطلعین: ${notifyNames}` : '',
       externalNames ? `🌐 شرکت‌کنندگان خارج سازمان: ${externalNames}` : '',
       externalInformees ? `🔔 مطلعین خارج سازمان: ${externalInformees}` : '',
-      roomCode ? `🔗 لینک آنلاین: ${window.location.origin}/?conference=${roomCode}` : '',
       m.notes ? `📝 یادداشت: ${m.notes}` : '',
       agendaItems.length > 0
         ? `📌 دستور جلسه:\n` + agendaItems.map((item, idx) => {
@@ -792,41 +724,10 @@ const getJalaliDate = (): string => {
                 <Video className="w-5 h-5 text-sky-600 dark:text-sky-400 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-sky-800 dark:text-sky-200">جلسه آنلاین</p>
-                  {!joinAllowed && getMeetingTimeInfo() && (
-                    <p className="text-xs text-sky-500 dark:text-sky-400 mt-0.5">{getMeetingTimeInfo()}</p>
-                  )}
+                  <p className="text-xs">ورود به ویدیوکنفرانس فعلاً غیرفعال است.</p>
                 </div>
               </div>
 
-              {roomCode ? (
-                <div className="space-y-2">
-                  {/* Join as internal user */}
-                  <button
-                    onClick={handleJoinRoom}
-                    disabled={!joinAllowed}
-                    className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-colors ${joinAllowed ? 'bg-sky-500 hover:bg-sky-600 text-white' : 'bg-sky-200 dark:bg-sky-800/50 text-sky-400 dark:text-sky-500 cursor-not-allowed'}`}
-                  >
-                    <Video className="w-4 h-4" />
-                    ورود مستقیم همکاران سامانه
-                  </button>
-
-                  {/* Guest link — always copyable */}
-                  <div className="flex items-stretch rounded-xl border overflow-hidden border-sky-300 dark:border-sky-600">
-                    <div className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 text-xs font-mono text-gray-500 dark:text-gray-400 truncate flex items-center">
-                      {guestLink ? guestLink.replace('https://', '').slice(0, 40) + (guestLink.length > 50 ? '...' : '') : '—'}
-                    </div>
-                    <button
-                      onClick={copyGuestLink}
-                      className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium flex-shrink-0 transition-colors bg-sky-100 dark:bg-sky-800/60 text-sky-700 dark:text-sky-300 hover:bg-sky-200 dark:hover:bg-sky-700/60"
-                    >
-                      {copiedLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                      {copiedLink ? 'کپی شد' : 'لینک مهمان'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-xs text-sky-500">در حال دریافت اطلاعات اتاق...</p>
-              )}
             </div>
           )}
         </div>
@@ -1105,7 +1006,6 @@ const getJalaliDate = (): string => {
                 { label: 'مطلعین', value: notifyNames },
                 { label: 'شرکت‌کنندگان خارج سازمان', value: externalNames },
                 { label: 'مطلعین خارج سازمان', value: externalInformees },
-                { label: 'لینک آنلاین', value: roomCode ? `${window.location.origin}/?conference=${roomCode}` : '' },
                 { label: 'یادداشت', value: m.notes },
                 {
                   label: 'دستور جلسه',

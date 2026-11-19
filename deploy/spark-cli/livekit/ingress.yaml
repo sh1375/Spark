@@ -1,6 +1,0 @@
-redis:
-  address: ${LIVEKIT_REDIS_ADDRESS}
-health_port: 9092
-prometheus_port: 6787
-log_level: info
-# API key, secret and ws URL are injected by environment.

@@ -79,21 +79,19 @@ CATEGORIES: List[Tuple[str, List[Action]]] = [
         Action("install-13", "15  External TLS boundary", "Keep DNS/TLS external to Spark; no local certificate is required.", "controlled"),
         Action("install-14", "16  Host-agnostic Nginx", "Enable wildcard-host same-origin Nginx routing for any URL or IP.", "controlled"),
         Action("install-15", "17  Schedulers", "Install local Spark scheduler services and timers.", "controlled"),
-        Action("install-16", "18  TURN / Coturn", "Configure and validate Coturn/TURN.", "controlled"),
         Action("install-17", "19  External certificate lifecycle", "Keep certificate renewal outside Spark installation.", "controlled"),
         Action("install-18", "20  Production firewall", "Apply the production UFW policy after safety checks.", "confirm"),
-        Action("install-all", "Run all 18 install steps", "Execute the complete guided installation sequence.", "confirm"),
+        Action("install-all", "Run all 17 install steps", "Execute the complete guided installation sequence.", "confirm"),
     ]),
     ("Diagnostics", [
         Action("diagnostic-full", "Full validation", "Run all production validation checks."),
-        Action("diagnostic-installation-status", "Installation status (18 steps)", "Probe the actual server state for every numbered step and show saved History separately."),
+        Action("diagnostic-installation-status", "Installation status (17 steps)", "Probe the actual server state for every numbered step and show saved History separately."),
         Action("diagnostic-frontend", "Frontend", "Check the public frontend endpoint."),
         Action("diagnostic-api", "API / Auth / Functions", "Check API health and the password-login function route."),
         Action("diagnostic-docker", "Docker status", "Show the Supabase Compose service state."),
         Action("@docker-logs", "Docker service logs", "Choose a service and display its recent timestamped logs.", special="docker"),
         Action("diagnostic-nginx", "Nginx status & logs", "Show Nginx unit state and recent journal entries."),
         Action("diagnostic-schedulers", "Schedulers status & logs", "Validate scheduler timers and show service logs."),
-        Action("diagnostic-turn", "TURN status & logs", "Validate TURN/Coturn and show recent journal entries."),
         Action("diagnostic-exposure", "DB/API exposure", "Verify internal DB/API ports are not publicly bound."),
         Action("diagnostic-dns-ssl", "DNS & SSL", "Validate DNS plus application/API certificates."),
         Action("diagnostic-ports", "Listening ports & UFW", "Display listening sockets and the effective UFW policy."),
@@ -116,10 +114,9 @@ CATEGORIES: List[Tuple[str, List[Action]]] = [
         Action("version-info", "Version & security", "Inspect runtime versions and repository state."),
     ]),
     ("Services", [
-        Action("service-status", "All service status", "Nginx, Coturn, Docker Compose and Spark timers."),
+        Action("service-status", "All service status", "Nginx, Docker Compose and Spark timers."),
         Action("service-functions", "Restart Functions + Worker", "Recreate Edge Functions and Avatar Worker.", "controlled"),
         Action("service-nginx", "Reload Nginx", "Validate configuration and reload Nginx.", "controlled"),
-        Action("service-coturn", "Restart Coturn", "Restart the Coturn service.", "controlled"),
         Action("service-supabase", "Restart Supabase stack", "Force-recreate the complete Supabase stack.", "confirm"),
         Action("service-timers", "Restart scheduler timers", "Restart all Spark scheduler timers.", "controlled"),
     ]),
@@ -136,7 +133,6 @@ CATEGORIES: List[Tuple[str, List[Action]]] = [
     Action("cleanup-logs", "Delete Manager logs", "Delete Spark Manager logs only; system journal and Docker logs are not changed.", "confirm"),
     Action("cleanup-backups", "Backup cleanup / free space", "Safely prune old Spark backups with a configurable retention period, or explicitly delete all retained backups.", "confirm"),
     Action("cleanup-history", "Reset install history", "Clear installation-step DONE markers only. Runtime data and live service state are not changed.", "confirm"),
-    Action("cleanup-livekit", "Delete LiveKit runtime", "Remove only the LiveKit runtime and secrets, then restore the legacy Coturn fallback.", "confirm"),
     Action("cleanup-full", "Delete complete Spark project", "Remove Spark-specific runtime, data, configuration, certificates, schedulers, TURN, source, logs and backups while keeping the Manager and shared OS packages.", "confirm"),
     Action("cleanup-manager", "Uninstall Spark Manager", "Remove the installed Spark Manager and /usr/local/bin/spark only; the project runtime is left untouched.", "confirm"),
 ]),
@@ -220,11 +216,11 @@ def collect_status() -> Dict[str, str]:
     for path in step_files:
         try:
             n = int(path.stem)
-            if 1 <= n <= 18:
+            if 1 <= n <= 18 and n != 16:
                 completed_set.add(n)
         except ValueError:
             pass
-    status["steps"] = f"{len(completed_set)}/18"
+    status["steps"] = f"{len(completed_set)}/17"
     status["step_set"] = ",".join(str(n) for n in sorted(completed_set))
     try:
         status["backups"] = str(sum(1 for p in BACKUP_DIR.iterdir() if p.is_dir()))
@@ -235,7 +231,6 @@ def collect_status() -> Dict[str, str]:
     status["studio"] = "OPEN" if re.search(r"(?:^|:)8443\s", sockets, re.M) else "CLOSED"
     status["admin"] = status["studio"]
     status["nginx"] = run_quiet(["systemctl", "is-active", "nginx"], timeout=0.8) or "unknown"
-    status["coturn"] = run_quiet(["systemctl", "is-active", "coturn"], timeout=0.8) or "unknown"
     status["docker"] = run_quiet(["systemctl", "is-active", "docker"], timeout=0.8) or "unknown"
     commit = run_quiet(["git", "-C", str(SPARK_ROOT), "rev-parse", "--short=12", "HEAD"], timeout=0.8)
     if not commit:
@@ -577,7 +572,7 @@ class SparkUI:
             self.safe_add(win, y, 2, f"Risk: {action.risk}", risk_attr | curses.A_BOLD); y += 1
         if y < h - 1:
             self.safe_add(win, y, 1, "-" * max(1, w - 3), self.color(1)); y += 1
-        for label, value in [("Nginx", self.status.get("nginx", "?")), ("Coturn", self.status.get("coturn", "?")), ("Docker", self.status.get("docker", "?")), ("DB 5432", self.status.get("db_access", "?")), ("Studio 8443", self.status.get("studio", "?")), ("History", self.status.get("steps", "?")), ("Backups", self.status.get("backups", "?")), ("Uptime", self.status.get("uptime", "?"))]:
+        for label, value in [("Nginx", self.status.get("nginx", "?")), ("Docker", self.status.get("docker", "?")), ("DB 5432", self.status.get("db_access", "?")), ("Studio 8443", self.status.get("studio", "?")), ("History", self.status.get("steps", "?")), ("Backups", self.status.get("backups", "?")), ("Uptime", self.status.get("uptime", "?"))]:
             if y >= h - 1:
                 break
             attr = self.color(2) if value in ("active", "OPEN") else self.color(7)

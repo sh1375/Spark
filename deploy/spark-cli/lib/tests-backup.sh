@@ -80,9 +80,6 @@ test_full_validation() {
   compose ps || return 1
   echo "== Scheduler =="
   test_schedulers || return 1
-  echo "== TURN =="
-  ss -lntup | grep -E ':(3478|5349)\b' || return 1
-  turnutils_stunclient "$TURN_DOMAIN" -p 3478 || return 1
   echo "== DB / Studio exposure =="
   test_db_exposure || return 1
 }
@@ -133,7 +130,6 @@ test_menu() {
     printf ' 6) Docker service logs\n'
     printf ' 7) Nginx status and logs\n'
     printf ' 8) Scheduler status and logs\n'
-    printf ' 9) TURN status and logs\n'
     printf '10) DB/API public exposure check\n'
     printf '11) DNS and SSL\n'
     printf '12) Listening ports + UFW\n'
@@ -152,11 +148,6 @@ test_menu() {
         journalctl -u nginx -n 120 --no-pager 2>&1 | tee -a "$CURRENT_LOG" || true
         pause ;;
       8) new_log "test-schedulers"; run_report "Scheduler status" test_schedulers; scheduler_logs; pause ;;
-      9)
-        new_log "test-turn"
-        run_report "TURN test" test_turn
-        journalctl -u coturn -n 120 --no-pager 2>&1 | tee -a "$CURRENT_LOG" || true
-        pause ;;
       10) new_log "test-exposure"; run_visible "Public exposure check" test_db_exposure || true; pause ;;
       11) new_log "test-dns-ssl"; run_visible "DNS/SSL" test_ssl_dns || true; pause ;;
       12)
@@ -238,7 +229,6 @@ create_backup() {
   [[ -f "${SUPABASE_ROOT}/docker-compose.yml" ]] && cp -a "${SUPABASE_ROOT}/docker-compose.yml" "${dest}/config/docker-compose.yml"
   [[ -d "$CONFIG_DIR" ]] && tar -C / -czf "${dest}/config/etc-spark.tar.gz" etc/spark
   [[ -f /etc/nginx/sites-available/spark ]] && cp -a /etc/nginx/sites-available/spark "${dest}/config/nginx-spark"
-  [[ -f /etc/turnserver.conf ]] && cp -a /etc/turnserver.conf "${dest}/config/turnserver.conf"
   chmod -R go-rwx "$dest"
   echo "$dest" >"${STATE_DIR}/last-backup-path"
   printf '%s\n' "$dest"

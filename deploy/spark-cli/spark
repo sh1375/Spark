@@ -49,7 +49,7 @@ SCRIPT_DIR="$(cd -P -- "$(dirname -- "$SOURCE")" >/dev/null 2>&1 && pwd)"
 unset SOURCE SOURCE_DIR TARGET
 UI_PATH="${SCRIPT_DIR}/spark-ui.py"
 
-for module in core install-base install-platform-a install-platform-b install-platform-c tests-backup update admin cleanup repair-override env-modern runtime-fixes studio-session install-livekit; do
+for module in core install-base install-platform-a install-platform-b install-platform-c tests-backup update admin cleanup repair-override env-modern runtime-fixes studio-session; do
   module_path="${SCRIPT_DIR}/lib/${module}.sh"
   if [[ ! -r "$module_path" ]]; then
     printf 'Spark Manager module missing: %s\n' "$module_path" >&2
@@ -68,7 +68,7 @@ install_manager_from_dir() {
   [[ -f "${source_dir}/spark" ]] || { fail "Spark Manager entrypoint not found: ${source_dir}/spark"; return 1; }
   [[ -f "${source_dir}/spark-ui.py" ]] || { fail "Spark Manager UI not found: ${source_dir}/spark-ui.py"; return 1; }
   [[ -f "${source_dir}/spark-ui-core.py" ]] || { fail "Spark Manager UI core not found: ${source_dir}/spark-ui-core.py"; return 1; }
-  for module in core install-base install-platform-a install-platform-b install-platform-c tests-backup update admin cleanup repair-override env-modern runtime-fixes studio-session install-livekit installation-universal; do
+  for module in core install-base install-platform-a install-platform-b install-platform-c tests-backup update admin cleanup repair-override env-modern runtime-fixes studio-session installation-universal; do
     [[ -f "${source_dir}/lib/${module}.sh" ]] || { fail "Spark Manager module not found: ${module}.sh"; return 1; }
   done
 
@@ -150,55 +150,13 @@ spark_backend_docker_logs() {
   run_report "Docker logs: ${service}" compose logs --tail=250 --timestamps "$service"
 }
 
-spark_prepare_livekit_step_20() {
-  new_log "install-20-livekit-assets"
-  run_logged "Sync latest LiveKit deployment assets" livekit_sync_assets || return 1
-
-  if ! python3 - "${LIVEKIT_ROOT}/docker-compose.yml" "${LIVEKIT_ROOT}/egress.yaml" <<'PY' >>"$CURRENT_LOG" 2>&1
-import sys
-from pathlib import Path
-import yaml
-
-compose = yaml.safe_load(Path(sys.argv[1]).read_text()) or {}
-environment = compose.get('services', {}).get('egress', {}).get('environment', {})
-body = environment.get('EGRESS_CONFIG_BODY')
-if not isinstance(body, str):
-    raise SystemExit('EGRESS_CONFIG_BODY is missing')
-config = yaml.safe_load(body) or {}
-if config.get('ws_url') != 'ws://127.0.0.1:7880':
-    raise SystemExit('Egress internal ws_url is invalid')
-if config.get('insecure') is not True:
-    raise SystemExit('Egress internal ws:// requires insecure: true')
-
-egress = yaml.safe_load(Path(sys.argv[2]).read_text()) or {}
-if egress.get('ws_url') != 'ws://127.0.0.1:7880':
-    raise SystemExit('egress.yaml internal ws_url is invalid')
-if egress.get('insecure') is not True:
-    raise SystemExit('Egress.yaml internal ws:// requires insecure: true')
-PY
-  then
-    fail "LiveKit Egress config is not safe for internal ws://; expected insecure: true."
-    return 1
-  fi
-
-  local egress_id
-  egress_id="$(livekit_compose ps -q egress 2>/dev/null || true)"
-  if [[ -n "$egress_id" ]]; then
-    run_logged "Force-recreate existing LiveKit Egress" \
-      livekit_compose up -d --force-recreate --no-deps egress || return 1
-  fi
-}
-
 spark_backend_dispatch_inner() {
   local action="$1"
   shift || true
   case "$action" in
-    install-01|install-02|install-03|install-04|install-05|install-06|install-07|install-08|install-09|install-10|install-11|install-12|install-13|install-14|install-15|install-16|install-17|install-18|install-19|install-20|install-21|install-22)
+    install-01|install-02|install-03|install-04|install-05|install-06|install-07|install-08|install-09|install-10|install-11|install-12|install-13|install-14|install-15|install-17|install-18)
       local install_step
       install_step="$((10#${action##*-}))"
-      if (( install_step == 20 )); then
-        spark_prepare_livekit_step_20 || return 1
-      fi
       run_install_step "$install_step"
       ;;
     install-all) run_all_install ;;
@@ -219,12 +177,6 @@ spark_backend_dispatch_inner() {
       run_report "Scheduler status" test_schedulers
       scheduler_logs
       ;;
-    diagnostic-turn)
-      new_log "test-turn"
-      run_report "TURN test" test_turn
-      journalctl -u coturn -n 160 --no-pager 2>&1 | tee -a "$CURRENT_LOG" || true
-      ;;
-    diagnostic-livekit) new_log "test-livekit"; run_visible "LiveKit media platform" test_livekit_full_validation ;;
     diagnostic-exposure) new_log "test-exposure"; run_visible "DB/API public exposure" test_db_exposure ;;
     diagnostic-dns-ssl) new_log "test-dns-ssl"; run_visible "DNS / SSL" test_ssl_dns ;;
     diagnostic-ports)
@@ -291,22 +243,17 @@ spark_backend_dispatch_inner() {
     cleanup-logs) cleanup_manager_logs ;;
     cleanup-backups) cleanup_backups ;;
     cleanup-history) cleanup_install_history ;;
-    cleanup-livekit) cleanup_livekit_runtime ;;
     cleanup-full) cleanup_full_project ;;
     cleanup-manager) cleanup_uninstall_manager ;;
 
     service-status)
       new_log "service-status"
       run_report "Nginx" systemctl status nginx --no-pager
-      run_report "Coturn (legacy/fallback)" systemctl status coturn --no-pager
-      if [[ -f "$LIVEKIT_ENV" ]]; then run_report "LiveKit" livekit_compose ps; fi
       run_report "Docker" compose ps
       run_report "Timers" systemctl list-timers 'spark-*' --no-pager
       ;;
     service-functions) new_log "service-functions"; run_visible "Restart Functions + Worker" bash -c "cd '$SUPABASE_ROOT' && docker compose up -d --force-recreate functions avatar-worker" ;;
     service-nginx) new_log "service-nginx"; run_visible "Nginx test/reload" bash -c 'nginx -t && systemctl reload nginx' ;;
-    service-coturn) new_log "service-coturn"; run_visible "Restart Coturn" systemctl restart coturn ;;
-    service-livekit) livekit_restart ;;
     service-supabase)
       new_log "service-supabase"
       if confirm_word "The complete Supabase stack will be recreated/restarted and may briefly interrupt service." "RESTART"; then

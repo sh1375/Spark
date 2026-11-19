@@ -501,15 +501,14 @@ service_menu() {
   while true; do
     title
     printf '%sService Management%s\n\n' "$C_BOLD" "$C_RESET"
-    printf '0) back\n1) Status All services\n2) Restart Functions + Worker\n3) Reload Nginx\n4) Restart Coturn\n5) Restart Supabase stack\n6) Restart Scheduler timers\n\n'
+    printf '0) back\n1) Status All services\n2) Restart Functions + Worker\n3) Reload Nginx\n5) Restart Supabase stack\n6) Restart Scheduler timers\n\n'
     read -r -p "selection: " c
     new_log "service-management"
     case "$c" in
       0) return ;;
-      1) run_report "Nginx" systemctl status nginx --no-pager; run_report "Coturn" systemctl status coturn --no-pager; run_report "Docker" compose ps; run_report "Timers" systemctl list-timers 'spark-*' --no-pager; pause ;;
+      1) run_report "Nginx" systemctl status nginx --no-pager; run_report "Docker" compose ps; run_report "Timers" systemctl list-timers 'spark-*' --no-pager; pause ;;
       2) run_visible "Restart Functions + Worker" bash -c "cd '$SUPABASE_ROOT' && docker compose up -d --force-recreate functions avatar-worker" || true; pause ;;
       3) run_visible "Nginx test/reload" bash -c 'nginx -t && systemctl reload nginx' || true; pause ;;
-      4) run_visible "Restart Coturn" systemctl restart coturn || true; pause ;;
       5) if confirm_word "all Supabase stack recreate/restart It can and may cause disruption for a few moments." "RESTART"; then run_visible "Restart Supabase stack" bash -c "cd '$SUPABASE_ROOT' && docker compose up -d --force-recreate" || true; fi; pause ;;
       6) run_visible "Restart timers" bash -c 'systemctl restart spark-daily-report.timer spark-minutes-reminder.timer spark-decision-due.timer spark-notification-outbox.timer' || true; pause ;;
       *) fail "Invalid option"; sleep 1 ;;

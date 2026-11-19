@@ -1,8 +1,0 @@
-ws_url: ws://127.0.0.1:7880
-redis:
-  address: ${LIVEKIT_REDIS_ADDRESS}
-insecure: true
-health_port: 9091
-prometheus_port: 6788
-log_level: info
-# API key, secret and S3 credentials are injected by environment.

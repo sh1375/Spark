@@ -551,7 +551,6 @@ export function useCalendarDataActions(scope: Record<string, any>) {
           participantNames ? `شرکت‌کنندگان: ${participantNames}` : '',
           notifyNames ? `مطلعین: ${notifyNames}` : '',
           externalNames ? `خارج سازمان: ${externalNames}` : '',
-          m.is_online && m.conference_room_id ? `جلسه آنلاین: ${window.location.origin}/?conference=${m.conference_room_id}` : '',
           m.notes ? `یادداشت: ${m.notes}` : '',
           m.priority ? `اولویت: ${{ high: 'بالا', medium: 'متوسط', low: 'پایین' }[m.priority] || m.priority}` : '',
           agendaText,

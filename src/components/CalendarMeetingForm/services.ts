@@ -99,42 +99,6 @@ export function showSmsSummary(
   else toast.success('جلسه ثبت شد. ' + parts.join(' — '), { duration: 5000 });
 }
 
-export async function createConferenceRoom(
-  userId: string | null,
-  meetingSubject: string,
-): Promise<{ id: string; code: string } | null> {
-  if (!MEETING_VIDEO_CONFERENCE_ENABLED) {
-    throw new Error(MEETING_VIDEO_CONFERENCE_DISABLED_REASON);
-  }
-  if (!userId) return null;
-  const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const segment = () => Array.from(
-    { length: 3 },
-    () => characters[Math.floor(Math.random() * characters.length)],
-  ).join('');
-  const code = `${segment()}-${segment()}-${segment()}`;
-
-  try {
-    const { data, error } = await supabase
-      .from('conference_rooms')
-      .insert([{
-        name: meetingSubject,
-        code,
-        host_id: userId,
-        status: 'active',
-        password: null,
-        waiting_room_enabled: false,
-        is_locked: false,
-      }])
-      .select()
-      .single();
-    if (error) throw error;
-    return data ? { id: data.id, code: data.code || code } : null;
-  } catch {
-    return null;
-  }
-}
-
 interface RepeatOptions {
   baseRecord: any;
   type: string;

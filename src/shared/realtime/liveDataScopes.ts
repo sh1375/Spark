@@ -3,7 +3,6 @@ export const LIVE_DATA = {
   social: ['social_channel_configs','user_bale_mapping'],
   presence: ['user_presence'],
   calls: ['call_sessions','chat_call_history_hidden'],
-  conferenceLive: ['conference_rooms','conference_participants','conference_messages','conference_message_reactions','conference_message_mentions','conference_recordings','conference_recording_consents','conference_waiting_room','conference_speaker_sessions','conference_spotlights','conference_polls','conference_poll_options','conference_poll_votes','conference_private_messages','conference_moderator_messages','conference_presentations','conference_presentation_state','conference_presentation_annotations','conference_whiteboard_pages','conference_whiteboard_boards','conference_role_assignments','conference_role_permissions','conference_permissions','conference_rbac_roles','conference_whiteboard','pending_approvals','banned_users'],
   conferences: ['conference_archives'],
   notifications: ['notifications'],
   sms: ['sms_dispatch_logs','rahyab_inbox'],

@@ -18,7 +18,6 @@ import { CalendarMeetingFormView } from './CalendarMeetingForm/CalendarMeetingFo
 import { validateScheduleTimes } from './CalendarMeetingForm/validateScheduleTimes';
 import { commitCalendarMeetingEdit } from './CalendarMeetingForm/commitEdit';
 import {
-  createConferenceRoom,
   buildCalendarRepeatRecords,
   sendSmsToExternals,
   showSmsSummary,
@@ -247,7 +246,7 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
   }, [prefillData]);
 
   const loadMeetingParticipants = async (meetingId: string) => {
-    const { data } = await supabase.from('meetings').select('participant_user_ids, notify_users, external_participants, external_informees, meeting_manager, is_online, conference_room_id, send_sms').eq('id', meetingId).maybeSingle();
+    const { data } = await supabase.from('meetings').select('participant_user_ids, notify_users, external_participants, external_informees, meeting_manager, is_online, send_sms').eq('id', meetingId).maybeSingle();
     if (!data || currentEditIdRef.current !== meetingId) return;
     if (data.is_online !== undefined && data.is_online !== null) setIsOnline(!!data.is_online);
     if (data.send_sms !== undefined && data.send_sms !== null) setSendSms(!!data.send_sms);
@@ -309,18 +308,6 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
       const m = moment(`${scheduleDate.jy}/${scheduleDate.jm}/${scheduleDate.jd}`, 'jYYYY/jM/jD');
       const gregDate = m.toDate().toISOString();
 
-      let conferenceRoomId: string | null = null;
-      let conferenceRoomCode: string | null = null;
-      if (!prefillMeetingId && isOnline) {
-        const room = await createConferenceRoom(userId, subject);
-        conferenceRoomId = room?.id || null;
-        conferenceRoomCode = room?.code || null;
-      }
-
-      const joinLink = conferenceRoomCode
-        ? `${window.location.origin}?conference=${conferenceRoomCode}`
-        : '';
-
       const record: any = {
         subject, request_date: gregDate,
         duration: startTime && endTime ? `${startTime} - ${endTime}` : '',
@@ -342,7 +329,6 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
           ? true
           : ((selectedCalendarId && selectedCalendar?.type === 'shared') ? membersOnly : false),
         is_online: isOnline,
-        conference_room_id: conferenceRoomId,
       };
 
       const meetingDateStr = `${scheduleDate.jy}/${String(scheduleDate.jm).padStart(2, '0')}/${String(scheduleDate.jd).padStart(2, '0')}`;
@@ -355,7 +341,7 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
         meeting_time: meetingTimeStr,
         location: location || '',
         location_part: location ? ` | ${location}` : '',
-        join_link: joinLink,
+        join_link: '',
         sender_name: senderName,
         organizer_name: senderName,
         representative: representative || '',
@@ -407,7 +393,7 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
         const bulkIds = prefillEditAllIds && prefillEditAllIds.length > 0 ? prefillEditAllIds : [prefillMeetingId];
         const { data: existingRows } = await supabase
           .from('meetings')
-          .select('id, subject, request_date, start_time, end_time, location, representative, phone, notes, priority, meeting_manager, is_online, conference_room_id, participant_user_ids, notify_users, external_participants, external_informees, reminder_minutes, calendar_id, send_sms, members_only, repeat_type, repeat_interval, repeat_end_date, repeat_weekday')
+          .select('id, subject, request_date, start_time, end_time, location, representative, phone, notes, priority, meeting_manager, is_online, participant_user_ids, notify_users, external_participants, external_informees, reminder_minutes, calendar_id, send_sms, members_only, repeat_type, repeat_interval, repeat_end_date, repeat_weekday')
           .in('id', bulkIds);
         const existingMap = new Map<string, any>();
         for (const row of existingRows || []) existingMap.set(row.id, row);
@@ -429,25 +415,10 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
         }
         const existingMtg = existingMap.get(prefillMeetingId) || null;
         const isFirstSchedule = !existingMtg?.start_time;
-        const wasOnline = !!existingMtg?.is_online;
-        const prevRoomId = existingMtg?.conference_room_id || null;
-        if (isOnline && wasOnline && prevRoomId) {
-          conferenceRoomId = prevRoomId;
-          const { data: roomRow } = await supabase.from('conference_rooms').select('code').eq('id', prevRoomId).maybeSingle();
-          conferenceRoomCode = roomRow?.code || null;
-        } else {
-          conferenceRoomId = null;
-          conferenceRoomCode = null;
-        }
-        const editJoinLink = conferenceRoomCode
-          ? `${window.location.origin}?conference=${conferenceRoomCode}`
-          : '';
-
         const nextFields: Record<string, any> = {
           subject, request_date: gregDate, start_time: startTime, end_time: endTime,
           location, representative, phone, notes: notes || null, priority,
           meeting_manager: meetingManager || null, is_online: isOnline,
-          conference_room_id: conferenceRoomId,
           participant_user_ids: selectedParticipants.map(p => p.id),
           notify_users: Array.from(new Set([userId, ...selectedNotifyUsers.map(u => u.id)])),
           external_participants: selectedExternal,
@@ -518,7 +489,6 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
             ? true
             : ((selectedCalendarId && selectedCalendar?.type === 'shared') ? membersOnly : false),
           is_online: isOnline,
-          conference_room_id: conferenceRoomId,
         };
 
         let baseFields: Record<string, any> | null = null;
@@ -537,7 +507,6 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
             send_sms: sendSms, meeting_manager: meetingManager || null,
             calendar_id: selectedCalendarId || null,
             members_only: updateRecord.members_only, is_online: isOnline,
-            conference_room_id: conferenceRoomId,
           };
         }
 
@@ -556,7 +525,7 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
           ),
           changeSetsByMeetingId,
           prevAgendaByMeetingId,
-          joinLink: editJoinLink, gregDate,
+          gregDate,
           selectedParticipantIds: selectedParticipants.map(p => p.id),
           selectedExternal,
           selectedExternalInformees,
@@ -573,9 +542,6 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
               ((existingMap.get(id)?.external_informees || []) as string[]).filter((value: string) => !!value),
             ]),
           ),
-          isOnline,
-          wasOnline,
-          prevRoomId,
           prevParticipantIds,
           prevObserverIds,
         };

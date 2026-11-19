@@ -27,7 +27,6 @@ export type CommitSnapshot = {
   previousNotifyUserIdsByMeetingId: Record<string, string[]>;
   changeSetsByMeetingId: Record<string, MeetingChangeSet>;
   prevAgendaByMeetingId: Record<string, AgendaItem[]>;
-  joinLink: string;
   gregDate: string;
   selectedParticipantIds: string[];
   selectedExternal: string[];
@@ -37,9 +36,6 @@ export type CommitSnapshot = {
   agendaItems: AgendaItem[];
   prevExternalByMeetingId: Record<string, string[]>;
   prevExternalInformeesByMeetingId: Record<string, string[]>;
-  isOnline: boolean;
-  wasOnline: boolean;
-  prevRoomId: string | null;
   prevParticipantIds: string[];
   prevObserverIds: string[];
 };

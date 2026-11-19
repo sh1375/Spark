@@ -18,20 +18,6 @@ curl() {
 }
 '''
 
-STEP20 = r'''
-export SPARK_AIRGAP_ACTIVE=1
-STEP_DIR="$WORK/steps"; mkdir "$STEP_DIR"
-BACKUP_DIR="$WORK/backups"; mkdir "$BACKUP_DIR"
-airgap_current_root() { printf '%s' "$WORK/bundle"; }
-airgap_livekit_image_list() { printf 'local-image\n' >"$1"; }
-airgap_verify_image_list_content() { :; }
-airgap_livekit_compose_create_probe() { :; }
-livekit_compose() { :; }
-install_step_20_online() { mark_step 20; }
-_airgap_edge_capture_logs() { touch "$WORK/diagnostics"; }
-'''
-
-
 class RuntimeReadinessTests(unittest.TestCase):
     run_shell = identity.AirgapIdentityTests.run_shell
 
@@ -61,20 +47,6 @@ if _airgap_edge_runtime_probe "$SUPABASE_ROOT" 6; then exit 1; fi
 : >"$SUPABASE_ROOT/.env"
 if _airgap_edge_runtime_probe "$SUPABASE_ROOT"; then exit 1; fi
 [[ "$(cat "$WORK/probes")" == 0 ]]
-''')
-
-    def test_step20_waits_for_recreated_functions(self):
-        self.run_shell(PROBE + STEP20 + r'''
-printf '503\n204\n' >"$WORK/responses"
-install_step_20
-[[ "$(cat "$WORK/probes")" == 2 && -f "$STEP_DIR/20.ok" ]]
-''')
-
-    def test_step20_worker_failure_clears_success_and_captures_diagnostics(self):
-        self.run_shell(PROBE + STEP20 + r'''
-printf '404\n' >"$WORK/responses"
-if install_step_20; then exit 1; fi
-[[ ! -f "$STEP_DIR/20.ok" && -f "$WORK/diagnostics" ]]
 ''')
 
     def test_step10_uses_same_readiness_gate_after_cache_activation(self):

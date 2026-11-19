@@ -120,13 +120,8 @@ INSTALL_LABELS = {
     "install-13": ("13  TLS certificates", "Issue/validate production TLS certificates."),
     "install-14": ("14  Production Nginx", "Enable and validate the production Nginx configuration."),
     "install-15": ("15  Schedulers", "Install local Spark scheduler services and timers."),
-    "install-16": ("16  TURN / Coturn", "Configure and validate Coturn/TURN."),
     "install-17": ("17  Certbot renewal hook", "Install certificate renewal integration."),
     "install-18": ("18  Production firewall", "Apply the production UFW policy after safety checks."),
-    "install-19": ("19  LiveKit configuration", "Provision LiveKit domains, TLS, secrets and recording storage."),
-    "install-20": ("20  LiveKit runtime", "Install/start LiveKit SFU, Redis, Egress, Ingress and embedded TURN."),
-    "install-21": ("21  LiveKit validation", "Run end-to-end server validation for the complete media platform."),
-    "install-22": ("22  LiveKit observability", "Start and validate Prometheus, Grafana, Loki, Alertmanager and exporters."),
 }
 
 AIRGAP_ACTIONS = [
@@ -238,12 +233,6 @@ CLEANUP_ACTIONS = [
         "confirm",
     ),
     core.Action(
-        "cleanup-livekit",
-        "Delete LiveKit runtime",
-        "Remove only the LiveKit runtime and secrets, then restore the legacy Coturn fallback.",
-        "confirm",
-    ),
-    core.Action(
         "cleanup-full",
         "Delete complete Spark project",
         "Remove Spark-specific runtime, data, configuration, certificates, schedulers, TURN, source, logs and backups while keeping the Manager and shared OS packages.",
@@ -286,48 +275,18 @@ def patch_categories() -> None:
             if action.action_id in INSTALL_LABELS:
                 label, description = INSTALL_LABELS[action.action_id]
             if action.action_id == "install-all":
-                label = "Run all 22 install steps"
-                description = "Execute the complete Spark + LiveKit guided installation sequence."
+                label = "Run all 17 install steps"
+                description = "Execute the complete Spark guided installation sequence."
             if action.action_id == "cleanup-backups":
                 label = "Backup cleanup / free space"
                 description = "Prune old Spark backups with configurable retention, or explicitly delete all retained backups."
             new_actions.append(core.Action(action.action_id, label, description, action.risk, action.special))
 
         if category == "Installation":
-            idx = next((i for i, a in enumerate(new_actions) if a.action_id == "install-all"), len(new_actions))
-            new_actions[idx:idx] = [
-                core.Action("install-19", *INSTALL_LABELS["install-19"], "controlled"),
-                core.Action("install-20", *INSTALL_LABELS["install-20"], "controlled"),
-                core.Action("install-21", *INSTALL_LABELS["install-21"], "controlled"),
-                core.Action("install-22", *INSTALL_LABELS["install-22"], "controlled"),
-            ]
             rebuilt.append((category, new_actions))
             rebuilt.append(("Installation Air-Gapped", AIRGAP_ACTIONS))
             rebuilt.append(("Architecture & Provisioning", ARCHITECTURE_ACTIONS))
             continue
-        elif category == "Diagnostics":
-            idx = next((i + 1 for i, a in enumerate(new_actions) if a.action_id == "diagnostic-turn"), len(new_actions))
-            new_actions.insert(idx, core.Action(
-                "diagnostic-livekit",
-                "LiveKit full validation",
-                "Validate SFU, Redis, TURN, Egress, Ingress, TLS, functions and firewall.",
-            ))
-            for i, action in enumerate(new_actions):
-                if action.action_id == "diagnostic-installation-status":
-                    new_actions[i] = core.Action(
-                        action.action_id,
-                        "Installation status (22 steps)",
-                        "Probe the actual server state for all Spark + LiveKit install steps.",
-                        action.risk,
-                        action.special,
-                    )
-        elif category == "Services":
-            new_actions.append(core.Action(
-                "service-livekit",
-                "Restart LiveKit platform",
-                "Recreate and validate LiveKit SFU, Redis, Egress and Ingress.",
-                "controlled",
-            ))
         elif category == "Backups":
             idx = next((i for i, a in enumerate(new_actions) if a.special == "logs"), len(new_actions))
             new_actions.insert(idx, core.Action(
@@ -362,9 +321,9 @@ def logical_collect_status():
                 n = int(path.stem)
             except ValueError:
                 continue
-            if 1 <= n <= 22:
+            if 1 <= n <= 18 and n != 16:
                 completed.add(n)
-    status["steps"] = f"{len(completed)}/22"
+    status["steps"] = f"{len(completed)}/17"
     status["step_set"] = ",".join(str(n) for n in sorted(completed))
 
     try:
@@ -471,13 +430,6 @@ def logical_self_test() -> int:
         "cleanup-backups",
         "cleanup-full",
         "cleanup-manager",
-        "diagnostic-livekit",
-        "service-livekit",
-        "cleanup-livekit",
-        "install-19",
-        "install-20",
-        "install-21",
-        "install-22",
         "airgap-build",
         "airgap-validate",
         "airgap-import",

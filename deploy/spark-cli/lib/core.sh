@@ -143,7 +143,6 @@ installation_step_name() {
     13) printf 'TLS certificates' ;;
     14) printf 'Production Nginx' ;;
     15) printf 'Schedulers' ;;
-    16) printf 'TURN / Coturn' ;;
     17) printf 'Certbot renewal' ;;
     18) printf 'Firewall / UFW' ;;
     *) return 1 ;;
@@ -287,7 +286,6 @@ installation_step_probe() {
     13) test_certificates ;;
     14) test_nginx_production ;;
     15) test_schedulers ;;
-    16) test_turn ;;
     17) test_certbot_hook ;;
     18) test_firewall ;;
     *) return 1 ;;
@@ -305,7 +303,7 @@ installation_status_report() {
   printf '%-4s %-15s %-9s %s\n' 'No.' 'Actual' 'History' 'Component'
   printf '%s\n' '----------------------------------------------------------------------------'
 
-  for n in $(seq 1 18); do
+  for n in {1..15} 17 18; do
     printf -v formatted '%02d' "$n"
     name="$(installation_step_name "$n")"
 
