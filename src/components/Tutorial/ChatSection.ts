@@ -7,7 +7,7 @@ export const ChatSection: GuideSection = {
   icon: MessageCircle,
   color: 'green',
   gradient: 'from-green-500 to-emerald-700',
-  overview: 'پیام‌رسان داخلی سازمان — پشتیبانی از متن، صدا، فایل، ویس‌مسج، فرمت‌بندی پیشرفته، پیام‌های اورژانسی/محرمانه، تماس صوتی/تصویری و مدیریت هوشمند وظایف از درون مکالمه.',
+  overview: 'پیام‌رسان داخلی سازمان — پشتیبانی از متن، صدا، فایل، ویس‌مسج، فرمت‌بندی پیشرفته، پیام‌های اورژانسی/محرمانه و مدیریت هوشمند وظایف از درون مکالمه.',
   icons: [
     { icon: Plus, name: 'گفتگوی جدید', desc: 'شروع مکالمه با کاربر جدید یا Saved Messages', color: 'text-green-600' },
     { icon: Send, name: 'ارسال پیام', desc: 'ارسال با Enter یا دکمه ارسال', color: 'text-green-600' },
@@ -34,8 +34,8 @@ export const ChatSection: GuideSection = {
     { icon: Eye, name: 'وضعیت خوانده‌شدن', desc: 'مشاهده لیست افرادی که پیام را خوانده‌اند', color: 'text-blue-500' },
     { icon: Search, name: 'جستجو در مکالمه', desc: 'جستجوی متن در تاریخچه پیام‌ها', color: 'text-gray-600' },
     { icon: CalendarDays, name: 'پرش به تاریخ', desc: 'رفتن به تاریخ خاص در تاریخچه مکالمه', color: 'text-teal-600' },
-    { icon: Phone, name: 'تماس صوتی', desc: 'شروع تماس صوتی مستقیم با کاربر', color: 'text-green-600' },
-    { icon: Video, name: 'تماس تصویری', desc: 'شروع ویدیو کال با کاربر', color: 'text-blue-600' },
+    { icon: Phone, name: 'تماس صوتی', desc: 'تماس صوتی با مخاطب؛ فعلاً غیرفعال است', color: 'text-green-600' },
+    { icon: Video, name: 'تماس تصویری', desc: 'تماس تصویری با مخاطب؛ فعلاً غیرفعال است', color: 'text-blue-600' },
     { icon: Info, name: 'پنل اطلاعات', desc: 'نمایش فایل‌ها، تصاویر و اعضای مکالمه', color: 'text-indigo-600' },
     { icon: MoreVertical, name: 'منوی پیام', desc: 'راست‌کلیک یا نگه داشتن — منوی کامل عملیات', color: 'text-slate-500' },
   ],
@@ -81,7 +81,6 @@ export const ChatSection: GuideSection = {
   ],
   sparkQuestions: [
     'پیام بده به زهرا با موضوع پیگیری پروژه',
-    'تماس صوتی با علی بگیر',
     'برو به صفحه چت',
   ],
 };

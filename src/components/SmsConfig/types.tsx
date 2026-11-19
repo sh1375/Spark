@@ -119,7 +119,7 @@ export const SAMPLE_VALUES: Record<string, string> = {
   meeting_time: '۰۹:۰۰-۱۰:۰۰',
   location: 'اتاق کنفرانس A',
   location_part: ' | اتاق کنفرانس A',
-  join_link: 'https://example.com?conference=ABC-DEF-GHI',
+  join_link: 'https://example.com/join/meeting',
   sender_name: 'علی محمدی',
   representative: 'رضا کریمی',
   full_name: 'سارا احمدی',
