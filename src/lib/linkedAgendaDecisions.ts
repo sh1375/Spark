@@ -1,5 +1,7 @@
+import { DECISION_STATUS_LABELS } from '../components/Minutes/decisionHelpers';
+import type { DecisionStatus } from '../components/Minutes/types';
 import type { AgendaItem } from '../types';
-import { gregorianToJalaliDate } from './minutesDate';
+import { formatJalaliDateForDisplay, gregorianToJalaliDate } from './minutesDate';
 
 export interface LinkedAgendaItem extends AgendaItem {
   source_decision_id?: string | null;
@@ -16,7 +18,9 @@ export interface PickerDecision {
   meeting_date: string;
   minute_number: string | null;
   decision_number: string | null;
-  status: string;
+  status: DecisionStatus;
+  due_date?: string | null;
+  days_overdue?: number;
   progress_percent: number;
   owner_name: string;
   primary_owner_user_id: string | null;
@@ -32,6 +36,17 @@ export function linkedDecisionAgendaTitle(decision: PickerDecision): string {
     ? `صورت‌جلسه شماره ${decision.minute_number}`
     : `صورت‌جلسه «${decision.minute_title}» مورخ ${gregorianToJalaliDate(decision.meeting_date) || decision.meeting_date}`;
   return `بررسی و پیگیری ${clause}${decisionLabel} از ${minuteLabel} با موضوع ${decision.title}`;
+}
+
+export function linkedDecisionAgendaDescription(decision: PickerDecision): string | null {
+  if (!decision.due_date || typeof decision.days_overdue !== 'number') return null;
+  return [
+    `تاریخ صورت‌جلسه: ${formatJalaliDateForDisplay(decision.meeting_date)}`,
+    `مسئول اجرا: ${decision.owner_name || '—'}`,
+    `مهلت انجام: ${formatJalaliDateForDisplay(decision.due_date)}`,
+    `وضعیت هنگام افزودن: ${DECISION_STATUS_LABELS[decision.status] || decision.status}`,
+    `${decision.days_overdue.toLocaleString('fa-IR')} روز تأخیر هنگام افزودن`,
+  ].join(' · ');
 }
 
 export function linkedAgendaSourceId(item: { source_decision_id?: string | null }): string | null {

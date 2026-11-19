@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AgendaDecisionPicker } from '../Agenda/AgendaDecisionPicker';
 import { LinkedDecisionDialog } from '../Agenda/LinkedDecisionDialog';
-import { linkedDecisionAgendaTitle, type LinkedAgendaItem, type PickerDecision } from '../../lib/linkedAgendaDecisions';
+import { linkedDecisionAgendaDescription, linkedDecisionAgendaTitle, type LinkedAgendaItem, type PickerDecision } from '../../lib/linkedAgendaDecisions';
 import { ReorderableAgendaList } from '../Agenda/ReorderableAgendaList';
 import { reorderMeetingAgenda } from '../Agenda/reorderAgenda';
 import { ClipboardList, UserCheck, Clock, Pencil, Trash2, Check, Plus } from 'lucide-react';
@@ -44,7 +44,7 @@ export function AgendaSection(props: {
         next.push({
           id: crypto.randomUUID(), meeting_id: prefillMeetingId || '',
           title: linkedDecisionAgendaTitle(decision),
-          presenter: null, duration_minutes: null, description: null,
+          presenter: null, duration_minutes: null, description: linkedDecisionAgendaDescription(decision),
           sort_order: next.length, source_decision_id: decision.id,
         } as LinkedAgendaItem);
       });
@@ -69,6 +69,9 @@ export function AgendaSection(props: {
               <span className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{idx + 1}</span>
               <div className="flex-1 min-w-0">
                 <p className="break-words text-sm font-medium text-gray-800 dark:text-gray-200">{item.title}</p>
+                {(item as { source_decision_id?: string | null }).source_decision_id && item.description && (
+                  <p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+                )}
                 {(item as LinkedAgendaItem).source_decision_id && <button type="button" className="mt-1 text-xs text-blue-600 hover:underline" onClick={() => setDetailId((item as LinkedAgendaItem).source_decision_id!)}>مشاهده مصوبه اصلی و سوابق</button>}
                 <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                   {item.presenter && (

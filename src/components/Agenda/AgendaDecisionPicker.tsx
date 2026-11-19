@@ -1,9 +1,10 @@
+import { useLiveRevision, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Loader2, Search, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { usePermissions } from '../../context/PermissionsContext';
-import { jalaliToGregorianDate, gregorianToJalaliDate } from '../../lib/minutesDate';
+import { formatJalaliDateForDisplay, jalaliToGregorianDate, gregorianToJalaliDate } from '../../lib/minutesDate';
 import type { PickerDecision } from '../../lib/linkedAgendaDecisions';
 import { linkedDecisionAgendaTitle } from '../../lib/linkedAgendaDecisions';
 
@@ -28,6 +29,8 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
   const [referenceError, setReferenceError] = useState('');
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const revision = useLiveRevision(LIVE_DATA.minutes, overdueOnly);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [offset, setOffset] = useState(0);
@@ -36,6 +39,7 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const existing = useMemo(() => new Set(existingIds), [existingIds]);
+  const selectedItems = Object.values(selected).filter(item => !existing.has(item.id));
   const normalizeDigits = (v: string) => v.replace(/[۰-۹٠-٩]/g, c =>
     String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c) >= 0 ? '۰۱۲۳۴۵۶۷۸۹'.indexOf(c) : '٠١٢٣٤٥٦٧٨٩'.indexOf(c)));
 
@@ -75,6 +79,8 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
   useEffect(() => { setOffset(0); }, [query, status, dateFrom, dateTo]);
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError('');
     const timer = window.setTimeout(async () => {
       const from = dateFrom.trim() ? jalaliToGregorianDate(dateFrom.trim()) : null;
       const to = dateTo.trim() ? jalaliToGregorianDate(dateTo.trim()) : null;
@@ -82,16 +88,14 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
         if (!cancelled) { setLoading(false); setError('بازه تاریخ شمسی نامعتبر است.'); setResponse({ items: [], total: 0 }); }
         return;
       }
-      setLoading(true);
-      setError('');
       try {
-        const { data, error: requestError } = await (supabase as any).rpc('pick_meeting_agenda_decisions_v1', {
+        const { data, error: requestError } = await supabase.rpc('pick_meeting_agenda_decisions_v2', {
           p_search: jalaliToGregorianDate(query.trim()) || normalizeDigits(query.trim()) || null,
           p_status: status || null,
           p_owner_user_id: null,
           p_date_from: from,
           p_date_to: to,
-          p_limit: PAGE_SIZE, p_offset: offset,
+          p_limit: PAGE_SIZE, p_offset: offset, p_overdue_only: overdueOnly,
         });
         if (requestError) throw requestError;
         if (!data || !Array.isArray(data.items) || typeof data.total !== 'number') throw Error('INVALID_PICKER_RESPONSE');
@@ -101,7 +105,7 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
       } finally { if (!cancelled) setLoading(false); }
     }, 250);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [query, status, dateFrom, dateTo, offset]);
+  }, [query, status, dateFrom, dateTo, offset, overdueOnly, revision]);
 
   return createPortal(
     <div className="fixed inset-0 z-[10010] flex items-center justify-center bg-black/50 p-3" dir="rtl" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}>
@@ -123,12 +127,20 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
             <input aria-label="تاریخ از به شمسی" value={dateFrom} onChange={e => setDateFrom(e.target.value)} placeholder="از ۱۴۰۵/۰۸/۰۱" className="w-1/2 min-w-0 rounded-lg border p-2 text-xs dark:border-gray-600 dark:bg-gray-800" />
             <input aria-label="تاریخ تا به شمسی" value={dateTo} onChange={e => setDateTo(e.target.value)} placeholder="تا ۱۴۰۵/۰۸/۳۰" className="w-1/2 min-w-0 rounded-lg border p-2 text-xs dark:border-gray-600 dark:bg-gray-800" />
           </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 sm:col-span-4">
+            <input type="checkbox" checked={overdueOnly} onChange={event => {
+              setOverdueOnly(event.target.checked);
+              setOffset(0);
+              setSelected({});
+            }} className="h-4 w-4" />
+            مصوبات عقب‌افتاده
+          </label>
         </div>
         <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
           {loading && <div role="status" className="flex items-center gap-2 text-sm text-gray-500"><Loader2 className="h-4 w-4 animate-spin" /> در حال بارگذاری…</div>}
           {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
           {!loading && !error && response.items.length === 0 && <p className="p-4 text-center text-sm text-gray-500">مصوبه‌ای مطابق فیلترها یافت نشد.</p>}
-          {response.items.map(item => {
+          {!loading && !error && response.items.map(item => {
             const duplicated = existing.has(item.id);
             return <div key={item.id} className={`flex gap-3 rounded-xl border p-3 dark:border-gray-700 ${duplicated ? 'opacity-60' : 'hover:border-blue-300'}`}>
               <input type="checkbox" aria-label={`انتخاب مصوبه ${item.title}`} className="mt-1 h-4 w-4" disabled={duplicated} checked={duplicated || Boolean(selected[item.id])}
@@ -137,6 +149,11 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
                 <p className="break-words text-sm font-semibold text-gray-800 dark:text-gray-100">{item.title}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{item.minute_number ? `صورت‌جلسه شماره ${item.minute_number}` : item.minute_title} · {gregorianToJalaliDate(item.meeting_date) || item.meeting_date || 'تاریخ نامشخص'} · {item.decision_number ? `مصوبه ${item.decision_number}` : 'بدون شماره رسمی'} {item.clause_order ? `· بند ${item.clause_order}` : ''}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">مسئول: {item.owner_name || '—'} · واحد: {item.responsible_unit_name_snapshot || '—'} · {statusName(item.status)}</p>
+                {item.due_date && typeof item.days_overdue === 'number' && (
+                  <p className="text-xs font-medium text-red-700 dark:text-red-300">
+                    مهلت انجام {formatJalaliDateForDisplay(item.due_date)} · {item.days_overdue.toLocaleString('fa-IR')} روز تأخیر
+                  </p>
+                )}
                 {duplicated && <p className="text-xs text-amber-700">این مصوبه قبلاً به همین جلسه اضافه شده است.</p>}
                 {!duplicated && <p className="line-clamp-2 text-xs text-blue-600 dark:text-blue-400">{linkedDecisionAgendaTitle(item)}</p>}
                 {isAdmin && <button type="button" className="mt-2 text-xs text-indigo-600 hover:underline" onClick={() => {
@@ -164,9 +181,9 @@ export function AgendaDecisionPicker({ existingIds, onSelect, onClose }: {
             <button type="button" disabled={offset+PAGE_SIZE>=response.total || loading} onClick={() => setOffset(offset+PAGE_SIZE)}>بعدی</button>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">{Object.keys(selected).length.toLocaleString('fa-IR')} انتخاب</span>
+            <span className="text-xs text-gray-500">{selectedItems.length.toLocaleString('fa-IR')} انتخاب</span>
             <button type="button" className="rounded-lg border px-3 py-2 text-sm dark:border-gray-600" onClick={onClose}>انصراف</button>
-            <button type="button" disabled={Object.keys(selected).length===0} onClick={() => { onSelect(Object.values(selected).filter(item => !existing.has(item.id))); onClose(); }}
+            <button type="button" disabled={loading || Boolean(error) || selectedItems.length === 0} onClick={() => { onSelect(selectedItems); onClose(); }}
               className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white disabled:opacity-40">افزودن دستور جلسات</button>
           </div>
         </footer>

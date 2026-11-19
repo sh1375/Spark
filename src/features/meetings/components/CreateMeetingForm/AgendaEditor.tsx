@@ -3,7 +3,7 @@ import { reorderMeetingAgenda } from '../../../../components/Agenda/reorderAgend
 import { useState } from 'react';
 import { AgendaDecisionPicker } from '../../../../components/Agenda/AgendaDecisionPicker';
 import { LinkedDecisionDialog } from '../../../../components/Agenda/LinkedDecisionDialog';
-import { linkedDecisionAgendaTitle, type PickerDecision } from '../../../../lib/linkedAgendaDecisions';
+import { linkedDecisionAgendaDescription, linkedDecisionAgendaTitle, type PickerDecision } from '../../../../lib/linkedAgendaDecisions';
 import { ClipboardList, Pencil, Trash2, Check, Plus, UserCheck, Clock } from 'lucide-react';
 import type { AgendaItem } from '../../../../types';
 
@@ -43,7 +43,7 @@ export function AgendaEditor({
       next.push({
         id: crypto.randomUUID(),
         title: linkedDecisionAgendaTitle(decision), presenter: null,
-        duration_minutes: null, description: null, sort_order: next.length,
+        duration_minutes: null, description: linkedDecisionAgendaDescription(decision), sort_order: next.length,
         source_decision_id: decision.id,
       } as AgendaDraftItem);
     }
@@ -78,6 +78,9 @@ export function AgendaEditor({
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="break-words font-medium text-gray-800 dark:text-white">{item.title}</p>
+                    {(item as { source_decision_id?: string | null }).source_decision_id && item.description && (
+                      <p className="mt-1 break-words text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+                    )}
                     {(item as AgendaDraftItem & { source_decision_id?: string | null }).source_decision_id && (
                       <button type="button" className="mt-1 text-xs text-blue-600 hover:underline" onClick={() => setDetailId((item as AgendaDraftItem & { source_decision_id: string }).source_decision_id)}>مشاهده مصوبه اصلی</button>
                     )}

@@ -143,6 +143,14 @@ export type Database = Omit<BaseDatabase, 'public'> & {
       };
     };
     Functions: PublicSchema['Functions'] & {
+      pick_meeting_agenda_decisions_v2: {
+        Args: {
+          p_search?: string | null; p_status?: string | null; p_owner_user_id?: string | null;
+          p_date_from?: string | null; p_date_to?: string | null; p_limit?: number;
+          p_offset?: number; p_overdue_only?: boolean;
+        };
+        Returns: { items: import('../lib/linkedAgendaDecisions').PickerDecision[]; total: number };
+      };
       get_message_unread_counts_v1: {
         Args: Record<string, never>;
         Returns: { thread_id: string; thread_kind: 'chat' | 'group' | 'channel'; unread_count: number }[];
