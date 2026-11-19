@@ -1,6 +1,7 @@
 import { MessageUnreadProvider } from '../../features/messaging/messageUnreadCounts';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { PermissionsProvider } from '../../context/PermissionsContext';
+import { UrgentMessageProvider } from '../../context/UrgentMessageContext';
 import { GlobalCallProvider } from '../../context/GlobalCallContext';
 import { SplashScreen } from '../../components/SplashScreen';
 import { SparkLoader } from '../../components/ui/SparkLoader';
@@ -92,55 +93,55 @@ export function AppShell(props: AppShellProps) {
     <PermissionsProvider isAdmin={isAdmin} userPermissions={userPermissions}>
       <GlobalCallProvider
         currentUserId={currentUserId}
-        onNavigateToChat={() => navigate('chat')}
-        onNavigateToChannels={() => navigate('channels')}
         // The provider uses this callback for accepted E2EE rings. E2EE now belongs
         // to Organizational Chat > Calls, so route the hand-off to Chat.
         onNavigateToVideoConference={() => navigate('chat')}
       >
-        {showSplash && !splashDone && (
-          <SplashScreen onDone={onSplashDone} />
-        )}
-        <MessageUnreadProvider key={currentUserId} userId={currentUserId}>
-          <Layout
-            currentUserId={currentUserId}
-            activePage={activePage}
-            onPageChange={(p) => navigate(p as PageId)}
-            isAdmin={isAdmin}
-            userPermissions={userPermissions}
-            managementDashboardAllowed={rendererProps.managementDashboardAllowed}
-            sparkVisible={sparkVisible}
-            minutesFollowupAllowed={minutesFollowupAllowed}
-            minutesFollowupAccessLoading={minutesFollowupAccessLoading}
-          >
-            <Suspense fallback={<PageLoadingFallback />}>
-              {renderContent(rendererProps)}
-            </Suspense>
-          </Layout>
-        </MessageUnreadProvider>
-        {currentUserId && sparkVisible && assistantReady && (
-          <Suspense fallback={null}>
-            <SparkAssistant
+        <UrgentMessageProvider currentUserId={currentUserId} onNavigateToChat={() => navigate('chat')} onNavigateToChannels={() => navigate('channels')}>
+          {showSplash && !splashDone && (
+            <SplashScreen onDone={onSplashDone} />
+          )}
+          <MessageUnreadProvider key={currentUserId} userId={currentUserId}>
+            <Layout
               currentUserId={currentUserId}
-              onNavigate={(page) => navigate(page as PageId)}
-              onSetCalendarView={(view) => { sparkProps.onSetCalendarView(view); navigate('calendar'); }}
-              onOpenMeetingForm={(prefill) => {
-                sparkProps.onOpenMeetingForm(prefill);
-                navigate('create-meeting');
-              }}
-              onOpenCalendarMeetingForm={(prefill) => {
-                sparkProps.onOpenCalendarMeetingForm(prefill);
-                navigate('calendar');
-              }}
-              onNavigateToDate={(jy, jm, jd, view) => {
-                sparkProps.onNavigateToDate(jy, jm, jd, view);
-                navigate('calendar');
-              }}
-              externalCommand={sparkProps.sparkExternalCommand}
-              onExternalCommandConsumed={sparkProps.onExternalCommandConsumed}
-            />
-          </Suspense>
-        )}
+              activePage={activePage}
+              onPageChange={(p) => navigate(p as PageId)}
+              isAdmin={isAdmin}
+              userPermissions={userPermissions}
+              managementDashboardAllowed={rendererProps.managementDashboardAllowed}
+              sparkVisible={sparkVisible}
+              minutesFollowupAllowed={minutesFollowupAllowed}
+              minutesFollowupAccessLoading={minutesFollowupAccessLoading}
+            >
+              <Suspense fallback={<PageLoadingFallback />}>
+                {renderContent(rendererProps)}
+              </Suspense>
+            </Layout>
+          </MessageUnreadProvider>
+          {currentUserId && sparkVisible && assistantReady && (
+            <Suspense fallback={null}>
+              <SparkAssistant
+                currentUserId={currentUserId}
+                onNavigate={(page) => navigate(page as PageId)}
+                onSetCalendarView={(view) => { sparkProps.onSetCalendarView(view); navigate('calendar'); }}
+                onOpenMeetingForm={(prefill) => {
+                  sparkProps.onOpenMeetingForm(prefill);
+                  navigate('create-meeting');
+                }}
+                onOpenCalendarMeetingForm={(prefill) => {
+                  sparkProps.onOpenCalendarMeetingForm(prefill);
+                  navigate('calendar');
+                }}
+                onNavigateToDate={(jy, jm, jd, view) => {
+                  sparkProps.onNavigateToDate(jy, jm, jd, view);
+                  navigate('calendar');
+                }}
+                externalCommand={sparkProps.sparkExternalCommand}
+                onExternalCommandConsumed={sparkProps.onExternalCommandConsumed}
+              />
+            </Suspense>
+          )}
+        </UrgentMessageProvider>
       </GlobalCallProvider>
     </PermissionsProvider>
   );

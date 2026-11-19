@@ -9,7 +9,7 @@ import { ChatInputBar } from './ChatInputBar';
 import { loadChatTheme, type ChatThemeSettings } from './chatTheme';
 import moment from 'moment-jalaali';
 import toast from 'react-hot-toast';
-import { useGlobalCall } from '../../context/GlobalCallContext';
+import { useUrgentMessageAlarm } from '../../context/UrgentMessageContext';
 import { useOrgUsers, resolveUserDisplay, FALLBACK_NAME } from '../../lib/useOrgUsers';
 import type {
   ConversationWithProfile, MessageWithMeta, ChatMessage as ChatMsg,
@@ -48,7 +48,7 @@ export function ChatConversationView({
   onOpenDirectChat, msgRefreshKey,
 }: Props) {
   useLiveData([...LIVE_DATA.chat, ...LIVE_DATA.people], async () => { await Promise.all([fetchReminders(), fetchGlobalStarred()]); if (conversation.otherUser.user_id === currentUserId) await fetchMessages(); });
-  const { triggerUrgentAlarm: globalTriggerUrgentAlarm } = useGlobalCall();
+  const globalTriggerUrgentAlarm = useUrgentMessageAlarm();
 
   const playBeep = () => {
     try {
