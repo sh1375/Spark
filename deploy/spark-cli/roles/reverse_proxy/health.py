@@ -28,12 +28,11 @@ class ReverseProxyHealth:
     tls_listener: bool
     frontend_upstream: bool
     edge_upstream: bool
-    livekit_upstream: bool
     supabase_upstream: bool
 
     @property
     def healthy(self) -> bool:
-        return all((self.nginx_active, self.tls_listener, self.frontend_upstream, self.edge_upstream, self.livekit_upstream, self.supabase_upstream))
+        return all((self.nginx_active, self.tls_listener, self.frontend_upstream, self.edge_upstream, self.supabase_upstream))
 
 
 def inspect_reverse_proxy(environment: EnvironmentConfig, runner: CommandRunner | None = None) -> ReverseProxyHealth:
@@ -46,6 +45,5 @@ def inspect_reverse_proxy(environment: EnvironmentConfig, runner: CommandRunner 
         tls_listener=_tcp("127.0.0.1", 443),
         frontend_upstream=_tcp(app, 80),
         edge_upstream=_tcp(app, environment.application.edge.port),
-        livekit_upstream=_tcp(app, environment.application.livekit.api_port),
         supabase_upstream=_tcp(db, 8000),
     )

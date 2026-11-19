@@ -71,5 +71,5 @@ class ReverseProxyProvisionTask(OperationTask):
     def verify(self, ctx):
         health = inspect_reverse_proxy(_profile(ctx), ctx.variables.get("command_runner"))
         if not health.healthy:
-            return TaskResult.failed("reverse proxy health gate failed", nginx=health.nginx_active, tls=health.tls_listener, frontend=health.frontend_upstream, edge=health.edge_upstream, livekit=health.livekit_upstream, supabase=health.supabase_upstream)
+            return TaskResult.failed("reverse proxy health gate failed", nginx=health.nginx_active, tls=health.tls_listener, frontend=health.frontend_upstream, edge=health.edge_upstream, supabase=health.supabase_upstream)
         return TaskResult.success("reverse proxy HEALTHY")

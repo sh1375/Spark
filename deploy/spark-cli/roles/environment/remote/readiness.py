@@ -59,8 +59,6 @@ def build_readiness(environment: EnvironmentConfig, results: tuple[RemoteResult,
         "storage": remote.get("storage", "FAIL"),
         "frontend": remote.get("frontend", "FAIL"),
         "edge_functions": remote.get("edge_functions", "FAIL"),
-        "livekit": remote.get("livekit", "FAIL"),
-        "turn_tcp": remote.get("turn_tcp", "FAIL"),
         "public_entrypoint": central.get("public_entrypoint", "WAITING_FOR_OPERATOR"),
         "public_auth": central.get("public_auth", "WAITING_FOR_OPERATOR"),
         "public_rest": central.get("public_rest", "WAITING_FOR_OPERATOR"),
@@ -68,7 +66,7 @@ def build_readiness(environment: EnvironmentConfig, results: tuple[RemoteResult,
         "public_storage": central.get("public_storage", "WAITING_FOR_OPERATOR"),
         "public_edge": central.get("public_edge", "WAITING_FOR_OPERATOR"),
     }
-    internal_keys = ("postgresql", "gateway", "auth", "rest", "realtime", "storage", "frontend", "edge_functions", "livekit", "turn_tcp")
+    internal_keys = ("postgresql", "gateway", "auth", "rest", "realtime", "storage", "frontend", "edge_functions")
     public_keys = ("public_entrypoint", "public_auth", "public_rest", "public_realtime", "public_storage", "public_edge")
     ready = (
         all(value == "PASS" for value in (db, app, proxy1, proxy2))
@@ -93,8 +91,6 @@ def build_readiness(environment: EnvironmentConfig, results: tuple[RemoteResult,
         "Application",
         f"  Frontend            {checks['frontend']}",
         f"  Edge Functions      {checks['edge_functions']}",
-        f"  LiveKit             {checks['livekit']}",
-        f"  Coturn              {checks['turn_tcp']}", "",
         "Network",
         f"  Proxy/App/DB Paths  {'PASS' if network_ok else 'FAIL'}", "",
         "Public",
