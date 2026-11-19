@@ -7,7 +7,6 @@ const STATIC_ASSETS = [
   '/manifest.json',
   '/logo_spark.png',
   '/logo-ui.webp',
-  '/photo-1600880292203-757bb62b4baf.jpg',
   '/icons/icon-512x512.png',
   '/fonts/Vazirmatn-Regular.woff2',
   '/fonts/Vazirmatn-Bold.woff2',
@@ -244,6 +243,5 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // User data and all other unknown GET requests remain network-only.
-  event.respondWith(fetch(request));
+  // Let the browser handle requests outside the declared cache routes.
 });

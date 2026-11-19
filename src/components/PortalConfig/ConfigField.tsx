@@ -96,7 +96,7 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
           </span>
         </div>
       ) : entry.value_type === 'password' ? (
-        <div className="relative min-w-0">
+        <form className="relative min-w-0" onSubmit={event => event.preventDefault()}>
           <input id={fieldId} type={showPass ? 'text' : 'password'} value={val} onChange={e => change(e.target.value)}
             className={`${inputCls} !pl-10 text-left`} dir="ltr" data-password-input="true" autoComplete="new-password" />
           <button type="button" onClick={() => setShowPass(v => !v)}
@@ -104,7 +104,7 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
             aria-label={showPass ? 'مخفی کردن مقدار' : 'نمایش مقدار'} aria-pressed={showPass}>
             {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
           </button>
-        </div>
+        </form>
       ) : entry.value_type === 'color' ? (
         <div className="flex min-w-0 items-center gap-2">
           <input id={`${fieldId}-picker`} aria-label={label} type="color" value={val || '#4f46e5'} onChange={e => change(e.target.value)}

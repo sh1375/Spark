@@ -26,9 +26,10 @@ export function FieldLabel({ label, required, hint }: { label: string; required?
 export function SecretInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [show, setShow] = useState(false);
   return (
-    <div className="relative">
+    <form className="relative" onSubmit={event => event.preventDefault()}>
       <input
         className={inpMono + ' pl-10'}
+        name="channel-secret" aria-label={placeholder || 'کلید محرمانه'} autoComplete="new-password"
         type={show ? 'text' : 'password'}
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -39,7 +40,7 @@ export function SecretInput({ value, onChange, placeholder }: { value: string; o
         className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
         {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
-    </div>
+    </form>
   );
 }
 

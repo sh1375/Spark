@@ -131,19 +131,19 @@ export function AiSettingsPanel() {
         </div>
 
         {/* API Key */}
-        <div>
+        <form onSubmit={event => event.preventDefault()}>
           <label htmlFor={`${fieldId}-api-key`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
             <Key className="w-3 h-3" /> کلید API
           </label>
           <div className="relative">
-            <input id={`${fieldId}-api-key`} type={showKey ? 'text' : 'password'} value={form.api_key} onChange={e => { setForm(f => ({ ...f, api_key: e.target.value })); setTestResult(null); }}
+            <input autoComplete="new-password" id={`${fieldId}-api-key`} type={showKey ? 'text' : 'password'} value={form.api_key} onChange={e => { setForm(f => ({ ...f, api_key: e.target.value })); setTestResult(null); }}
               placeholder="کلید API را اینجا وارد کنید..." dir="ltr"
               className={inp + ' pr-10'} />
             <button type="button" onClick={() => setShowKey(v => !v)} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
               {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-        </div>
+        </form>
 
         {/* Test result */}
         {testResult && (

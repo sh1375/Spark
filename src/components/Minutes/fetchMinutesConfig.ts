@@ -1,3 +1,4 @@
+import { portalAssetUrl } from '../../lib/portalAssetUrl';
 import { supabase } from '../../lib/supabase';
 import type { MinutesLayoutConfig } from './MinutesDocumentData';
 import { FALLBACK_LOGO } from './MinutesDocumentData';
@@ -53,9 +54,9 @@ export function normalizeMinutesLayoutConfig(map: Map<string, string>): MinutesL
 
 export function resolveMinutesLogoUrl(map: Map<string, string>): string {
   const minutesLogo = trimMax(map.get('minutes.minutes_logo_url'), 500);
-  if (minutesLogo) return minutesLogo;
+  if (minutesLogo) return portalAssetUrl(minutesLogo);
   const portalLogo = trimMax(map.get('appearance.logo_url'), 500);
-  if (portalLogo) return portalLogo;
+  if (portalLogo) return portalAssetUrl(portalLogo);
   return FALLBACK_LOGO;
 }
 

@@ -481,7 +481,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
         <SectionHeader icon={<Key className="w-3.5 h-3.5 text-gray-500" />} title="پارامترهای الزامی" />
 
         {/* Token — calls getMe */}
-        <div>
+        <form onSubmit={event => { event.preventDefault(); void getBotInfo(); }}>
           <FieldLabel
             label="توکن بات"
             required
@@ -491,6 +491,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
             <div className="relative flex-1">
               <input
                 className={inpMono + ' pl-10'}
+                name="bot-token" aria-label="توکن بات" autoComplete="new-password"
                 type={showToken ? 'text' : 'password'}
                 value={config.bot_token}
                 onChange={e => { set('bot_token', e.target.value); setTokenStatus('idle'); }}
@@ -503,7 +504,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
               </button>
             </div>
             <button
-              onClick={getBotInfo}
+              type="submit"
               className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm transition flex-shrink-0 ${
                 tokenStatus === 'ok'
                   ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700'
@@ -531,7 +532,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
               <XCircle className="w-3 h-3" /> توکن نامعتبر یا خطای شبکه
             </p>
           )}
-        </div>
+        </form>
 
         {/* Webhook URL */}
         <div>
@@ -546,7 +547,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
           />
           <input
             className={`${inpMono}${webhookUrlError ? ' border-red-400 dark:border-red-500 focus:ring-red-400' : ''}`}
-            value={config.webhook_url}
+            name="webhook_url" aria-label="آدرس وب‌هوک" value={config.webhook_url}
             onChange={e => set('webhook_url', e.target.value)}
             placeholder={
               channel === 'bale'
@@ -568,7 +569,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
           <div className="relative">
             <input
               className={inp + ' bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'}
-              value={config.bot_username ? `@${config.bot_username}` : ''}
+              name="bot-username" aria-label="نام کاربری بات" value={config.bot_username ? `@${config.bot_username}` : ''}
               readOnly
               placeholder="پس از تایید توکن پر می‌شود"
               dir="ltr"
@@ -587,7 +588,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
           />
           <input
             className={inpMono}
-            value={config.default_chat_id}
+            name="default_chat_id" aria-label="شناسه پیش‌فرض گفتگو" value={config.default_chat_id}
             onChange={e => set('default_chat_id', e.target.value)}
             placeholder="-100123456789 (گروه) یا 123456789 (کاربر)"
             dir="ltr"
@@ -647,7 +648,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
               />
               <input
                 className={inpMono}
-                value={config.redis_url}
+                name="redis_url" aria-label="آدرس Redis" value={config.redis_url}
                 onChange={e => set('redis_url', e.target.value)}
                 placeholder="redis://localhost:6379/0"
                 dir="ltr"
@@ -691,7 +692,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
                 />
                 <input
                   className={inpMono}
-                  value={config.ext_supabase_url}
+                  name="ext_supabase_url" aria-label="آدرس Supabase" value={config.ext_supabase_url}
                   onChange={e => set('ext_supabase_url', e.target.value)}
                   placeholder="https://your-supabase-project.supabase.co"
                   dir="ltr"
@@ -730,7 +731,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
           <textarea
             className={inp + ' resize-none'}
             rows={2}
-            value={config.notes}
+            name="notes" aria-label="یادداشت مدیر" value={config.notes}
             onChange={e => set('notes', e.target.value)}
             placeholder="توضیحات اضافی..."
           />
@@ -755,24 +756,24 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
             {testResult === 'error' && <XCircle className="w-4 h-4 text-red-500" />}
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">
+            <label htmlFor={`${channel}-test-chat-id`} className="block text-xs text-gray-500 mb-1">
               Chat ID هدف
               <span className="text-gray-400"> — اختیاری، از Chat ID پیش‌فرض استفاده می‌کند</span>
             </label>
             <input
               className={inpMono}
-              value={testChatId}
+              id={`${channel}-test-chat-id`} value={testChatId}
               onChange={e => setTestChatId(e.target.value)}
               placeholder="-100123456789"
               dir="ltr"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">متن پیام (text)</label>
+            <label htmlFor={`${channel}-test-text`} className="block text-xs text-gray-500 mb-1">متن پیام (text)</label>
             <textarea
               className={inp + ' resize-none'}
               rows={2}
-              value={testMsg}
+              id={`${channel}-test-text`} value={testMsg}
               onChange={e => setTestMsg(e.target.value)}
             />
           </div>

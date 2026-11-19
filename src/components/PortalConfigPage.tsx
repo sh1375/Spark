@@ -1,3 +1,4 @@
+import { portalAssetUrl } from '../lib/portalAssetUrl';
 import { LoadErrorBoundary } from './ui/LoadErrorBoundary';
 import { useLiveData, LIVE_DATA } from '../shared/realtime/useLiveData';
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
@@ -104,7 +105,7 @@ export function PortalConfigPage({ currentUserId }: Props) {
       const { error: uploadError } = await supabase.storage.from('portal-assets').upload(path, file, { upsert: true });
       if (uploadError) { toast.error('خطا در آپلود فایل'); return; }
       const { data: urlData } = supabase.storage.from('portal-assets').getPublicUrl(path);
-      const publicUrl = urlData.publicUrl;
+      const publicUrl = new URL(urlData.publicUrl).pathname;
       // Find config entry by key and save
       const entry = configs.find(c => c.section === 'appearance' && c.key === configKey);
       if (entry) { await saveConfig(entry.id, publicUrl); }
@@ -242,7 +243,7 @@ export function PortalConfigPage({ currentUserId }: Props) {
                         onChange={e => { const f = e.target.files?.[0]; if (f) uploadAsset(key, f); e.target.value = ''; }} />
                       <div className="w-20 h-14 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center overflow-hidden">
                         {current ? (
-                          <img src={current} alt={label} className="w-full h-full object-contain p-1" />
+                          <img src={portalAssetUrl(current)} alt={label} onError={event => { if (event.currentTarget.getAttribute('src') !== '/logo-ui.webp') event.currentTarget.src = '/logo-ui.webp'; }} className="w-full h-full object-contain p-1" />
                         ) : (
                           <Image className="w-6 h-6 text-gray-400" />
                         )}

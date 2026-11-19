@@ -47,12 +47,18 @@ function MeetingsMonitor({ profiles }: { profiles: Profile[] }) {
     }));
 
     const ids = rows.map(r => r.id);
-    if (ids.length > 0) {
-      const { data: shared } = await supabase.from('shared_meetings').select('meeting_id').in('meeting_id', ids);
-      const cnt: Record<string, number> = {};
-      (shared || []).forEach((s: any) => { cnt[s.meeting_id] = (cnt[s.meeting_id] || 0) + 1; });
-      rows.forEach(r => { r.shared_count = cnt[r.id] || 0; });
+    const counts = new Map<string, number>();
+    for (let offset = 0; offset < ids.length; offset += 50) {
+      const { data: shared, error: sharedError } = await supabase.from('shared_meetings')
+        .select('meeting_id').in('meeting_id', ids.slice(offset, offset + 50));
+      if (sharedError) {
+        toast.error('خطا در بارگذاری اشتراک‌های جلسات');
+        setLoading(false);
+        return;
+      }
+      for (const row of shared || []) counts.set(row.meeting_id, (counts.get(row.meeting_id) ?? 0) + 1);
     }
+    rows.forEach(row => { row.shared_count = counts.get(row.id) ?? 0; });
     setMeetings(rows);
     setLoading(false);
   }, [profiles]);
@@ -120,34 +126,34 @@ function MeetingsMonitor({ profiles }: { profiles: Profile[] }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="جستجو موضوع / نماینده..." className="w-full pr-9 pl-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input name="search" aria-label="جستجوی جلسه" value={search} onChange={e => setSearch(e.target.value)} placeholder="جستجو موضوع / نماینده..." className="w-full pr-9 pl-3 py-2 text-sm border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={SEL}>
+          <select name="filterStatus" aria-label="وضعیت جلسه" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={SEL}>
             <option value="all">همه وضعیت‌ها</option>
             <option value="open">باز</option>
             <option value="closed">بسته</option>
           </select>
-          <select value={filterStatusType} onChange={e => setFilterStatusType(e.target.value)} className={SEL}>
+          <select name="filterStatusType" aria-label="نوع وضعیت جلسه" value={filterStatusType} onChange={e => setFilterStatusType(e.target.value)} className={SEL}>
             <option value="all">همه نوع‌ها</option>
             <option value="requested">درخواست شده</option>
             <option value="approved">تایید شده</option>
           </select>
-          <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className={SEL}>
+          <select name="filterPriority" aria-label="اولویت" value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className={SEL}>
             <option value="all">همه اولویت‌ها</option>
             <option value="high">بالا</option>
             <option value="medium">متوسط</option>
             <option value="low">پایین</option>
           </select>
-          <select value={filterUser} onChange={e => setFilterUser(e.target.value)} className={SEL}>
+          <select name="filterUser" aria-label="کاربر" value={filterUser} onChange={e => setFilterUser(e.target.value)} className={SEL}>
             <option value="all">همه کاربران</option>
             {profiles.map(p => <option key={p.user_id} value={p.user_id}>{p.full_name || p.email}</option>)}
           </select>
-          <select value={filterShared} onChange={e => setFilterShared(e.target.value)} className={SEL}>
+          <select name="filterShared" aria-label="وضعیت اشتراک" value={filterShared} onChange={e => setFilterShared(e.target.value)} className={SEL}>
             <option value="all">اشتراک: همه</option>
             <option value="yes">به اشتراک گذاشته</option>
             <option value="no">گذاشته نشده</option>
           </select>
-          <select value={filterMembersOnly} onChange={e => setFilterMembersOnly(e.target.value)} className={SEL}>
+          <select name="filterMembersOnly" aria-label="محدودهٔ اعضا" value={filterMembersOnly} onChange={e => setFilterMembersOnly(e.target.value)} className={SEL}>
             <option value="all">دسترسی: همه</option>
             <option value="yes">فقط اعضا</option>
             <option value="no">عمومی</option>
