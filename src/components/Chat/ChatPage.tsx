@@ -8,16 +8,17 @@ import toast from 'react-hot-toast';
 import { ChatSidebar } from './ChatSidebar';
 import type { SidebarTab } from './ChatSidebar';
 import type { ConversationWithProfile, UserProfile } from './types';
-import { useGlobalCall } from '../../context/GlobalCallContext';
-import { getPendingE2EERing, subscribeE2EERing } from '../../lib/globalE2EERing';
 
 const ChatConversationView = lazy(() => import('./ChatConversationView').then((m) => ({ default: m.ChatConversationView })));
 const ChatActionsPanel = lazy(() => import('./ChatActionsPanel').then((m) => ({ default: m.ChatActionsPanel })));
 const ChatSettingsPage = lazy(() => import('./ChatSettingsPage').then((m) => ({ default: m.ChatSettingsPage })));
 const CallHistoryPage = lazy(() => import('./CallHistoryPage').then((m) => ({ default: m.CallHistoryPage })));
-const E2EECallPage = lazy(() => import('./E2EECallPage').then((m) => ({ default: m.E2EECallPage })));
 const NewConversationModal = lazy(() => import('./NewConversationModal').then((m) => ({ default: m.NewConversationModal })));
 
+
+function showCallUnavailable() {
+  toast.error('سرویس تماس هنوز فعال نشده است');
+}
 
 interface Props {
   currentUserId?: string | null;
@@ -40,16 +41,12 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
   const [showActions, setShowActions] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('chats');
-  const [showE2EECall, setShowE2EECall] = useState(false);
-  const [e2eeInitialTarget, setE2eeInitialTarget] = useState<UserProfile | null>(null);
   const [msgRefreshKey, setMsgRefreshKey] = useState(0);
 
   // Navigation from actions panel
   const [navToConvId, setNavToConvId] = useState<string | null>(null);
   const [navToMsgId, setNavToMsgId] = useState<string | null>(null);
 
-  // Call state is managed globally in GlobalCallContext
-  const { startCall: globalStartCall } = useGlobalCall();
 
   const conversationRequestRef = useRef(0);
   const pendingConvIdRef = useRef<string | null>(null);
@@ -216,22 +213,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
     };
   }, [providedCurrentUserId, fetchConversations]);
 
-  // ── E2EE incoming-call handoff ───────────────────────────────────────────
-  useEffect(() => {
-    const openAcceptedE2EECall = (ring = getPendingE2EERing()) => {
-      if (!ring?.autoAccept) return;
-      setE2eeInitialTarget(null);
-      setSidebarTab('calls');
-      setShowE2EECall(true);
-      setShowSidebar(false);
-      setShowActions(false);
-      setShowSettings(false);
-    };
-
-    openAcceptedE2EECall();
-    return subscribeE2EERing(openAcceptedE2EECall);
-  }, []);
-
   // ── Activate pending conversation after fetch ────────────────────────────
   useEffect(() => {
     if (!pendingConvIdRef.current) return;
@@ -244,8 +225,8 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
 
   // ── When the active conversation is removed (e.g. deleted), show sidebar ──
   useEffect(() => {
-    if (activeId === null && !showE2EECall) setShowSidebar(true);
-  }, [activeId, showE2EECall]);
+    if (activeId === null) setShowSidebar(true);
+  }, [activeId]);
 
   // ── Auto-open DM from external navigation ───────────────────────────────
   useEffect(() => {
@@ -258,7 +239,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
       if (error || !convId) { toast.error('خطا در باز کردن چت'); return; }
       pendingConvIdRef.current = convId as string;
       await fetchConversations(currentUserId);
-      setShowE2EECall(false);
       setShowSidebar(false);
       setSidebarTab('chats');
       onInitialOpenUserConsumed?.();
@@ -276,7 +256,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
     setShowNewConv(false);
     pendingConvIdRef.current = convId as string;
     await fetchConversations(currentUserId);
-    setShowE2EECall(false);
     setShowSidebar(false);
     setSidebarTab('chats');
   };
@@ -298,48 +277,13 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
     if (error || !convId) { toast.error('خطا در باز کردن پیام‌های ذخیره‌شده'); return; }
     pendingConvIdRef.current = convId as string;
     await fetchConversations(currentUserId);
-    setShowE2EECall(false);
     setShowSidebar(false);
     setSidebarTab('chats');
-  };
-
-  // ── Call helpers ─────────────────────────────────────────────────────────
-  const startCall = async (callType: 'audio' | 'video') => {
-    if (!currentUserId || !activeConv) return;
-    await globalStartCall(callType, activeConv.otherUser, activeConv.id);
-  };
-
-  const handleOpenE2EECall = (targetUser?: UserProfile) => {
-    setE2eeInitialTarget(targetUser ?? null);
-    setSidebarTab('calls');
-    setShowE2EECall(true);
-    setShowSidebar(false);
-    setShowActions(false);
-    setShowSettings(false);
-  };
-
-  const startE2EECall = () => {
-    if (!activeConv) return;
-    handleOpenE2EECall(activeConv.otherUser);
-  };
-
-  const handleCloseE2EECall = () => {
-    const returnToChat = !!e2eeInitialTarget && !!activeId;
-    setShowE2EECall(false);
-    setE2eeInitialTarget(null);
-    if (returnToChat) {
-      setSidebarTab('chats');
-      setShowSidebar(false);
-      return;
-    }
-    setShowSidebar(true);
-    setSidebarTab('calls');
   };
 
   // ── Navigation from actions panel ────────────────────────────────────────
   const handleNavigateToMessage = (convId: string, msgId: string) => {
     setShowActions(false);
-    setShowE2EECall(false);
     setSidebarTab('chats');
     setNavToConvId(convId);
     setNavToMsgId(msgId);
@@ -351,26 +295,9 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
 
   const handleSelectConv = (id: string) => {
     setActiveId(id);
-    setShowE2EECall(false);
     setShowSidebar(false);
     setShowSettings(false);
     setSidebarTab('chats');
-  };
-
-  // ── Call from history ────────────────────────────────────────────────────
-  const handleStartCallFromHistory = async (otherUser: UserProfile, callType: 'audio' | 'video') => {
-    if (!currentUserId) return;
-    const { data: convId, error } = await supabase.rpc('find_or_create_direct_conversation', {
-      user_a: currentUserId,
-      user_b: otherUser.user_id,
-    });
-    if (error || !convId) { toast.error('خطا در برقراری تماس'); return; }
-    pendingConvIdRef.current = convId as string;
-    await fetchConversations(currentUserId);
-    setShowE2EECall(false);
-    setSidebarTab('chats');
-    setShowSidebar(false);
-    await globalStartCall(callType, otherUser, convId as string);
   };
 
   const activeConv = conversations.find(c => c.id === activeId) || null;
@@ -410,9 +337,8 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
           <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-violet-500" /></div>}>
             <CallHistoryPage
             currentUserId={currentUserId}
-            onStartCall={handleStartCallFromHistory}
-            onStartE2EECall={() => handleOpenE2EECall()}
-            onClose={() => { setShowE2EECall(false); setSidebarTab('chats'); }}
+            onStartCall={showCallUnavailable}
+            onClose={() => { setSidebarTab('chats'); }}
             />
           </Suspense>
         ) : (
@@ -426,16 +352,15 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
             onRefresh={() => fetchConversations(currentUserId)}
             onTogglePin={handleTogglePin}
             onOpenSavedMessages={handleOpenSavedMessages}
-            onToggleActions={() => { setShowActions(v => !v); setShowSettings(false); setShowE2EECall(false); }}
+            onToggleActions={() => { setShowActions(v => !v); setShowSettings(false); }}
             showActions={showActions}
             activeTab={sidebarTab}
-            onTabChange={tab => { setSidebarTab(tab); setShowE2EECall(false); setShowSidebar(true); }}
-            onOpenSettings={() => { setShowSettings(true); setShowActions(false); setShowE2EECall(false); }}
+            onTabChange={tab => { setSidebarTab(tab); setShowSidebar(true); }}
+            onOpenSettings={() => { setShowSettings(true); setShowActions(false); }}
             onMentionClick={(convId, msgId) => {
               setActiveId(convId);
               setNavToConvId(convId);
               setNavToMsgId(msgId);
-              setShowE2EECall(false);
               setShowSidebar(false);
             }}
             onClearHistory={() => setMsgRefreshKey(k => k + 1)}
@@ -460,8 +385,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
               onConversationUpdate={() => fetchConversations(currentUserId)}
               initialScrollToMessageId={navToConvId === activeConv.id ? navToMsgId : null}
               onScrollToMessageConsumed={() => { setNavToConvId(null); setNavToMsgId(null); }}
-              onStartCall={startCall}
-              onStartE2EECall={startE2EECall}
+              onStartCall={showCallUnavailable}
               msgRefreshKey={msgRefreshKey}
               onOpenDirectChat={async (userId) => {
                 const { data: convId, error } = await supabase.rpc('find_or_create_direct_conversation', {
@@ -471,7 +395,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
                 if (error || !convId) { toast.error('خطا در باز کردن چت'); return; }
                 pendingConvIdRef.current = convId as string;
                 await fetchConversations(currentUserId);
-                setShowE2EECall(false);
                 setShowSidebar(false);
                 setSidebarTab('chats');
               }}
@@ -496,25 +419,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
           )
         )}
 
-        {sidebarTab === 'calls' && showE2EECall && (
-          <div className="flex-1 min-h-0 bg-white dark:bg-slate-950">
-            <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-violet-500" /></div>}>
-              <E2EECallPage
-              currentUserId={currentUserId}
-              currentUserName={currentUserProfile?.full_name || currentUserProfile?.username || 'کاربر'}
-              initialTargetUser={e2eeInitialTarget ? {
-                user_id: e2eeInitialTarget.user_id,
-                full_name: e2eeInitialTarget.full_name,
-                email: e2eeInitialTarget.email ?? null,
-                avatar_url: e2eeInitialTarget.avatar_url,
-              } : null}
-              onBack={handleCloseE2EECall}
-              />
-            </Suspense>
-          </div>
-        )}
-
-        {((sidebarTab === 'calls' && !showE2EECall) || showActions || showSettings) && (
+        {(sidebarTab === 'calls' || showActions || showSettings) && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-slate-50/70 text-slate-400 dark:bg-slate-950 dark:text-slate-500">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <MessageCircle className="h-6 w-6 opacity-50" />

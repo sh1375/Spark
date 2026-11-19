@@ -37,14 +37,13 @@ interface Props {
   initialScrollToMessageId?: string | null;
   onScrollToMessageConsumed?: () => void;
   onStartCall?: (callType: 'audio' | 'video') => void;
-  onStartE2EECall?: () => void;
   onOpenDirectChat?: (userId: string) => void;
   msgRefreshKey?: number;
 }
 
 export function ChatConversationView({
   conversation, currentUserId, currentUserProfile, onBack, onNavigateToCalendar, onNavigateToTasks,
-  onConversationUpdate, onStartCall, onStartE2EECall,
+  onConversationUpdate, onStartCall,
   onOpenDirectChat, msgRefreshKey,
 }: Props) {
   useLiveData([...LIVE_DATA.chat, ...LIVE_DATA.people], async () => { await Promise.all([fetchReminders(), fetchGlobalStarred()]); if (conversation.otherUser.user_id === currentUserId) await fetchMessages(); });
@@ -643,7 +642,6 @@ export function ChatConversationView({
         onOpenStarred={() => { setShowStarredModal(true); fetchGlobalStarred(); }}
         onOpenReminders={() => { setShowRemindersModal(true); fetchReminders(); }}
         onStartCall={onStartCall}
-        onStartE2EECall={onStartE2EECall}
         onJumpToDate={() => {
           const now = moment();
           setJumpPickerDate({ jy: now.jYear(), jm: now.jMonth() + 1, jd: now.jDate() });

@@ -6,9 +6,13 @@ import { loadCallHistory, callHistoryLoadError, type CallHistoryClient } from '.
 import { supabase } from '../../lib/supabase';
 import moment from 'moment-jalaali';
 import type { UserProfile } from './types';
-import type { CallSession } from './CallEngine';
 
-interface CallRecord extends CallSession {
+interface CallRecord {
+  id: string;
+  caller_id: string;
+  callee_id: string;
+  call_type: 'audio' | 'video';
+  status: 'ringing' | 'active' | 'ended' | 'declined' | 'missed';
   otherUser: UserProfile | null;
   created_at: string;
   duration_seconds: number;
@@ -17,7 +21,6 @@ interface CallRecord extends CallSession {
 interface Props {
   currentUserId: string;
   onStartCall: (otherUser: UserProfile, callType: 'audio' | 'video') => void;
-  onStartE2EECall: () => void;
   onClose?: () => void;
 }
 
@@ -52,8 +55,6 @@ export function CallHistoryPage({ currentUserId, onStartCall, onClose }: Props) 
     const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
     setRecords(data.map((r: any) => ({
       ...r,
-      caller_candidates: r.caller_candidates || [],
-      callee_candidates: r.callee_candidates || [],
       otherUser: profileMap.get(r.caller_id === currentUserId ? r.callee_id : r.caller_id) || null,
     })));
     setLoading(false);
