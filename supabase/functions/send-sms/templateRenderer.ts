@@ -14,7 +14,7 @@ export type SystemSmsRenderResult =
   | { ok: true; text: string; templateId: string; context: Record<string, unknown> }
   | { ok: false; errorCode: "SMS_TEMPLATE_NOT_FOUND" | "SMS_TEMPLATE_CONTEXT_MISSING"; error: string; missing?: string[] };
 
-const OPTIONAL_PLACEHOLDERS = new Set(["join_link", "location_part"]);
+const OPTIONAL_PLACEHOLDERS = new Set(["join_link", "location_part", "external_schedule"]);
 const DATE_PLACEHOLDERS = new Set(["meeting_date", "event_date", "due_date", "decision_due_date", "followup_date"]);
 const PLACEHOLDER_RE = /\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g;
 
@@ -169,6 +169,19 @@ export async function renderSystemSmsTemplate(input: SystemSmsRenderInput): Prom
     };
   }
 
-  const text = String(template.body).replace(PLACEHOLDER_RE, (_match, key: string) => nonEmpty(context[key]));
+  const externalSchedule = category === "meeting"
+    && ["external", "external_observers"].includes(audience)
+    && ["series_invite", "series_change", "series_cancel"].includes(eventType)
+    ? nonEmpty(context.external_schedule)
+    : "";
+  let text = String(template.body).replace(PLACEHOLDER_RE, (_match, key: string) =>
+    key === "external_schedule" ? externalSchedule : nonEmpty(context[key]));
+  if (externalSchedule) {
+    text = text
+      .replace("جزئیات و برنامه جلسات در تقویم سامانه اسپارک قابل مشاهده است.", "")
+      .replace(/\s*[|؛]?\s*جزئیات و استثناها در تقویم اسپارک/g, "")
+      .trim();
+    if (!placeholders.includes("external_schedule")) text += `\n\n${externalSchedule}`;
+  }
   return { ok: true, text, templateId: String(template.id), context };
 }

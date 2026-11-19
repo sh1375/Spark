@@ -48,8 +48,13 @@ test('local handler failures retain an unknown outcome and never retry', async (
   assert.equal(calls, 1);
 });
 
-for (const [name, handler] of [['internal', handleDispatchMode], ['external', handleExternalMode]] as const) {
+for (const [name, audience, handler] of [
+  ['internal', 'participants', handleDispatchMode],
+  ['external invitee', 'external', handleExternalMode],
+  ['external observer', 'external_observers', handleExternalMode],
+] as const) {
   test(`${name}: recurring template and provider rules reach the injected sender and record the receipt`, async () => {
+    const schedule = 'برنامه جلسات به وقت تهران:\nشنبه 1405/10/12، ساعت 09:00 تا 10:00\nیکشنبه 1405/10/20، ساعت 11:30 تا 12:30';
     const patches: any[] = [];
     const db = {
       rpc: async (name: string) => ({ data: name === 'claim_sms_dispatch_v1'
@@ -60,7 +65,9 @@ for (const [name, handler] of [['internal', handleDispatchMode], ['external', ha
           select() { return q; }, eq() { return q; },
           maybeSingle: async () => ({ data: table === 'profiles'
             ? { phone: '09123456789', full_name: 'همکار', is_active: true }
-            : table === 'sms_templates' ? { id: 'template', body: '{{summary}}' }
+            : table === 'sms_templates' ? { id: 'template', body: name === 'internal'
+              ? '{{summary}}'
+              : '{{summary}}\nجزئیات و برنامه جلسات در تقویم سامانه اسپارک قابل مشاهده است.' }
             : { id: 'provider', title: 'درگاه فعلی' } }),
           update(patch: any) { patches.push(patch); return q; },
           then(resolve: any) { return Promise.resolve({ error: null }).then(resolve); },
@@ -75,13 +82,13 @@ for (const [name, handler] of [['internal', handleDispatchMode], ['external', ha
       const response = await handler({ supabase: db, caller: { userId: 'service', isAdmin: true },
         json: (body: unknown, status = 200) => Response.json(body, { status }), isAuthOtp: false,
         body: { targetUserId: 'recipient', mobiles: ['09123456789'], category: 'meeting',
-          eventType: 'series_invite', eventKey: 'stable-event',
-          context: { summary: 'سه نوبت', sms_policy_deferred_delivery: true } },
+          eventType: 'series_invite', eventKey: 'stable-event', audience,
+          context: { summary: 'سه نوبت', external_schedule: schedule, sms_policy_deferred_delivery: true } },
         sendRequest: async (_url, init) => {
           sends++;
           const body = JSON.parse(init.body as string);
           assert.equal(body.mode, 'send');
-          assert.equal(body.message, 'سه نوبت');
+          assert.equal(body.message, name === 'internal' ? 'سه نوبت' : `سه نوبت\n\n${schedule}`);
           assert.equal(body.providerId, 'provider');
           assert.equal(body.bypassDeliveryPolicy, true);
           return Response.json({ ok: true, returnIds: ['provider-receipt'] });
