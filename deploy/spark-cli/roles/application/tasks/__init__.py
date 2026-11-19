@@ -90,8 +90,6 @@ class ApplicationConfigTask(OperationTask):
 from .build import ApplicationBuildTask
 from .deploy import ApplicationDeployTask
 from .edge import ApplicationEdgeFunctionsTask, ApplicationEdgeRuntimeTask
-from .livekit import ApplicationLiveKitTask
-from .coturn import ApplicationCoturnTask
 from .health import ApplicationHealthGateTask
 
 __all__ = [
@@ -102,7 +100,5 @@ __all__ = [
     "ApplicationDeployTask",
     "ApplicationEdgeRuntimeTask",
     "ApplicationEdgeFunctionsTask",
-    "ApplicationLiveKitTask",
-    "ApplicationCoturnTask",
     "ApplicationHealthGateTask",
 ]

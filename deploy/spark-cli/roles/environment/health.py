@@ -71,8 +71,6 @@ def inspect_environment(environment: EnvironmentConfig) -> EnvironmentHealth:
     checks["realtime"] = "PASS" if postgresql_ok and gateway_ok else "FAIL"
     edge_status = _http_status(f"http://{app}:{environment.application.edge.port}/{environment.application.edge.probe_function}")
     checks["edge_functions"] = "PASS" if edge_status in {200, 401, 403, 404} else "FAIL"
-    checks["livekit"] = "PASS" if _tcp(app, environment.application.livekit.api_port) and _tcp(app, environment.application.livekit.rtc_tcp_port) else "FAIL"
-    checks["turn_tcp"] = "PASS" if _tcp(app, environment.application.coturn.listener_port) and _tcp(app, environment.application.coturn.tls_port) else "FAIL"
 
     for index, host in enumerate((rp_node.host, *rp_node.secondary_hosts), start=1):
         checks[f"reverse_proxy_{index}"] = "PASS" if _tcp(host, 443) else "FAIL"

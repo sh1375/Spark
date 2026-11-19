@@ -9,8 +9,6 @@ operations:
   - application.deploy
   - application.edge-runtime
   - application.edge-functions
-  - application.livekit
-  - application.coturn
   - application.health-gate
 deferred:
   - application.advanced-observability

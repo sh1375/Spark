@@ -122,9 +122,9 @@ def architecture_role_health() -> ControllerResult:
     if role == "database":
         keys = ("auth", "rest", "realtime", "storage")
     elif role == "application":
-        keys = ("frontend", "edge_functions", "livekit", "turn_tcp")
+        keys = ("frontend", "edge_functions")
     else:
-        keys = ("frontend", "auth", "rest", "realtime", "storage", "edge_functions", "livekit", "turn_tcp")
+        keys = ("frontend", "auth", "rest", "realtime", "storage", "edge_functions")
     lines = [f"Profile: {path}", f"Current role: {role}"]
     ok = True
     for key in keys:

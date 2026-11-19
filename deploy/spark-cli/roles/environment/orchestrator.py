@@ -62,7 +62,7 @@ def _local_healthy(role: str, health: EnvironmentHealth, local: HostContext) -> 
     if role == "database":
         return all(checks.get(key) == "PASS" for key in ("auth", "rest", "realtime", "storage"))
     if role == "application":
-        return all(checks.get(key) == "PASS" for key in ("frontend", "edge_functions", "livekit", "turn_tcp"))
+        return all(checks.get(key) == "PASS" for key in ("frontend", "edge_functions"))
     if role == "reverse_proxy":
         return any(checks.get(key) == "PASS" for key in checks if key.startswith("reverse_proxy_"))
     return False
