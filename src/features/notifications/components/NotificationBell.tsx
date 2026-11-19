@@ -1,3 +1,4 @@
+import { IncomingCallPrompt } from './IncomingCallPrompt';
 import { useState, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell } from 'lucide-react';
@@ -36,6 +37,7 @@ export function NotificationBell({ onNavigate, currentUserId = null }: Notificat
   const grouped = groupNotificationsByDate(notifications);
   return (
     <div className="relative shrink-0">
+      {currentUserId && <IncomingCallPrompt key={currentUserId} userId={currentUserId} notifications={notifications} />}
       <button
         ref={triggerRef}
         type="button"
