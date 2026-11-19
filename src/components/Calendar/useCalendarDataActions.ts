@@ -43,7 +43,6 @@ export function useCalendarDataActions(scope: Record<string, any>) {
 
   const fetchCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    console.log('[CalendarPage] fetchCurrentUser → userId:', user?.id ?? 'null');
     if (user) setCurrentUserId(user.id);
   };
 
@@ -52,12 +51,12 @@ export function useCalendarDataActions(scope: Record<string, any>) {
     if (!liveRefreshRef.current) setIsRefreshing(true);
     try {
       const userId = currentUserId ?? providedUserId;
-      if (!userId) { console.log('[CalendarPage] fetchMeetings: no user, returning'); return; }
+      if (!userId) return;
 
       // Build ±2-month Gregorian date range around the viewed month
       const baseJy = jy ?? currentJy;
       const baseJm = jm ?? currentJm;
-      if (!baseJy || !baseJm) { console.log('[CalendarPage] fetchMeetings: no jy/jm, returning (jy=' + baseJy + ' jm=' + baseJm + ')'); return; }
+      if (!baseJy || !baseJm) return;
 
       const rangeStart = jalaaliToDate(baseJy, Math.max(1, baseJm - 2), 1);
       const endJm = baseJm + 2;
@@ -71,7 +70,6 @@ export function useCalendarDataActions(scope: Record<string, any>) {
       const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       const queryFrom = fmt(rangeStart);
       const queryTo   = fmt(rangeEnd);
-      console.log('[CalendarPage] fetchMeetings query range:', queryFrom, '→', queryTo, '(jy/jm:', baseJy, baseJm + ')');
 
       const [
         { data, error },
@@ -139,14 +137,6 @@ export function useCalendarDataActions(scope: Record<string, any>) {
       });
 
       if (version !== fetchVersionRef.current) return;
-      console.log('[CalendarPage] fetchMeetings → setMeetings count:', enriched.length, 'userId:', userId, 'jy/jm:', baseJy, baseJm);
-      // Sample the first 5 meetings to debug date grouping
-      enriched.slice(0, 5).forEach((m: any) => {
-        const groupKey = parseRequestDateToDateStr(m.request_date);
-        const rawDate = new Date(m.request_date);
-        const jalKey = groupKey ? (() => { const jk = toJalaali(new Date(groupKey + 'T00:00:00')); return `${jk.jy}/${jk.jm}/${jk.jd}`; })() : 'null';
-        console.log('[CalendarPage] sample meeting:', m.subject, '| request_date raw:', m.request_date, '| parsedGreg:', groupKey, '| jalali:', jalKey, '| rawDateUTC:', rawDate.toISOString(), '| start_time:', m.start_time);
-      });
       setMeetings(enriched);
     } catch {
       if (version === fetchVersionRef.current) setMeetings([]);
@@ -212,7 +202,6 @@ export function useCalendarDataActions(scope: Record<string, any>) {
       const subCals = subs ? (subs.map((s: any) => s.calendars).filter(Boolean) as CalendarEntry[]) : [];
       setSubscribedCalendars(subCals);
       const newEnabledIds = new Set([...ownCals.map(c => c.id), ...subCals.map(c => c.id)]);
-      console.log('[CalendarPage] fetchCalendars → enabledCalendarIds:', [...newEnabledIds], 'ownCals:', ownCals.length, 'subCals:', subCals.length);
       const previousIds = knownCalendarIds.current;
       knownCalendarIds.current = newEnabledIds;
       setEnabledCalendarIds((current: Set<string>) => mergeLiveSelection(current, previousIds, newEnabledIds));

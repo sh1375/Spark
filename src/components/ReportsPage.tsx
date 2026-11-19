@@ -1,5 +1,5 @@
 import { useLiveData, LIVE_DATA } from '../shared/realtime/useLiveData';
-import { useEffect, useState, type ElementType } from 'react';
+import { useEffect, useRef, useState, type ElementType } from 'react';
 import {
   ChartBar as BarChart3,
   TrendingUp,
@@ -50,6 +50,9 @@ interface Stats {
 }
 
 type DateRange = '1month' | '3months' | '6months' | '1year';
+const RANGE_MONTHS: Record<DateRange, number> = { '1month': 1, '3months': 3, '6months': 6, '1year': 12 };
+const TEHRAN_OFFSET_MINUTES = 210;
+
 type KpiTone = 'violet' | 'blue' | 'cyan' | 'emerald' | 'amber' | 'rose' | 'slate';
 
 const REPORT_FIELDS = [
@@ -163,7 +166,7 @@ function BarChartBlock({
   data: Record<string, number>;
   color?: string;
 }) {
-  const entries = Object.entries(data).sort(([a], [b]) => a.localeCompare(b)).slice(-8);
+  const entries = Object.entries(data).sort(([a], [b]) => a.localeCompare(b));
   const max = Math.max(...entries.map(([, value]) => value), 1);
 
   if (entries.length === 0) {
@@ -196,6 +199,7 @@ export function ReportsPage() {
   const canExport = hasPermission('reports_export');
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const statsRequest = useRef(0);
   const [range, setRange] = useState<DateRange>('3months');
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedFields, setSelectedFields] = useState<string[]>([]);
@@ -207,18 +211,23 @@ export function ReportsPage() {
   }, [range]);
 
   const fetchStats = async () => {
+    const request = ++statsRequest.current;
     if (!liveRefreshRef.current) setLoading(true);
     try {
-      const monthsBack = range === '1month' ? 1 : range === '3months' ? 3 : range === '6months' ? 6 : 12;
-      const since = moment().subtract(monthsBack, 'months').toISOString();
+      const monthStart = moment().utcOffset(TEHRAN_OFFSET_MINUTES).startOf('jMonth');
+      const from = monthStart.clone().subtract(RANGE_MONTHS[range] - 1, 'jMonth');
+      const to = monthStart.clone().add(1, 'jMonth');
 
-      const [{ data: meetings }, { data: tasks }] = await Promise.all([
-        supabase.from('meetings').select('*, participants(id), actions(id,status)').gte('request_local_date', moment().subtract(monthsBack, 'months').format('YYYY-MM-DD')),
-        supabase.from('tasks').select('*').gte('created_at', since),
+      const [meetingsResult, tasksResult] = await Promise.all([
+        supabase.from('meetings').select('*, participants(id), actions(id,status)')
+          .gte('request_local_date', from.format('YYYY-MM-DD')).lt('request_local_date', to.format('YYYY-MM-DD')),
+        supabase.from('tasks').select('*').gte('created_at', from.toISOString()).lt('created_at', to.toISOString()),
       ]);
+      if (request !== statsRequest.current) return;
+      if (meetingsResult.error || tasksResult.error) throw new Error('REPORT_QUERY_FAILED');
 
-      const m = meetings || [];
-      const t = tasks || [];
+      const m = meetingsResult.data || [];
+      const t = tasksResult.data || [];
       const now = new Date();
 
       const meetingsByMonth: Record<string, number> = {};
@@ -231,7 +240,7 @@ export function ReportsPage() {
       let durCount = 0;
 
       m.forEach(mtg => {
-        const mk = moment(mtg.request_date).format('jYYYY/jMM');
+        const mk = moment.utc(mtg.request_local_date).format('jYYYY/jMM');
         meetingsByMonth[mk] = (meetingsByMonth[mk] || 0) + 1;
         totalPart += mtg.participants?.length || 0;
         locationCount[mtg.location] = (locationCount[mtg.location] || 0) + 1;
@@ -244,7 +253,7 @@ export function ReportsPage() {
       });
 
       t.forEach(task => {
-        const tk = moment(task.created_at).format('jYYYY/jMM');
+        const tk = moment(task.created_at).utcOffset(TEHRAN_OFFSET_MINUTES).format('jYYYY/jMM');
         tasksByMonth[tk] = (tasksByMonth[tk] || 0) + 1;
       });
 
@@ -277,9 +286,12 @@ export function ReportsPage() {
         tasksByMonth,
       });
     } catch {
-      toast.error('خطا در دریافت آمار');
+      if (request === statsRequest.current) {
+        setStats(null);
+        toast.error('خطا در دریافت آمار');
+      }
     } finally {
-      setLoading(false);
+      if (request === statsRequest.current) setLoading(false);
     }
   };
 
@@ -450,7 +462,7 @@ export function ReportsPage() {
                   </span>
                   <div>
                     <h2 className="text-xs font-bold text-slate-800 dark:text-slate-100 sm:text-sm">روند ماهانه جلسات</h2>
-                    <p className="mt-0.5 text-[9px] text-slate-400">تعداد جلسات ثبت‌شده در بازه انتخابی</p>
+                    <p className="mt-0.5 text-[9px] text-slate-400">تعداد جلسات بر اساس تاریخ جلسه در ماه‌های شمسیِ بازهٔ انتخابی</p>
                   </div>
                 </div>
               </div>

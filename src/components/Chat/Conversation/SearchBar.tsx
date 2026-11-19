@@ -9,7 +9,7 @@ export function SearchBar({ searchQuery, setSearchQuery, resultCount }: {
     <div className="flex-shrink-0 border-b border-violet-100 bg-violet-50/45 px-3 py-1.5 dark:border-violet-500/15 dark:bg-violet-500/[0.05]">
       <div className="relative min-w-0">
         <Search className="pointer-events-none absolute right-3 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2 text-violet-400" aria-hidden="true" />
-        <input
+        <input name="chat-conversation-search" aria-label="جستجوی پیام"
           autoFocus
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}

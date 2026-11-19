@@ -191,7 +191,6 @@ export function CalendarPage({
       if (m.status === 'archived' && m.status_type !== 'scheduled' && !prefs.show_cancelled_meetings) return false;
       return true;
     });
-    console.log('[CalendarPage] visibleMeetings: total=' + meetings.length + ' visible=' + result.length + ' show_past=' + prefs.show_past_meetings + ' show_cancelled=' + prefs.show_cancelled_meetings + ' todayStr(Tehran)=' + todayStr);
     return result;
   }, [meetings, prefs.show_past_meetings, prefs.show_cancelled_meetings]);
 
@@ -503,7 +502,6 @@ export function CalendarPage({
 
   // ---- Init ----
   useEffect(() => {
-    console.log('[CalendarPage] MOUNT');
     const now = toJalaali(new Date());
     setCurrentJy(now.jy); setCurrentJm(now.jm);
     setSelectedJy(now.jy); setSelectedJm(now.jm); setSelectedJd(now.jd);
@@ -663,7 +661,6 @@ export function CalendarPage({
     // This prevents a race where meetings appear then vanish when the two async fetches
     // resolve in the wrong order.
     const calendarsLoaded = enabledCalendarIds.size > 0 || calendars.length > 0;
-    let hiddenCalId = 0, hiddenNoCalNoSub = 0, hiddenPublicCalOff = 0;
     visibleMeetings.forEach(m => {
       const isCreator = !!currentUserId && m.user_id === currentUserId;
       const isAssigned = !!currentUserId && !isCreator && (
@@ -684,7 +681,7 @@ export function CalendarPage({
       // Meetings assigned to me → always use my personal public calendar toggle
       if (isAssigned) {
         // If I have a public calendar and it's disabled → hide the meeting
-        if (myPublicCalendar && !enabledCalendarIds.has(myPublicCalendar.id)) { hiddenPublicCalOff++; return; }
+        if (myPublicCalendar && !enabledCalendarIds.has(myPublicCalendar.id)) return;
         // If I have NO public calendar at all → still show (no toggle to apply)
         const s = parseRequestDateToDateStr(m.request_date);
         if (!s) return;
@@ -700,16 +697,16 @@ export function CalendarPage({
       if (m.calendar_id) {
         // If this calendar has a direct checkbox (owned or subscribed), respect its toggle strictly
         if (knownCalendarIds.has(m.calendar_id)) {
-          if (!enabledCalendarIds.has(m.calendar_id)) { hiddenCalId++; return; }
+          if (!enabledCalendarIds.has(m.calendar_id)) return;
         } else if (!isCreator) {
-          hiddenCalId++; return;
+          return;
         }
       } else {
         // Creator's meeting without a calendar: respect myPublicCalendar toggle
         if (isCreator) {
-          if (myPublicCalendar && !enabledCalendarIds.has(myPublicCalendar.id)) { hiddenPublicCalOff++; return; }
+          if (myPublicCalendar && !enabledCalendarIds.has(myPublicCalendar.id)) return;
         } else {
-          if (!isViaSubscription) { hiddenNoCalNoSub++; return; }
+          if (!isViaSubscription) return;
           if (m.members_only) return;
         }
       }
@@ -719,15 +716,8 @@ export function CalendarPage({
       if (!map[s]) map[s] = [];
       map[s].push(m);
     });
-    const shown = Object.values(map).reduce((a, arr) => a + arr.length, 0);
-    // Log a sample of what keys are in the map vs what the grid would look up
-    const mapKeys = Object.keys(map).slice(0, 5);
-    const sampleGridKey1 = jalaaliToYYYYMMDD(currentJy || 1405, currentJm || 4, 1);
-    const sampleGridKey2 = jalaaliToYYYYMMDD(currentJy || 1405, currentJm || 4, 15);
-    console.log('[CalendarPage] meetingsByDate recomputed: visibleMeetings=' + visibleMeetings.length + ' shown=' + shown + ' hiddenCalId=' + hiddenCalId + ' hiddenNoCalNoSub=' + hiddenNoCalNoSub + ' hiddenPublicCalOff=' + hiddenPublicCalOff + ' currentUserId=' + currentUserId + ' enabledCalendarIds.size=' + enabledCalendarIds.size + ' calendarsLoaded=' + calendarsLoaded + ' myPublicCalendar=' + myPublicCalendar?.id);
-    console.log('[CalendarPage] meetingsByDate keys (sample):', mapKeys, '| grid lookup key for day 1:', sampleGridKey1, '| day 15:', sampleGridKey2, '| currentJy/Jm:', currentJy, currentJm);
     return map;
-  }, [visibleMeetings, enabledCalendarIds, calendars, currentUserId, isAnyParticipantSubscribed, myPublicCalendar, currentJy, currentJm]);
+  }, [visibleMeetings, enabledCalendarIds, calendars, currentUserId, isAnyParticipantSubscribed, myPublicCalendar]);
 
   const getMeetings = useCallback((jy: number, jm: number, jd: number): MeetingData[] => {
     return meetingsByDate[jalaaliToYYYYMMDD(jy, jm, jd)] || [];

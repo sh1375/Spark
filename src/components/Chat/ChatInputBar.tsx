@@ -701,7 +701,7 @@ export function ChatInputBar({
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-2xl shadow-sm">
           {/* Textarea */}
           <div className="relative px-3 pt-2.5">
-            <textarea
+            <textarea name="chat-message" aria-label="متن پیام"
               ref={textareaRef}
               value={body}
               onChange={e => { handleBodyChange(e.target.value); adjustHeight(); }}
@@ -760,7 +760,7 @@ export function ChatInputBar({
             <ToolBtn title="ارسال فایل یا عکس" onClick={() => fileInputRef.current?.click()}>
               <Paperclip className="w-[18px] h-[18px]" />
             </ToolBtn>
-            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+            <input name="chat-attachment" aria-label="پیوست پیام" ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
 
             {/* Advanced editor toggle */}
             <ToolBtn title="ادیتور پیشرفته" active={showAdvancedEditor} onClick={() => setShowAdvancedEditor(v => !v)}>

@@ -181,7 +181,7 @@ export function ChatSidebar({
         <div className="flex-shrink-0 px-2.5 py-2">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            <input
+            <input name="chat-contact-search" aria-label="جستجوی مخاطب"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="جستجوی مخاطب..."
