@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import test from 'node:test';
 import moment from 'moment-jalaali';
+import { normalizeIranPhone } from '../../src/lib/phoneNormalize';
 import { computeMeetingChangeSet, computeScopedMeetingChangeSet, computeExternalDiff } from '../../src/lib/meetingEditDiff';
 
 process.env.TZ = 'Asia/Tehran';
@@ -49,6 +50,7 @@ for (const importantChange of [false, true]) {
     source = source.replace(/^import[\s\S]*?;\n/gm, '').replace('export async function', 'async function').replaceAll('import.meta.env?.DEV', 'false');
     const events: any[] = [];
     const external: any[][] = [];
+    const dispatched: string[] = [];
     const rpcDiffs = ['one', 'two'].map(meeting_id => ({ meeting_id, added_participant_ids: ['new'], retained_participant_ids: ['old'], removed_participant_ids: [] }));
     const mockDb = {
       from: () => ({
@@ -59,7 +61,9 @@ for (const importantChange of [false, true]) {
       rpc: async () => ({ data: rpcDiffs }),
     };
     const commit = evaluate(source, {
-      moment, supabase: mockDb, computeExternalDiff,
+      moment, supabase: mockDb, computeExternalDiff, normalizeIranPhone,
+      persistCalendarChanges: async (_client: unknown, ids: string[]) => ids.map(id => ({ id, timing_changed: importantChange })),
+      dispatchRecurringMeetingDelivery: async (id: string) => { dispatched.push(id); },
       insertNotification: async (payload: any) => { events.push(payload); return { status: 'sent' }; },
       sendSmsToExternals: async (...args: any[]) => { external.push(args); return { ok: true, sent: 1, skipped: 0 }; },
       showSmsSummary: () => {}, getMeetingTemplateKey: (_role: string, event: string) => event,
@@ -81,14 +85,15 @@ for (const importantChange of [false, true]) {
       subject: 'test', startTime: '07:00', endTime: '08:00', contacts: [],
       commitLockRef: { current: false }, setCommitting() {}, setEditDecision() {}, onSuccess() {},
     });
+    assert.deepEqual(dispatched, importantChange ? ['one', 'two'] : []);
     assert.equal(events.filter(e => e.userId === 'owner').length, 0);
     for (const id of ['one', 'two']) {
       const current = events.filter(e => e.meetingId === id);
       assert.deepEqual(current.filter(e => e.eventType === 'invite').map(e => e.userId), ['new', 'new-observer']);
       assert.deepEqual(current.filter(e => e.eventType === 'change').map(e => e.userId), importantChange ? ['old', 'observer'] : []);
       const sms = external.filter(e => e[6] === id);
-      assert.deepEqual(sms.filter(e => e[5].endsWith('invite')).flatMap(e => e[0]).sort(), ['new external', 'new informee']);
-      assert.equal(sms.filter(e => e[5].endsWith('change')).length, importantChange ? 2 : 0);
+      assert.deepEqual(sms.filter(e => e[5].endsWith('invite')).flatMap(e => e[0]).sort(), importantChange ? [] : ['new external', 'new informee']);
+      assert.equal(sms.filter(e => e[5].endsWith('change')).length, 0);
     }
   });
 }
@@ -110,10 +115,11 @@ test('managed series editing submits membership and fields in one server command
   const commit=evaluate(source,{
     supabase:{from:()=>({select:()=>({eq:()=>({single:async()=>({data:{series_id:'series'}})})}),delete:()=>({eq:async()=>({})})}),rpc:async(name:string,args:any)=>{calls.push({name,args});return{};}},
     toast:{error(message:string){assert.fail(message);}},
+    dispatchRecurringMeetingDelivery: async () => {},
     insertNotification(){assert.fail('legacy notification must not run');},
   },'commitCalendarMeetingEdit');
   await commit({snapshot:{operationId:'operation',updateRecord:{subject:'Updated'},baseFields:null,isOnline:false,wasOnline:false,agendaEnabled:false,agendaItems:[],selectedParticipantIds:['retained','new']},notifyExistingParticipants:true,userId:'owner',prefillMeetingId:'occurrence',prefillEditAllIds:null,subject:'Updated',contacts:[],commitLockRef:{current:false},setCommitting(){},setEditDecision(){},onSuccess(){successful=true;}});
-  assert.equal(successful,true);assert.equal(calls.length,1);assert.equal(calls[0].name,'update_meeting_series');
+  assert.equal(successful,true);assert.deepEqual(calls.map(call => call.name), ['update_meeting_series', 'sync_linked_meeting_agenda_v1']);
   assert.deepEqual(calls[0].args.p_patch,{subject:'Updated',participant_user_ids:['retained','new']});
 });
 

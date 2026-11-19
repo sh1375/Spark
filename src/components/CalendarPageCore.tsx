@@ -1,3 +1,4 @@
+import { dispatchRecurringMeetingDelivery } from '../features/meetings/services/dispatchRecurringMeetingDelivery';
 import { persistCalendarTiming, meetingTimingPlaceholders } from './Calendar/persistCalendarTiming';
 import { notifyBrowser } from '../lib/pwaNotificationBridge';
 import { useLiveData } from '../shared/realtime/useLiveData';
@@ -993,7 +994,7 @@ export function CalendarPage({
     const { meeting, updates, ns, ne } = snap;
 
     try {
-      const saved = await persistCalendarTiming(supabase, meeting.id, updates);
+      const saved = await persistCalendarTiming(supabase, meeting.id, updates, withNotify);
       const movedMtg = { ...meeting, ...updates, ...saved };
       setMeetings(previous => previous.map(row => row.id === meeting.id ? { ...row, ...saved } : row));
 
@@ -1002,6 +1003,14 @@ export function CalendarPage({
 
       if (!withNotify) {
         toast.success('تغییرات جلسه بدون اطلاع‌رسانی ذخیره شد');
+        return;
+      }
+
+      if (saved.series_id || saved.timing_changed) {
+        await dispatchRecurringMeetingDelivery(saved.series_id ?? meeting.id);
+      }
+      if (saved.series_id) {
+        toast.success('تغییرات جلسه ذخیره شد');
         return;
       }
 
@@ -1047,7 +1056,7 @@ export function CalendarPage({
           if (deliveryResults.some(result => result?.ok === false)) throw new Error('MEETING_NOTIFICATION_FAILED');
         }
 
-        toast.success('تغییرات جلسه ذخیره شد و اطلاع‌رسانی انجام شد');
+        toast.success('تغییرات جلسه ذخیره شد');
       } catch (notificationError) {
         console.error('Meeting move notification error:', notificationError);
         toast.error('تغییرات جلسه ذخیره شد، اما اطلاع‌رسانی به‌طور کامل انجام نشد');
@@ -1087,7 +1096,7 @@ export function CalendarPage({
     };
 
     try {
-      const saved = await persistCalendarTiming(supabase, meeting.id, updates);
+      const saved = await persistCalendarTiming(supabase, meeting.id, updates, withNotify);
       const resizedMtg = { ...meeting, ...updates, ...saved };
       setMeetings(previous => previous.map(row => row.id === meeting.id ? { ...row, ...saved } : row));
 
@@ -1096,6 +1105,14 @@ export function CalendarPage({
 
       if (!withNotify) {
         toast.success('تغییرات جلسه بدون اطلاع‌رسانی ذخیره شد');
+        return;
+      }
+
+      if (saved.series_id || saved.timing_changed) {
+        await dispatchRecurringMeetingDelivery(saved.series_id ?? meeting.id);
+      }
+      if (saved.series_id) {
+        toast.success('تغییرات جلسه ذخیره شد');
         return;
       }
 
@@ -1141,7 +1158,7 @@ export function CalendarPage({
           if (deliveryResults.some(result => result?.ok === false)) throw new Error('MEETING_NOTIFICATION_FAILED');
         }
 
-        toast.success('تغییرات جلسه ذخیره شد و اطلاع‌رسانی انجام شد');
+        toast.success('تغییرات جلسه ذخیره شد');
       } catch (notificationError) {
         console.error('Meeting resize notification error:', notificationError);
         toast.error('تغییرات جلسه ذخیره شد، اما اطلاع‌رسانی به‌طور کامل انجام نشد');

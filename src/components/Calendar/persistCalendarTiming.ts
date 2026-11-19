@@ -1,10 +1,19 @@
-/** A filtered UPDATE can affect zero rows without an HTTP error. Require its persisted timing. */
-export async function persistCalendarTiming(client: any, id: string, updates: Record<string,string>) {
-  const {data,error}=await client.from('meetings').update(updates).eq('id',id)
-    .select('id,request_date,start_time,end_time,duration').single();
-  if(error)throw error;
-  if(!data||data.id!==id||!data.start_time||!data.end_time)throw new Error('MEETING_TIMING_NOT_SAVED');
+import type { supabase } from '../../lib/supabase';
+import type { Json } from '../../types/supabase';
+
+export async function persistCalendarChanges(client: typeof supabase, ids: string[], patch: Json, notify: boolean) {
+  const { data, error } = await client.rpc('save_calendar_meeting_changes_v1', {
+    p_ids: ids, p_patch: patch, p_notify: notify,
+  });
+  if (error) throw error;
+  if (!data || data.length !== ids.length) throw new Error('MEETING_TIMING_NOT_SAVED');
   return data;
+}
+
+export async function persistCalendarTiming(client: typeof supabase, id: string, updates: Record<string, string>, notify: boolean) {
+  const [saved] = await persistCalendarChanges(client, [id], updates, notify);
+  if (saved.id !== id || !saved.start_time || !saved.end_time) throw new Error('MEETING_TIMING_NOT_SAVED');
+  return saved;
 }
 export function meetingTimingPlaceholders(meeting: {id:string;start_time:string|null;end_time:string|null}) {
   return {meeting_id:meeting.id,start_time:meeting.start_time||'',end_time:meeting.end_time||''};

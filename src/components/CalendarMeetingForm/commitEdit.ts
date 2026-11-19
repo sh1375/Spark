@@ -1,3 +1,5 @@
+import { normalizeIranPhone } from '../../lib/phoneNormalize';
+import { persistCalendarChanges } from '../Calendar/persistCalendarTiming';
 import { dispatchRecurringMeetingDelivery } from '../../features/meetings/services/dispatchRecurringMeetingDelivery';
 import type { MutableRefObject } from 'react';
 import moment from 'moment-jalaali';
@@ -84,6 +86,7 @@ export async function commitCalendarMeetingEdit({
     const { data: identity, error: identityError } = await supabase.from('meetings').select('series_id').eq('id', prefillMeetingId).single();
     if (identityError) throw identityError;
     const managedSeries = Boolean((identity as any)?.series_id);
+    const queuedTimingIds = new Set<string>();
     let seriesRoomId: string | null = null;
     if (managedSeries && snapshot.isOnline && !snapshot.wasOnline) {
       const room = await createConferenceRoom(userId, subject);
@@ -98,12 +101,18 @@ export async function commitCalendarMeetingEdit({
         p_notify: notifyExistingParticipants,
       });
       if (error) throw error;
-    } else if (baseFields && prefillEditAllIds && prefillEditAllIds.length > 0) {
-      const { error } = await supabase.from('meetings').update(baseFields).in('id', prefillEditAllIds);
-      if (error) throw error;
     } else {
-      const { error } = await supabase.from('meetings').update(updateRecord).eq('id', prefillMeetingId);
-      if (error) throw error;
+      const bulk = Boolean(baseFields && prefillEditAllIds?.length);
+      const saved = await persistCalendarChanges(
+        supabase, bulk ? prefillEditAllIds! : [prefillMeetingId],
+        bulk ? baseFields! : updateRecord, notifyExistingParticipants,
+      );
+      if (notifyExistingParticipants) {
+        for (const row of saved) {
+          if (row.timing_changed) queuedTimingIds.add(row.id);
+        }
+        await Promise.all([...queuedTimingIds].map(dispatchRecurringMeetingDelivery));
+      }
     }
 
     if (!managedSeries && snapshot.isOnline && !snapshot.wasOnline) {
@@ -168,6 +177,9 @@ export async function commitCalendarMeetingEdit({
       }];
     }
 
+    const currentExternalNames = new Set([...selectedExternal, ...selectedExternalInformees]);
+    const currentExternalPhones = new Set(contacts.filter(contact => currentExternalNames.has(contact.name))
+      .map(contact => normalizeIranPhone(contact.phone)).filter(Boolean));
     const internalSmsResults: SmsDispatchResult[] = [];
     const externalSmsResults: ExternalSmsResult[] = [];
 
@@ -446,12 +458,13 @@ export async function commitCalendarMeetingEdit({
         }
       }
 
+      const timingQueued = queuedTimingIds.has(diff.meeting_id);
       const previousInformees = snapshot.prevExternalInformeesByMeetingId[diff.meeting_id] || [];
       const informeeDiff = computeExternalDiff(previousInformees, selectedExternalInformees);
       const informeeInviteNames = isFirstSchedule
         ? Array.from(new Set([...informeeDiff.added, ...informeeDiff.retained]))
         : informeeDiff.added;
-      if (informeeInviteNames.length > 0) {
+      if (!timingQueued && informeeInviteNames.length > 0) {
         const informeeInviteFallback = `جهت اطلاع شما جلسه «${meetingSubject}» در تاریخ ${jalaliDate || meetingDateStr}${currentTime ? ` ساعت ${currentTime}` : ''}${currentPlaceholders.location_part} برگزار می‌شود.`;
         externalSmsResults.push(await sendSmsToExternals(
           informeeInviteNames,
@@ -472,7 +485,7 @@ export async function commitCalendarMeetingEdit({
           ? Array.from(new Set([...externalDiff.added, ...externalDiff.retained]))
           : externalDiff.added;
         const inviteFallback = `دعوت به جلسه: «${meetingSubject}» | تاریخ: ${jalaliDate || meetingDateStr} | ساعت: ${currentTime}${currentPlaceholders.location_part}`;
-        if (externalInviteIds.length > 0) {
+        if (!timingQueued && externalInviteIds.length > 0) {
           externalSmsResults.push(await sendSmsToExternals(
             externalInviteIds,
             contacts,
@@ -484,7 +497,7 @@ export async function commitCalendarMeetingEdit({
             `${operationId}:${diff.meeting_id}:external:invite`,
           ));
         }
-        if (!isFirstSchedule && (meetingChangeSet?.importantFields.length ?? 0) > 0 && externalDiff.retained.length > 0) {
+        if (!timingQueued && !isFirstSchedule && (meetingChangeSet?.importantFields.length ?? 0) > 0 && externalDiff.retained.length > 0) {
           const changeFallback = `تغییر جلسه: «${meetingSubject}» | تاریخ: ${jalaliDate || meetingDateStr} | ساعت: ${currentTime}${currentPlaceholders.location_part}`;
           externalSmsResults.push(await sendSmsToExternals(
             externalDiff.retained,
@@ -497,10 +510,14 @@ export async function commitCalendarMeetingEdit({
             `${operationId}:${diff.meeting_id}:external:change`,
           ));
         }
-        if (externalDiff.removed.length > 0) {
+        const removedExternal = timingQueued
+          ? externalDiff.removed.filter(name => !currentExternalNames.has(name)
+            && !currentExternalPhones.has(normalizeIranPhone(contacts.find(contact => contact.name === name)?.phone)))
+          : externalDiff.removed;
+        if (removedExternal.length > 0) {
           const cancelFallback = `لغو دعوت: جلسه «${meetingSubject}» در تاریخ ${jalaliDate || meetingDateStr} لغو شد.`;
           externalSmsResults.push(await sendSmsToExternals(
-            externalDiff.removed,
+            removedExternal,
             contacts,
             cancelFallback,
             userId,
@@ -511,7 +528,7 @@ export async function commitCalendarMeetingEdit({
           ));
         }
 
-        if (!isFirstSchedule && (meetingChangeSet?.importantFields.length ?? 0) > 0 && informeeDiff.retained.length > 0) {
+        if (!timingQueued && !isFirstSchedule && (meetingChangeSet?.importantFields.length ?? 0) > 0 && informeeDiff.retained.length > 0) {
           const informeeChangeFallback = `تغییر جلسه: «${meetingSubject}» | تاریخ: ${jalaliDate || meetingDateStr} | ساعت: ${currentTime}${currentPlaceholders.location_part}`;
           externalSmsResults.push(await sendSmsToExternals(
             informeeDiff.retained,

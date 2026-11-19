@@ -171,7 +171,7 @@ export async function renderSystemSmsTemplate(input: SystemSmsRenderInput): Prom
 
   const externalSchedule = category === "meeting"
     && ["external", "external_observers"].includes(audience)
-    && ["series_invite", "series_change", "series_cancel"].includes(eventType)
+    && ["series_invite", "series_change", "series_cancel", "change", "informee_change"].includes(eventType)
     ? nonEmpty(context.external_schedule)
     : "";
   let text = String(template.body).replace(PLACEHOLDER_RE, (_match, key: string) =>
@@ -181,6 +181,9 @@ export async function renderSystemSmsTemplate(input: SystemSmsRenderInput): Prom
       .replace("جزئیات و برنامه جلسات در تقویم سامانه اسپارک قابل مشاهده است.", "")
       .replace(/\s*[|؛]?\s*جزئیات و استثناها در تقویم اسپارک/g, "")
       .trim();
+    if (["change", "informee_change"].includes(eventType) && !placeholders.includes("meeting_subject")) {
+      text = `تغییر زمان جلسه «${nonEmpty(context.meeting_subject)}»\n${text}`;
+    }
     if (!placeholders.includes("external_schedule")) text += `\n\n${externalSchedule}`;
   }
   return { ok: true, text, templateId: String(template.id), context };

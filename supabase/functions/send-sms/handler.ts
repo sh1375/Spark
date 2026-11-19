@@ -1093,7 +1093,7 @@ export async function handleSendSms(req: Request): Promise<Response> {
         durationMs,
         error: e.message,
       };
-      return json({ ok: false, error: `خطای اتصال به سرور: ${e.message}`, debug: [debugEntry] });
+      return json({ ok: false, errorCode: "PROVIDER_TRANSPORT_ERROR", error: `خطای اتصال به سرور: ${e.message}`, debug: [debugEntry] });
     }
 
     const sendDurationMs = Date.now() - sendT0;

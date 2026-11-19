@@ -1,3 +1,4 @@
+import { dispatchRecurringMeetingDelivery } from '../../features/meetings/services/dispatchRecurringMeetingDelivery';
 import { useLiveRevision, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useState, useEffect, useRef } from 'react';
 import { X, Clock, MapPin, Users, User, Phone, Bell, RefreshCw, UserPlus, Share2, ExternalLink, Trash2, CreditCard as Edit2, Video, Copy, Check, FileText, Image, CalendarDays, CircleCheck as CheckCircle2, Circle as XCircle, Circle as HelpCircle, UserCheck, ClipboardList, Loader as Loader2, CircleAlert as AlertCircle } from 'lucide-react';
@@ -47,6 +48,25 @@ export function MeetingDetailModal({
 }: Props) {
   const isOwner = m.user_id === currentUserId;
   const isManager = m.meeting_manager === currentUserId;
+  const [retryingTimingSms, setRetryingTimingSms] = useState(false);
+  const retryTimingSms = async () => {
+    if (retryingTimingSms) return;
+    setRetryingTimingSms(true);
+    try {
+      const { data, error } = await supabase.rpc('retry_calendar_schedule_sms_v1', { p_meeting_id: m.id });
+      if (error) throw error;
+      if (!data) {
+        toast('پیامک ناموفق و قابل ارسال مجدد برای زمان فعلی جلسه یافت نشد.');
+        return;
+      }
+      toast.success('درخواست ارسال مجدد پیامک ثبت شد.');
+      await dispatchRecurringMeetingDelivery(m.series_id ?? m.id);
+    } catch {
+      toast.error('ثبت درخواست ارسال مجدد پیامک ناموفق بود.');
+    } finally {
+      setRetryingTimingSms(false);
+    }
+  };
   const canEdit = isOwner || isManager;
   const isInformee = Boolean(currentUserId && ((m.notify_users || []) as string[]).includes(currentUserId));
   const isListedParticipant = Boolean(currentUserId && (m.participant_user_ids || []).includes(currentUserId));
@@ -848,6 +868,12 @@ const getJalaliDate = (): string => {
           {canEdit && (
             <button onClick={() => onEdit(m)} className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors">
               <Edit2 className="w-4 h-4" />ویرایش
+            </button>
+          )}
+          {isOwner && ((m.external_participants?.length ?? 0) > 0 || externalInformeeNames.length > 0) && (
+            <button type="button" disabled={retryingTimingSms} onClick={() => void retryTimingSms()}
+              className="px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 text-sm font-medium disabled:opacity-50">
+              {retryingTimingSms ? 'در حال بررسی و ارسال…' : 'ارسال مجدد پیامک ناموفق تغییر زمان'}
             </button>
           )}
           {onCreateSimilar && (

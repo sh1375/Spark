@@ -143,6 +143,11 @@ export type Database = Omit<BaseDatabase, 'public'> & {
       };
     };
     Functions: PublicSchema['Functions'] & {
+      save_calendar_meeting_changes_v1: {
+        Args: { p_ids: string[]; p_patch: Json; p_notify: boolean };
+        Returns: { id: string; series_id: string | null; request_date: string; start_time: string; end_time: string; duration: string; timing_changed: boolean }[];
+      };
+      retry_calendar_schedule_sms_v1: { Args: { p_meeting_id: string }; Returns: number };
       pick_meeting_agenda_decisions_v2: {
         Args: {
           p_search?: string | null; p_status?: string | null; p_owner_user_id?: string | null;

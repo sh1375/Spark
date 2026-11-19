@@ -100,3 +100,27 @@ for (const [name, audience, handler] of [
     } finally { (globalThis as any).Deno = previousDeno; }
   });
 }
+
+test('calendar time changes persist the meeting and retry identity and were not dispatched on uncertain outcomes', async () => {
+  const acknowledgements: any[] = [];
+  const client = { rpc: async (_name: string, args: unknown) => {
+    acknowledgements.push(args);
+    return { error: null };
+  } };
+  const job = {
+    id: 'move', lease: 'lease', event_type: 'informee_change', event_key: 'calendar-schedule:move',
+    audience: 'external_observers', channel: 'sms', target_phone: '09123456789', actor_id: 'owner',
+    created_at: new Date().toISOString(),
+    context: { meeting_id: 'meeting', delivery_retry: 1 },
+  };
+  await processMeetingNotificationJobs(client, [job], async body => {
+    assert.equal(body.meetingId, 'meeting');
+    assert.equal(body.eventKey, 'calendar-schedule:move:retry:1');
+    return { data: { status: 'failed', errorCode: 'DELIVERY_OUTCOME_UNKNOWN' }, error: null };
+  }, {
+    loadPolicy: async () => ({} as any),
+    evaluatePolicy: () => ({ sendNow: true, nextAllowedAt: null }) as any,
+  });
+  assert.equal(acknowledgements[0].p_status, 'uncertain');
+  assert.equal(acknowledgements[0].p_error, 'DELIVERY_OUTCOME_UNKNOWN');
+});

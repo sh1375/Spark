@@ -493,6 +493,7 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
   const claimedPhones: string[] = [];
   const logByPhone = new Map<string, string>();
   let duplicateCount = 0;
+  let existingStatus: string | null = null;
 
   for (const phone of validMobiles) {
     const key = externalDispatchKey(eventKey, meetingId, eventType, phone);
@@ -511,6 +512,7 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
     });
     if (!claim.claimed) {
       duplicateCount += 1;
+      existingStatus = claim.status;
       continue;
     }
     if (claim.id) logByPhone.set(phone, claim.id);
@@ -522,6 +524,7 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
       ok: true,
       status: "skipped",
       reason: "DUPLICATE_SMS_DISPATCH",
+      existingStatus: validMobiles.length === 1 ? existingStatus : null,
       sent: 0,
       skipped: invalidMobiles.length + duplicateCount,
       templateId: rendered.ok ? rendered.templateId : null,
@@ -529,6 +532,7 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
   }
 
   let result: any;
+  let transportStatus = 0;
   try {
     const innerResp = await sendRequest(
       `${Deno.env.get("SUPABASE_URL")!}/functions/v1/send-sms`,
@@ -541,6 +545,7 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
         body: JSON.stringify({ mode: "send", mobiles: claimedPhones, message, providerId, bypassDeliveryPolicy: true }),
       },
     );
+    transportStatus = innerResp.status;
     result = await innerResp.json();
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -561,6 +566,12 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
     });
   }
 
+  const scheduleOutcomeUnknown = Boolean(context.external_schedule) && !result.ok && (
+    transportStatus >= 500 || Number(result.httpStatus) >= 500
+    || ['PROVIDER_TIMEOUT', 'PROVIDER_TRANSPORT_ERROR'].includes(result.errorCode)
+    || result.response?.failures?.some?.((failure: { httpStatus?: number }) => Number(failure.httpStatus) >= 500)
+  );
+  const errorCode = scheduleOutcomeUnknown ? "DELIVERY_OUTCOME_UNKNOWN" : (result.errorCode || "PROVIDER_ERROR");
   const returnIds: string[] = Array.isArray(result.returnIds) ? result.returnIds : [];
   for (let i = 0; i < claimedPhones.length; i++) {
     const phone = claimedPhones[i];
@@ -577,7 +588,7 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
         }
       : {
           status: "failed",
-          error_text: `${result.errorCode || "PROVIDER_ERROR"}: ${result.error ?? "خطای ناشناخته"}`,
+          error_text: `${errorCode}: ${result.error ?? "خطای ناشناخته"}`,
           raw_response: result.response ?? null,
         });
   }
@@ -615,7 +626,7 @@ export async function handleExternalMode({ supabase, body, caller, json, isAuthO
     sent: result.ok ? claimedPhones.length : 0,
     skipped: invalidMobiles.length + duplicateCount,
     templateId: rendered.ok ? rendered.templateId : null,
-    errorCode: result.ok ? undefined : (result.errorCode || "PROVIDER_ERROR"),
+    errorCode: result.ok ? undefined : errorCode,
     error: result.ok ? undefined : (result.error ?? "خطای ناشناخته"),
     returnIds,
   });
