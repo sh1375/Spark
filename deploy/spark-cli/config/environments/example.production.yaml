@@ -74,25 +74,6 @@ application:
     project_name: spark-edge
     probe_function: auth-health-check
     verify_jwt: false
-  livekit:
-    root: /opt/spark/application/livekit
-    source_dir: deploy/spark-cli/livekit
-    image: livekit/livekit-server:v1.13.5
-    redis_image: redis:7.4.5-alpine
-    api_port: 7880
-    rtc_tcp_port: 7881
-    rtc_udp_start: 50000
-    rtc_udp_end: 60000
-    embedded_turn: false
-  coturn:
-    enabled: true
-    listener_port: 3478
-    tls_port: 5349
-    relay_min_port: 49152
-    relay_max_port: 65535
-    realm: ""
-    certificate_file: ""
-    key_file: ""
 reverse_proxy:
   public_host: ""
   config_path: /etc/nginx/conf.d/spark.conf
@@ -183,13 +164,6 @@ full_environment:
       ports:
         - 9000
       verification: AUTO_VERIFY
-    - id: reverse-proxy-to-livekit
-      source: reverse_proxy
-      destination: application
-      protocol: tcp
-      ports:
-        - 7880
-      verification: AUTO_VERIFY
     - id: reverse-proxy-to-supabase
       source: reverse_proxy
       destination: database
@@ -205,27 +179,3 @@ full_environment:
         - 5432
         - 8000
       verification: AUTO_VERIFY
-    - id: clients-to-livekit-tcp
-      source: clients
-      destination: application
-      protocol: tcp
-      ports:
-        - 7881
-      verification: GUIDED
-    - id: clients-to-livekit-udp
-      source: clients
-      destination: application
-      protocol: udp
-      port_ranges:
-        - 50000-60000
-      verification: GUIDED
-    - id: clients-to-turn
-      source: clients
-      destination: application
-      protocol: udp
-      ports:
-        - 3478
-        - 5349
-      port_ranges:
-        - 49152-65535
-      verification: GUIDED

@@ -13,7 +13,6 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
   const [dirty, setDirty] = useState(false);
   const { setAccentColor } = useTheme();
   const isPrimaryColor = entry.section === 'appearance' && entry.key === 'primary_color';
-  const isMediaTopology = entry.section === 'video_conference' && entry.key === 'media_topology';
   const isMaintenanceMode = entry.section === 'security' && entry.key === 'maintenance_mode';
 
   useEffect(() => {
@@ -29,12 +28,6 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
     if (isPrimaryColor) setAccentColor(v);
   };
 
-  const saveMediaTopology = (value: 'mesh' | 'sfu') => {
-    setVal(value);
-    setDirty(false);
-    onSave(entry.id, value);
-  };
-
   if (isMaintenanceMode) {
     return <MaintenanceModeField entry={entry} />;
   }
@@ -48,12 +41,12 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <div className="flex min-w-0 items-center justify-between gap-2">
-        {isMediaTopology || entry.value_type === 'boolean' || selectOptions.length > 0 ? (
+        {entry.value_type === 'boolean' || selectOptions.length > 0 ? (
           <span className="min-w-0 break-words text-[11px] font-bold text-slate-700 dark:text-slate-200">{label}</span>
         ) : (
           <label htmlFor={fieldId} className="min-w-0 break-words text-[11px] font-bold text-slate-700 dark:text-slate-200">{label}</label>
         )}
-        {dirty && !isMediaTopology && (
+        {dirty && (
           <button type="button" onClick={() => { onSave(entry.id, val); setDirty(false); }}
             className="flex h-7 flex-shrink-0 items-center gap-1 rounded-lg bg-violet-600 px-2.5 text-[10px] font-bold text-white transition hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-400">
             <Save className="h-3 w-3" /> ذخیره
@@ -63,29 +56,7 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
       {description && entry.value_type !== 'select' && (
         <p className="break-words text-[10px] leading-5 text-slate-400 dark:text-slate-500">{description}</p>
       )}
-      {isMediaTopology ? (
-        <div className="grid grid-cols-2 gap-2" role="group" aria-label={label} dir="ltr">
-          {([
-            { value: 'mesh' as const, label: 'Mesh', description: 'WebRTC مستقیم' },
-            { value: 'sfu' as const, label: 'SFU', description: 'سرویس SFU' },
-          ]).map(option => {
-            const active = val === option.value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={active}
-                onClick={() => saveMediaTopology(option.value)}
-                className={`rounded-lg border px-3 py-2 text-center transition ${active
-                  ? 'border-violet-500 bg-violet-50 text-violet-700 ring-1 ring-violet-500/20 dark:border-violet-400 dark:bg-violet-500/10 dark:text-violet-300'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-violet-500/40 dark:hover:bg-violet-500/5'}`}>
-                <span className="block text-[11px] font-bold">{option.label}</span>
-                <span className="mt-0.5 block text-[9px] opacity-70">{option.description}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : entry.value_type === 'boolean' ? (
+      {entry.value_type === 'boolean' ? (
         <div className="flex items-center gap-2">
           <button onClick={() => { const n = val === 'true' ? 'false' : 'true'; change(n); onSave(entry.id, n); }}
             type="button" role="switch" aria-checked={val === 'true'} aria-label={`${label}: ${val === 'true' ? 'فعال' : 'غیرفعال'}`}

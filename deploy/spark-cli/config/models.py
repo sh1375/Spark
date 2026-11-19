@@ -146,32 +146,6 @@ class ApplicationEdgeConfig:
 
 
 @dataclass(frozen=True)
-class ApplicationLiveKitConfig:
-    root: str = "/opt/spark/application/livekit"
-    source_dir: str = "deploy/spark-cli/livekit"
-    image: str = "livekit/livekit-server:v1.13.5"
-    redis_image: str = "redis:7.4.5-alpine"
-    api_port: int = 7880
-    rtc_tcp_port: int = 7881
-    rtc_udp_start: int = 50000
-    rtc_udp_end: int = 60000
-    embedded_turn: bool = False
-
-
-@dataclass(frozen=True)
-class ApplicationCoturnConfig:
-    enabled: bool = True
-    listener_port: int = 3478
-    tls_port: int = 5349
-    relay_min_port: int = 49152
-    relay_max_port: int = 65535
-    realm: str = ""
-    certificate_file: str = ""
-    key_file: str = ""
-    service_name: str = "coturn"
-
-
-@dataclass(frozen=True)
 class ApplicationConfig:
     source: ApplicationSourceConfig = field(default_factory=ApplicationSourceConfig)
     secret_file: str = "/etc/spark-manager/secrets/application.env"
@@ -180,8 +154,6 @@ class ApplicationConfig:
     npm_command: str = "npm"
     required_secret_keys: tuple[str, ...] = ()
     edge: ApplicationEdgeConfig = field(default_factory=ApplicationEdgeConfig)
-    livekit: ApplicationLiveKitConfig = field(default_factory=ApplicationLiveKitConfig)
-    coturn: ApplicationCoturnConfig = field(default_factory=ApplicationCoturnConfig)
 
 
 @dataclass(frozen=True)

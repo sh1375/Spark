@@ -4,7 +4,7 @@ import { useLiveData, LIVE_DATA } from '../shared/realtime/useLiveData';
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { Settings, Shield, Globe, Calendar, Server, ChevronDown, ChevronLeft, Plus, Trash2, X, RefreshCw, Mail, Image, Palette, Monitor, Menu } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { invalidateAuthenticatedRTCConfigCache } from '../lib/authenticatedRtcConfig';
+import { ExternalCallSettings } from './SparkConfig/ExternalCallSettings';
 import { logAudit } from '../lib/audit';
 import toast from 'react-hot-toast';
 const OnlineUsersPanel = lazy(() => import('./PortalConfig/OnlineUsersPanel').then(m => ({ default: m.OnlineUsersPanel })));
@@ -88,7 +88,6 @@ export function PortalConfigPage({ currentUserId }: Props) {
     const { error } = await supabase.from('system_config').update({ value, updated_by: currentUserId, updated_at: new Date().toISOString() }).eq('id', id);
     if (error) { toast.error('خطا در ذخیره تنظیمات'); return; }
     setConfigs(prev => prev.map(c => c.id === id ? { ...c, value } : c));
-    if (cfg?.section === 'video_conference') invalidateAuthenticatedRTCConfigCache();
     toast.success('ذخیره شد');
     logAudit({ module: 'system_config', action: 'config_updated', entity_name: cfg ? `${cfg.section}.${cfg.key}` : id, details: `مقدار جدید: ${value}`, severity: 'info' });
   };
@@ -362,7 +361,7 @@ export function PortalConfigPage({ currentUserId }: Props) {
         return <DailyReportConfigPanel />;
 
       case 'video_conference':
-        return <p role="status">سرویس ویدئوکنفرانس هنوز فعال نشده است.</p>;
+        return <ExternalCallSettings />;
 
       case 'calendar':
         return (

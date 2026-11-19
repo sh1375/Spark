@@ -6,9 +6,7 @@ from typing import Any
 
 from .models import (
     ApplicationConfig,
-    ApplicationCoturnConfig,
     ApplicationEdgeConfig,
-    ApplicationLiveKitConfig,
     ApplicationSourceConfig,
     DatabaseComposeConfig,
     DatabaseConfig,
@@ -145,8 +143,6 @@ def environment_from_mapping(data: dict[str, Any]) -> EnvironmentConfig:
     app_data = data.get("application", {}) or {}
     source_data = app_data.get("source", {}) or {}
     edge_data = app_data.get("edge", {}) or {}
-    livekit_data = app_data.get("livekit", {}) or {}
-    coturn_data = app_data.get("coturn", {}) or {}
     application = ApplicationConfig(
         source=ApplicationSourceConfig(
             repository=str(source_data.get("repository", "https://github.com/sh1375/Spark.git")), revision=str(source_data.get("revision", "main")),
@@ -162,20 +158,6 @@ def environment_from_mapping(data: dict[str, Any]) -> EnvironmentConfig:
             image=str(edge_data.get("image", "supabase/edge-runtime:v1.76.2")), root=str(edge_data.get("root", "/opt/spark/application/edge")),
             port=int(edge_data.get("port", 9000)), project_name=str(edge_data.get("project_name", "spark-edge")),
             probe_function=str(edge_data.get("probe_function", "auth-health-check")), verify_jwt=bool(edge_data.get("verify_jwt", False)),
-        ),
-        livekit=ApplicationLiveKitConfig(
-            root=str(livekit_data.get("root", "/opt/spark/application/livekit")), source_dir=str(livekit_data.get("source_dir", "deploy/spark-cli/livekit")),
-            image=str(livekit_data.get("image", "livekit/livekit-server:v1.13.5")), redis_image=str(livekit_data.get("redis_image", "redis:7.4.5-alpine")),
-            api_port=int(livekit_data.get("api_port", 7880)), rtc_tcp_port=int(livekit_data.get("rtc_tcp_port", 7881)),
-            rtc_udp_start=int(livekit_data.get("rtc_udp_start", 50000)), rtc_udp_end=int(livekit_data.get("rtc_udp_end", 60000)),
-            embedded_turn=bool(livekit_data.get("embedded_turn", False)),
-        ),
-        coturn=ApplicationCoturnConfig(
-            enabled=bool(coturn_data.get("enabled", True)), listener_port=int(coturn_data.get("listener_port", 3478)),
-            tls_port=int(coturn_data.get("tls_port", 5349)), relay_min_port=int(coturn_data.get("relay_min_port", 49152)),
-            relay_max_port=int(coturn_data.get("relay_max_port", 65535)), realm=str(coturn_data.get("realm", "")),
-            certificate_file=str(coturn_data.get("certificate_file", "")), key_file=str(coturn_data.get("key_file", "")),
-            service_name=str(coturn_data.get("service_name", "coturn")),
         ),
     )
 

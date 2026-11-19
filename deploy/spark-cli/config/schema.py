@@ -133,20 +133,6 @@ def validate_environment(config: EnvironmentConfig) -> EnvironmentConfig:
     if app.edge.image != "supabase/edge-runtime:v1.76.2":
         raise ValueError("application.edge.image must remain pinned to supabase/edge-runtime:v1.76.2 for self-hosted/v0.8.1")
     _port(app.edge.port, "application edge")
-    _port(app.livekit.api_port, "LiveKit API")
-    _port(app.livekit.rtc_tcp_port, "LiveKit RTC TCP")
-    _port(app.livekit.rtc_udp_start, "LiveKit RTC UDP start")
-    _port(app.livekit.rtc_udp_end, "LiveKit RTC UDP end")
-    if app.livekit.rtc_udp_end < app.livekit.rtc_udp_start:
-        raise ValueError("application.livekit RTC UDP range is invalid")
-    if app.livekit.embedded_turn:
-        raise ValueError("application.livekit.embedded_turn must remain false when Coturn is canonical")
-    _port(app.coturn.listener_port, "Coturn listener")
-    _port(app.coturn.tls_port, "Coturn TLS")
-    _port(app.coturn.relay_min_port, "Coturn relay start")
-    _port(app.coturn.relay_max_port, "Coturn relay end")
-    if app.coturn.relay_max_port < app.coturn.relay_min_port:
-        raise ValueError("application.coturn relay range is invalid")
 
     rp = config.reverse_proxy
     if not Path(rp.config_path).is_absolute():

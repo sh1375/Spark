@@ -27,7 +27,7 @@ export const NAV_ITEMS = [
     { key: 'daily_report', label: 'ارسال جلسات مدیریتی' },
   ]},
   { key: 'modules', label: 'مدیریت موجودیت‌ها', icon: Monitor, sub: [
-    { key: 'video_conference', label: 'ویدیو کنفرانس' },
+    { key: 'video_conference', label: 'تماس و کنفرانس بیرونی' },
     { key: 'calendar', label: 'تقویم و مناسبت‌ها' },
     { key: 'minutes_config', label: 'صورت‌جلسات و مصوبات' },
     { key: 'monitoring', label: 'مانیتورینگ سیستم' },
@@ -38,33 +38,6 @@ export const NAV_ITEMS = [
 ];
 
 export const SELECT_OPTIONS: Record<string, { value: string; label: string; description: string }[]> = {
-  ice_transport_policy: [
-    {
-      value: 'p2p-first',
-      label: 'P2P اول، سپس STUN، سپس TURN',
-      description: 'سریع‌ترین اتصال ممکن. ابتدا اتصال مستقیم (LAN)، سپس STUN، در صورت نیاز TURN. برای اکثر محیط‌ها بهترین گزینه است.',
-    },
-    {
-      value: 'auto',
-      label: 'خودکار (پیشنهادی)',
-      description: 'همه مسیرهای ICE (host، srflx، relay) مجاز هستند. WebRTC بهترین را انتخاب می‌کند.',
-    },
-    {
-      value: 'all',
-      label: 'همه مسیرها',
-      description: 'هر مسیر ICE همزمان امتحان می‌شود. سریع اما ممکن است IP واقعی افشا شود.',
-    },
-    {
-      value: 'relay',
-      label: 'فقط TURN (relay)',
-      description: 'همه ترافیک اجباراً از سرور TURN عبور می‌کند. برای شبکه‌های محدود، پشت فایروال، یا حریم خصوصی کامل.',
-    },
-    {
-      value: 'stun-only',
-      label: 'فقط STUN (بدون TURN)',
-      description: 'فقط از STUN برای پیدا کردن آی‌پی عمومی استفاده می‌شود. TURN نادیده گرفته می‌شود. برای شبکه‌های ساده با NAT معمولی.',
-    },
-  ],
 };
 
 // Only controls with a proven runtime consumer are exposed as generic
