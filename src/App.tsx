@@ -1,11 +1,10 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import type { PublicAuthBootstrapPromise } from './components/AuthPage';
 import SparkLoader from './components/ui/SparkLoader';
-import { isKnownSparkPath, isStandaloneConferencePath } from './app/navigation/rootPath';
+import { isKnownSparkPath } from './app/navigation/rootPath';
 
 const PublicAuthRoot = lazy(() => import('./PublicAuthRoot'));
 const AuthenticatedRoot = lazy(() => import('./AuthenticatedRoot'));
-const StandaloneConferenceRoot = lazy(() => import('./StandaloneConferenceRoot'));
 const NotFoundPage = lazy(() => import('./features/not-found/pages/NotFoundPage'));
 
 type RootAuthState = 'checking' | 'public' | 'authenticated';
@@ -82,14 +81,6 @@ function StandardApplication() {
           onSessionEstablished={() => setAuthState('authenticated')}
           initialAuthBootstrap={publicAuthBootstrapRef.current}
         />
-      </Suspense>
-    );
-  }
-
-  if (isStandaloneConferencePath(window.location.pathname)) {
-    return (
-      <Suspense fallback={<SparkLoader message="در حال آماده‌سازی جلسه..." />}>
-        <StandaloneConferenceRoot />
       </Suspense>
     );
   }

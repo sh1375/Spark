@@ -2,7 +2,7 @@ import { portalAssetUrl } from '../lib/portalAssetUrl';
 import { LoadErrorBoundary } from './ui/LoadErrorBoundary';
 import { useLiveData, LIVE_DATA } from '../shared/realtime/useLiveData';
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
-import { Settings, Shield, Globe, Video, Calendar, Server, ChevronDown, ChevronLeft, Plus, Trash2, X, RefreshCw, Mail, Image, Palette, Monitor, Menu } from 'lucide-react';
+import { Settings, Shield, Globe, Calendar, Server, ChevronDown, ChevronLeft, Plus, Trash2, X, RefreshCw, Mail, Image, Palette, Monitor, Menu } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { invalidateAuthenticatedRTCConfigCache } from '../lib/authenticatedRtcConfig';
 import { logAudit } from '../lib/audit';
@@ -21,7 +21,6 @@ const DailyReportConfigPanel = lazy(() => import('./DailyReportConfigPanel').the
 const SystemMonitoringPage = lazy(() => import('./SystemMonitoringPage').then(m => ({ default: m.SystemMonitoringPage })));
 const MinutesConfigPanel = lazy(() => import('./Minutes/MinutesConfigPanel').then(m => ({ default: m.MinutesConfigPanel })));
 const BackupPanel = lazy(() => import('./BackupPanel').then(m => ({ default: m.BackupPanel })));
-const IceTesterPanel = lazy(() => import('./VideoConference/IceTesterPanel').then(m => ({ default: m.IceTesterPanel })));
 const SecuritySettingsConsole = lazy(() => import('../features/security-settings').then(m => ({ default: m.SecuritySettingsConsole })));
 const PhoneAuthCard = lazy(() => import('./PortalConfig/PhoneAuthCard').then(m => ({ default: m.PhoneAuthCard })));
 const IdentityRepairCard = lazy(() => import('./PortalConfig/IdentityRepairCard').then(m => ({ default: m.IdentityRepairCard })));
@@ -362,34 +361,8 @@ export function PortalConfigPage({ currentUserId }: Props) {
       case 'daily_report':
         return <DailyReportConfigPanel />;
 
-      case 'video_conference': {
-        const hiddenKeys = new Set(['enabled', 'ice_connection_timeout', 'ice_restart_on_disconnect']);
-        const visibleVideoConfigs = cfgs('video_conference').filter(c => !hiddenKeys.has(c.key));
-        return (
-          <div className="space-y-5">
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
-              <div className="flex items-center gap-2 font-bold">
-                <Video className="h-4 w-4" />
-                ویدئوکنفرانس موقتاً غیرفعال است — به‌زودی
-              </div>
-              <p className="mt-1 text-xs leading-6">
-                فعال‌سازی قابلیت در سطح Release قفل شده است. تنظیمات زیر فقط برای آماده‌سازی و تست زیرساخت STUN/TURN نگه داشته شده‌اند و فعال‌کردن Room جدید از این صفحه ممکن نیست.
-              </p>
-            </div>
-            <SectionCard title="تنظیمات زیرساخت ویدیو کنفرانس" icon={Video} color="teal">
-              {visibleVideoConfigs.filter(c => c.key !== 'ice_transport_policy').map(c => (
-                <ConfigField key={c.id} entry={c} onSave={saveConfig} />
-              ))}
-              {visibleVideoConfigs.filter(c => c.key === 'ice_transport_policy').map(c => (
-                <div key={c.id} className="md:col-span-2">
-                  <ConfigField entry={c} onSave={saveConfig} />
-                </div>
-              ))}
-            </SectionCard>
-            <IceTesterPanel configs={visibleVideoConfigs} />
-          </div>
-        );
-      }
+      case 'video_conference':
+        return <p role="status">سرویس ویدئوکنفرانس هنوز فعال نشده است.</p>;
 
       case 'calendar':
         return (

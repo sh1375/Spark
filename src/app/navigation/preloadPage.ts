@@ -11,7 +11,6 @@ const pageLoaders: Partial<Record<PageId, Loader>> = {
   calendar: () => import('../../components/CalendarPage'),
   chat: () => import('../../components/Chat/ChatPage'),
   channels: () => import('../../components/Channels/ChannelsPage'),
-  'video-conference': () => import('../../components/VideoConference/VideoConferencePage'),
   tasks: () => import('../../components/TasksPage'),
   notes: () => import('../../components/NotesPage'),
   contacts: () => import('../../components/ContactsPage'),

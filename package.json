@@ -72,13 +72,7 @@
     "test:phase8-identity-health": "node --test tests/phase8/phase8IdentityIntegrityHealth.test.mjs",
     "test:phase8-runtime-p0": "node --test tests/phase8/phase8RuntimeP0Closure.test.mjs",
     "test:phase8-ready-gates": "node --test tests/phase8/phase8RemainingReadyGates.test.mjs",
-    "test": "npm run test:recurrence && npm run test:meeting-record && npm run test:calendar-url && npm run test:meeting-prefill && npm run test:layout-navigation && npm run test:layout-presence && npm run test:user-preferences-mapping && npm run test:user-preferences-lifecycle && npm run test:notification-model && npm run test:notification-lifecycle && npm run test:notification-producer-model && npm run test:notification-template-cache && npm run test:notification-producer && npm run test:minutes-access && npm run test:minutes-prefill && npm run test:minutes-decisions && npm run test:approval-mode && npm run test:minutes-integration && npm run test:minutes-entry-button && npm run test:minutes-create-submit && npm run test:minutes-entry-flow && npm run test:minutes-participants && npm run test:minutes-date && npm run test:word-export && npm run test:meeting-delegation && npm run test:approval-delegate && npm run test:minutes-five-fixes && npm run test:minutes-followup-runtime && npm run test:decision-deadline-filters && npm run test:followup-reminder && npm run test:auth-security-config && npm run test:auth-unified-login && npm run test:theme-sync && npm run test:phase3-totp && npm run test:phase3b-security && npm run test:phase3c-security && npm run test:phase4-lifecycle",
-    "test:video-conference:contract": "node --test tests/video-conference/phase*.test.mjs",
-    "test:video-conference:unit": "node --import tsx --test tests/video-conference/phase24UnitBehavior.test.ts",
-    "test:video-conference": "npm run test:video-conference:contract && npm run test:video-conference:unit",
-    "test:video-conference:integration": "node tests/video-conference/runtime/phase24IntegrationRuntime.mjs",
-    "test:video-conference:e2e": "bash tests/video-conference/e2e/run-phase24-e2e.sh",
-    "test:video-conference:load": "bash tests/video-conference/load/run-phase24-livekit-load.sh"
+    "test": "npm run test:recurrence && npm run test:meeting-record && npm run test:calendar-url && npm run test:meeting-prefill && npm run test:layout-navigation && npm run test:layout-presence && npm run test:user-preferences-mapping && npm run test:user-preferences-lifecycle && npm run test:notification-model && npm run test:notification-lifecycle && npm run test:notification-producer-model && npm run test:notification-template-cache && npm run test:notification-producer && npm run test:minutes-access && npm run test:minutes-prefill && npm run test:minutes-decisions && npm run test:approval-mode && npm run test:minutes-integration && npm run test:minutes-entry-button && npm run test:minutes-create-submit && npm run test:minutes-entry-flow && npm run test:minutes-participants && npm run test:minutes-date && npm run test:word-export && npm run test:meeting-delegation && npm run test:approval-delegate && npm run test:minutes-five-fixes && npm run test:minutes-followup-runtime && npm run test:decision-deadline-filters && npm run test:followup-reminder && npm run test:auth-security-config && npm run test:auth-unified-login && npm run test:theme-sync && npm run test:phase3-totp && npm run test:phase3b-security && npm run test:phase3c-security && npm run test:phase4-lifecycle"
   },
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
@@ -86,7 +80,6 @@
     "docx": "^9.15.3",
     "exceljs": "^4.4.0",
     "html-to-image": "^1.11.13",
-    "livekit-client": "^2.24.0",
     "lucide-react": "^1.72.0",
     "moment": "^2.31.0",
     "moment-jalaali": "^0.10.5",

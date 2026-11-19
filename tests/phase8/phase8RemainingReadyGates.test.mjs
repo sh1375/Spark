@@ -9,7 +9,6 @@ const migration = readFileSync(
 const helper = readFileSync('src/lib/chatAttachments.ts', 'utf8');
 const chatInput = readFileSync('src/components/Chat/ChatInputBar.tsx', 'utf8');
 const channelInput = readFileSync('src/components/Channels/ChannelInputBar.tsx', 'utf8');
-const conferenceChat = readFileSync('src/components/VideoConference/ChatPanel.tsx', 'utf8');
 
 test('legacy recovery is blocked for admin and security admin at the database boundary', () => {
   assert.match(migration, /before insert on public\.phone_password_reset_challenges/i);
@@ -35,5 +34,4 @@ test('chat attachments use private membership-aware access and signed URLs', () 
   assert.match(helper, /createSignedUrl/);
   assert.doesNotMatch(chatInput, /getPublicUrl/);
   assert.doesNotMatch(channelInput, /getPublicUrl/);
-  assert.match(conferenceChat, /createSignedUrl/);
 });
