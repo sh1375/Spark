@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useId, useState, useEffect, useRef } from 'react';
 import { Bot, Save, Plus, X, ChevronDown, ChevronUp, Calendar, MessageSquare, ClipboardList, BookOpen, Users, ChartBar as BarChart2, User, Video } from 'lucide-react';
 import type { SparkModuleConfig, FieldKeyword } from './types';
 import { MODULE_META, colorMap, Spinner } from './constants';
@@ -8,6 +8,7 @@ import { FieldKeywordsSection } from './FieldKeywordsSection';
 export function ModuleCard({
   config, fieldKeywords, onSave, onRefreshFields,
 }: { config: SparkModuleConfig; fieldKeywords: FieldKeyword[]; onSave: (u: SparkModuleConfig) => Promise<void>; onRefreshFields: () => void }) {
+  const fieldId = useId();
   const [form, setForm] = useState<SparkModuleConfig>({ ...config });
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -75,7 +76,7 @@ export function ModuleCard({
             {form.enabled ? 'فعال' : 'غیرفعال'}
           </span>
           <div className="relative">
-            <input type="checkbox" className="sr-only peer" checked={form.enabled}
+            <input id={`${fieldId}-enabled`} type="checkbox" className="sr-only peer" checked={form.enabled}
               onChange={e => {
                 setForm(f => ({ ...f, enabled: e.target.checked }));
               }} />
@@ -115,8 +116,8 @@ export function ModuleCard({
               <>
                 {/* Description */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">توضیح قابلیت</label>
-                  <textarea rows={2}
+                  <label htmlFor={`${fieldId}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">توضیح قابلیت</label>
+                  <textarea id={`${fieldId}-description`} rows={2}
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm resize-none"
                     value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
                 </div>
@@ -124,7 +125,7 @@ export function ModuleCard({
                 {/* Trigger keywords */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    <label htmlFor={`${fieldId}-trigger-keyword`} className="text-xs font-medium text-gray-600 dark:text-gray-400">
                       کلیدواژه‌های فراخوان
                     </label>
                     {meta.defaultPhrases.length > 0 && (
@@ -149,7 +150,7 @@ export function ModuleCard({
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <input
+                    <input id={`${fieldId}-trigger-keyword`}
                       className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
                       placeholder="کلیدواژه جدید را وارد کنید..."
                       value={newKw} onChange={e => setNewKw(e.target.value)}
@@ -163,11 +164,11 @@ export function ModuleCard({
 
                 {/* Voice template */}
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                  <label htmlFor={`${fieldId}-voice-template`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
                     قالب پاسخ صوتی
                     <span className="text-gray-400 font-normal mr-1">({'{subject}'}, {'{date}'}, {'{target}'}, ...)</span>
                   </label>
-                  <input
+                  <input id={`${fieldId}-voice-template`}
                     className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm"
                     value={form.voice_response_template} onChange={e => setForm(f => ({ ...f, voice_response_template: e.target.value }))}
                     placeholder="مثال: جلسه {subject} در تاریخ {date} ثبت شد." />

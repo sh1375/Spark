@@ -2,6 +2,7 @@ import './lib/browserCryptoCompat';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { LoadErrorBoundary } from './components/ui/LoadErrorBoundary';
 import './index.css';
 import './responsive.css';
 import './meeting-mobile-fixes.css';
@@ -33,6 +34,6 @@ try {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <LoadErrorBoundary><App /></LoadErrorBoundary>
   </StrictMode>
 );

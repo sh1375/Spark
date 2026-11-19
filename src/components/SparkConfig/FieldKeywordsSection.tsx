@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Info, Plus, X, Save, Trash2, Settings, Mic, Check } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ import { Spinner } from './constants';
 export function FieldKeywordsSection({
   module, fieldKeywords, onRefresh,
 }: { module: string; fieldKeywords: FieldKeyword[]; onRefresh: () => void }) {
+  const fieldId = useId();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -105,17 +106,17 @@ export function FieldKeywordsSection({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">کلید فیلد (انگلیسی)*</label>
-              <input className={inp} placeholder="مثال: subject" dir="ltr"
+              <label htmlFor={`${fieldId}-new-field`} className="block text-xs text-gray-500 mb-1">کلید فیلد (انگلیسی)*</label>
+              <input id={`${fieldId}-new-field`} className={inp} placeholder="مثال: subject" dir="ltr"
                 value={newForm.field_key || ''} onChange={e => setNewForm(f => ({ ...f, field_key: e.target.value }))} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">برچسب فارسی*</label>
-              <input className={inp} placeholder="مثال: موضوع جلسه"
+              <label htmlFor={`${fieldId}-new-label`} className="block text-xs text-gray-500 mb-1">برچسب فارسی*</label>
+              <input id={`${fieldId}-new-label`} className={inp} placeholder="مثال: موضوع جلسه"
                 value={newForm.field_label || ''} onChange={e => setNewForm(f => ({ ...f, field_label: e.target.value }))} />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-1">کلیدواژه‌های تشخیص</label>
+              <label htmlFor={`${fieldId}-new-keyword`} className="block text-xs text-gray-500 mb-1">کلیدواژه‌های تشخیص</label>
               <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
                 {(newForm.extract_keywords || []).map(kw => (
                   <span key={kw} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs border border-blue-200 dark:border-blue-700">
@@ -125,15 +126,15 @@ export function FieldKeywordsSection({
                 ))}
               </div>
               <div className="flex gap-2">
-                <input className={inp} placeholder="کلیدواژه جدید..." value={newFieldKw}
+                <input id={`${fieldId}-new-keyword`} className={inp} placeholder="کلیدواژه جدید..." value={newFieldKw}
                   onChange={e => setNewFieldKw(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addKwToNew())} />
                 <button onClick={addKwToNew} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm"><Plus className="w-3.5 h-3.5" /></button>
               </div>
             </div>
             <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-1">مثال دستور</label>
-              <input className={inp} placeholder="مثال: موضوع: بررسی گزارش مالی"
+              <label htmlFor={`${fieldId}-new-example`} className="block text-xs text-gray-500 mb-1">مثال دستور</label>
+              <input id={`${fieldId}-new-example`} className={inp} placeholder="مثال: موضوع: بررسی گزارش مالی"
                 value={newForm.example || ''} onChange={e => setNewForm(f => ({ ...f, example: e.target.value }))} />
             </div>
           </div>
@@ -157,11 +158,11 @@ export function FieldKeywordsSection({
                   <button onClick={cancelEdit} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">برچسب فارسی</label>
-                  <input className={inp} value={editForm.field_label || ''} onChange={e => setEditForm(ef => ({ ...ef, field_label: e.target.value }))} />
+                  <label htmlFor={`${fieldId}-edit-label`} className="block text-xs text-gray-500 mb-1">برچسب فارسی</label>
+                  <input id={`${fieldId}-edit-label`} className={inp} value={editForm.field_label || ''} onChange={e => setEditForm(ef => ({ ...ef, field_label: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">کلیدواژه‌های تشخیص</label>
+                  <label htmlFor={`${fieldId}-edit-keyword`} className="block text-xs text-gray-500 mb-1">کلیدواژه‌های تشخیص</label>
                   <div className="flex flex-wrap gap-1.5 mb-2 min-h-[28px]">
                     {(editForm.extract_keywords || []).map(kw => (
                       <span key={kw} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs border border-blue-200 dark:border-blue-700">
@@ -171,15 +172,15 @@ export function FieldKeywordsSection({
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <input className={inp} placeholder="کلیدواژه جدید..." value={newKw}
+                    <input id={`${fieldId}-edit-keyword`} className={inp} placeholder="کلیدواژه جدید..." value={newKw}
                       onChange={e => setNewKw(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addKwToEdit())} />
                     <button onClick={addKwToEdit} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm"><Plus className="w-3.5 h-3.5" /></button>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-500 mb-1">مثال دستور</label>
-                  <input className={inp} placeholder="مثال..." value={editForm.example || ''}
+                  <label htmlFor={`${fieldId}-edit-example`} className="block text-xs text-gray-500 mb-1">مثال دستور</label>
+                  <input id={`${fieldId}-edit-example`} className={inp} placeholder="مثال..." value={editForm.example || ''}
                     onChange={e => setEditForm(ef => ({ ...ef, example: e.target.value }))} />
                 </div>
                 <div className="flex gap-2">

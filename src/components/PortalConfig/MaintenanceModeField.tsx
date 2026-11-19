@@ -86,9 +86,9 @@ export function MaintenanceModeField({ entry }: { entry: ConfigEntry }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <div className="flex min-w-0 items-center justify-between gap-2">
-        <label className="min-w-0 break-words text-[11px] font-bold text-slate-700 dark:text-slate-200">
+        <span className="min-w-0 break-words text-[11px] font-bold text-slate-700 dark:text-slate-200">
           {label}
-        </label>
+        </span>
       </div>
       {description && (
         <p className="break-words text-[10px] leading-5 text-slate-400 dark:text-slate-500">

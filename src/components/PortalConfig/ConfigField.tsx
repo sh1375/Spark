@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useId, useState, useEffect } from 'react';
 import { Save, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import type { ConfigEntry } from './types';
@@ -6,6 +6,7 @@ import { SECURITY_CONFIG_PRESENTATION, SELECT_OPTIONS } from './constants';
 import { MaintenanceModeField } from './MaintenanceModeField';
 
 export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id: string, value: string) => void }) {
+  const fieldId = useId();
   const [val, setVal] = useState(entry.value ?? '');
   const [showPass, setShowPass] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -46,7 +47,11 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       <div className="flex min-w-0 items-center justify-between gap-2">
-        <label className="min-w-0 break-words text-[11px] font-bold text-slate-700 dark:text-slate-200">{label}</label>
+        {isMediaTopology || entry.value_type === 'boolean' || selectOptions.length > 0 ? (
+          <span className="min-w-0 break-words text-[11px] font-bold text-slate-700 dark:text-slate-200">{label}</span>
+        ) : (
+          <label htmlFor={fieldId} className="min-w-0 break-words text-[11px] font-bold text-slate-700 dark:text-slate-200">{label}</label>
+        )}
         {dirty && !isMediaTopology && (
           <button type="button" onClick={() => { onSave(entry.id, val); setDirty(false); }}
             className="flex h-7 flex-shrink-0 items-center gap-1 rounded-lg bg-violet-600 px-2.5 text-[10px] font-bold text-white transition hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-400">
@@ -92,7 +97,7 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
         </div>
       ) : entry.value_type === 'password' ? (
         <div className="relative min-w-0">
-          <input type={showPass ? 'text' : 'password'} value={val} onChange={e => change(e.target.value)}
+          <input id={fieldId} type={showPass ? 'text' : 'password'} value={val} onChange={e => change(e.target.value)}
             className={`${inputCls} !pl-10 text-left`} dir="ltr" data-password-input="true" autoComplete="new-password" />
           <button type="button" onClick={() => setShowPass(v => !v)}
             className="absolute left-1 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-violet-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:hover:bg-slate-800 dark:hover:text-violet-300"
@@ -102,14 +107,14 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
         </div>
       ) : entry.value_type === 'color' ? (
         <div className="flex min-w-0 items-center gap-2">
-          <input type="color" value={val || '#4f46e5'} onChange={e => change(e.target.value)}
+          <input id={`${fieldId}-picker`} aria-label={label} type="color" value={val || '#4f46e5'} onChange={e => change(e.target.value)}
             className="h-9 w-9 flex-shrink-0 cursor-pointer rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-900" />
-          <input type="text" value={val} onChange={e => change(e.target.value)} className={`${inputCls} flex-1`} placeholder="#4f46e5" dir="ltr" />
+          <input id={fieldId} type="text" value={val} onChange={e => change(e.target.value)} className={`${inputCls} flex-1`} placeholder="#4f46e5" dir="ltr" />
         </div>
       ) : entry.value_type === 'number' ? (
-        <input type="number" value={val} onChange={e => change(e.target.value)} className={inputCls} dir="ltr" />
+        <input id={fieldId} type="number" value={val} onChange={e => change(e.target.value)} className={inputCls} dir="ltr" />
       ) : entry.value_type === 'time' ? (
-        <input type="time" value={val} onChange={e => change(e.target.value)} className={inputCls} dir="ltr" />
+        <input id={fieldId} type="time" value={val} onChange={e => change(e.target.value)} className={inputCls} dir="ltr" />
       ) : entry.value_type === 'select' && selectOptions.length > 0 ? (
         <div className="flex min-w-0 flex-col gap-1.5" dir="rtl">
           {selectOptions.map(opt => (
@@ -128,7 +133,7 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
           ))}
         </div>
       ) : (
-        <input type="text" value={val} onChange={e => change(e.target.value)} className={inputCls} />
+        <input id={fieldId} type="text" value={val} onChange={e => change(e.target.value)} className={inputCls} />
       )}
     </div>
   );

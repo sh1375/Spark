@@ -22,7 +22,6 @@ if (
   window.addEventListener('load', async () => {
     try {
       const registration = await navigator.serviceWorker.register('/pwa-sw.js', { scope: '/', updateViaCache: 'none' });
-      console.log('SW registered:', registration.scope);
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (!newWorker) return;

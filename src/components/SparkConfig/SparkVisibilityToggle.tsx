@@ -75,7 +75,7 @@ export function SparkVisibilityToggle() {
         </div>
         <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
           <div className="relative">
-            <input
+            <input name="spark-visibility" aria-label="نمایش دستیار اسپارک"
               type="checkbox"
               className="sr-only peer"
               checked={visible === true}

@@ -161,7 +161,7 @@ self.addEventListener('fetch', (event) => {
   // at chunks from an older deployment. Cache remains the offline fallback.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      fetch(request, { cache: 'no-cache' })
         .then((response) => {
           if (isBasicOkResponse(response)) {
             const copy = response.clone();

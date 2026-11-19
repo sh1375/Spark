@@ -36,7 +36,7 @@ function StandardApplication() {
               supabase.rpc('get_public_auth_config'),
               supabase.rpc('get_public_login_methods'),
             ]);
-            void import('./PublicAuthRoot');
+            void import('./PublicAuthRoot').catch(() => { /* The rendered lazy route reports load failures. */ });
           }
 
           setAuthState('public');

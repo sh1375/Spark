@@ -47,7 +47,7 @@ export function TestCommandPanel({
       <div className="p-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 space-y-2">
         <p className="text-[11px] text-gray-500 dark:text-gray-400">یک دستور نمونه وارد کنید تا ببینید آیا این ماژول فعال می‌شود:</p>
         <div className="flex gap-2">
-          <input
+          <input name="spark-test-command" aria-label="متن دستور آزمایشی"
             type="text"
             value={testText}
             onChange={e => { setTestText(e.target.value); setTestResult(null); }}

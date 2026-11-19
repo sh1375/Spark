@@ -1,5 +1,5 @@
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
-import { useState, useEffect, useRef } from 'react';
+import { useId, useState, useEffect, useRef } from 'react';
 import { Brain, Save, Plus, X, Eye, EyeOff, Key, Play, CircleCheck as CheckCircle2, Circle as XCircle, Zap } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -7,6 +7,7 @@ import type { SparkAiSettings } from './types';
 import { Spinner } from './constants';
 
 export function AiSettingsPanel() {
+  const fieldId = useId();
   const [settings, setSettings] = useState<SparkAiSettings | null>(null);
   const [form, setForm] = useState({ provider: 'groq', api_key: '', model: 'llama-3.3-70b-versatile', enabled: false });
   const [saving, setSaving] = useState(false);
@@ -94,7 +95,7 @@ export function AiSettingsPanel() {
         </div>
         <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
           <div className="relative">
-            <input type="checkbox" className="sr-only peer" checked={form.enabled} onChange={e => setForm(f => ({ ...f, enabled: e.target.checked }))} />
+            <input id={`${fieldId}-enabled`} type="checkbox" className="sr-only peer" checked={form.enabled} onChange={e => setForm(f => ({ ...f, enabled: e.target.checked }))} />
             <div className="w-10 h-5 bg-gray-200 dark:bg-gray-600 peer-checked:bg-emerald-500 rounded-full transition-colors" />
             <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform peer-checked:translate-x-5 shadow" />
           </div>
@@ -114,8 +115,8 @@ export function AiSettingsPanel() {
 
         {/* Provider */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">سرویس‌دهنده</label>
-          <select value={form.provider} onChange={e => { setForm(f => ({ ...f, provider: e.target.value, model: PROVIDERS.find(p => p.value === e.target.value)?.models[0] || '' })); setTestResult(null); }}
+          <label htmlFor={`${fieldId}-provider`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">سرویس‌دهنده</label>
+          <select id={`${fieldId}-provider`} value={form.provider} onChange={e => { setForm(f => ({ ...f, provider: e.target.value, model: PROVIDERS.find(p => p.value === e.target.value)?.models[0] || '' })); setTestResult(null); }}
             className={inp}>
             {PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
@@ -123,19 +124,19 @@ export function AiSettingsPanel() {
 
         {/* Model */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">مدل</label>
-          <select value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} className={inp}>
+          <label htmlFor={`${fieldId}-model`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">مدل</label>
+          <select id={`${fieldId}-model`} value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} className={inp}>
             {(currentProvider?.models || []).map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
 
         {/* API Key */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
+          <label htmlFor={`${fieldId}-api-key`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
             <Key className="w-3 h-3" /> کلید API
           </label>
           <div className="relative">
-            <input type={showKey ? 'text' : 'password'} value={form.api_key} onChange={e => { setForm(f => ({ ...f, api_key: e.target.value })); setTestResult(null); }}
+            <input id={`${fieldId}-api-key`} type={showKey ? 'text' : 'password'} value={form.api_key} onChange={e => { setForm(f => ({ ...f, api_key: e.target.value })); setTestResult(null); }}
               placeholder="کلید API را اینجا وارد کنید..." dir="ltr"
               className={inp + ' pr-10'} />
             <button type="button" onClick={() => setShowKey(v => !v)} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">

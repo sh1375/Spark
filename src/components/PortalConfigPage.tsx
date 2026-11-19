@@ -1,3 +1,4 @@
+import { LoadErrorBoundary } from './ui/LoadErrorBoundary';
 import { useLiveData, LIVE_DATA } from '../shared/realtime/useLiveData';
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { Settings, Shield, Globe, Video, Calendar, Server, ChevronDown, ChevronLeft, Plus, Trash2, X, RefreshCw, Mail, Image, Palette, Monitor, Menu } from 'lucide-react';
@@ -237,7 +238,7 @@ export function PortalConfigPage({ currentUserId }: Props) {
                   const isUploading = uploadingKey === key;
                   return (
                     <label key={key} className="border-2 border-dashed border-gray-200 dark:border-gray-600 rounded-xl p-4 flex flex-col items-center gap-2 hover:border-teal-400 transition-colors cursor-pointer">
-                      <input type="file" accept={accept} className="hidden"
+                      <input name={key} type="file" accept={accept} className="hidden"
                         onChange={e => { const f = e.target.files?.[0]; if (f) uploadAsset(key, f); e.target.value = ''; }} />
                       <div className="w-20 h-14 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center overflow-hidden">
                         {current ? (
@@ -509,13 +510,15 @@ export function PortalConfigPage({ currentUserId }: Props) {
           </button>}
         </div>
         <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-          <Suspense fallback={(
-            <div className="flex items-center justify-center py-20">
-              <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
-            </div>
-          )}>
-            {renderContent()}
-          </Suspense>
+          <LoadErrorBoundary key={activeSection}>
+            <Suspense fallback={(
+              <div className="flex items-center justify-center py-20">
+                <RefreshCw className="w-6 h-6 animate-spin text-blue-500" />
+              </div>
+            )}>
+              {renderContent()}
+            </Suspense>
+          </LoadErrorBoundary>
         </div>
       </div>
     </div>
