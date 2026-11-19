@@ -57,3 +57,7 @@ verify_jwt = false
 
 [functions.start-external-call]
 verify_jwt = false
+
+# Requests are verified with the external bridge's HMAC secret.
+[functions.external-call-inbound]
+verify_jwt = false
