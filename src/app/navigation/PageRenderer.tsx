@@ -52,6 +52,7 @@ export function renderContent(props: PageRendererProps): ReactNode {
     sparkNavigateDate, setSparkNavigateDate,
     sparkCalendarMeetingPrefill, setSparkCalendarMeetingPrefill,
     chatInitUserId, setChatInitUserId,
+    openWorkGroups, setOpenWorkGroups,
     sparkVisible,
     managementDashboardAllowed,
     managementDashboardAccessLoading,
@@ -151,6 +152,10 @@ export function renderContent(props: PageRendererProps): ReactNode {
           setTaskPrefillMessageId(messageId);
           navigate('tasks');
         }}
+        onOpenWorkGroups={checkPermission('channels', isAdmin, userPermissions) ? () => {
+          setOpenWorkGroups(true);
+          navigate('channels');
+        } : undefined}
         initialOpenUserId={chatInitUserId}
         onInitialOpenUserConsumed={() => setChatInitUserId(null)}
       />;
@@ -194,7 +199,9 @@ export function renderContent(props: PageRendererProps): ReactNode {
     case 'groups':
       return modernPage(<GroupsPage currentUserId={currentUserId} isAdmin={isAdmin} />);
     case 'channels':
-      return <ChannelsPage currentUserId={currentUserId} isAdmin={isAdmin} onNavigateToTasks={(body, id) => {
+      return <ChannelsPage currentUserId={currentUserId} isAdmin={isAdmin}
+        openWorkGroups={openWorkGroups} onWorkGroupsOpened={() => setOpenWorkGroups(false)}
+        onNavigateToTasks={(body, id) => {
         setTaskPrefillDescription(body);
         setTaskPrefillMessageId(id);
         navigate('tasks');

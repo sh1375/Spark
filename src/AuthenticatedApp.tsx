@@ -118,6 +118,7 @@ function AuthorizedApp({ authSession }: { authSession: ReturnType<typeof useAuth
   const [sparkCalendarView, setSparkCalendarView] = useState<string | null>(null);
   const [sparkNavigateDate, setSparkNavigateDate] = useState<{ jy: number; jm: number; jd: number; view?: string } | null>(null);
   const [sparkCalendarMeetingPrefill, setSparkCalendarMeetingPrefill] = useState<unknown>(null);
+  const [openWorkGroups, setOpenWorkGroups] = useState(false);
   const [chatInitUserId, setChatInitUserId] = useState<string | null>(null);
 
   const canQueryMinutesFollowup =
@@ -166,6 +167,7 @@ function AuthorizedApp({ authSession }: { authSession: ReturnType<typeof useAuth
     sparkNavigateDate, setSparkNavigateDate,
     sparkCalendarMeetingPrefill, setSparkCalendarMeetingPrefill,
     chatInitUserId, setChatInitUserId,
+    openWorkGroups, setOpenWorkGroups,
     sparkVisible,
     managementDashboardAllowed,
     managementDashboardAccessLoading,

@@ -1,3 +1,5 @@
+import { UnreadBadge, unreadLabel } from '../../../features/messaging/UnreadBadge';
+import { useMessageUnreadCounts } from '../../../features/messaging/messageUnreadCounts';
 import { PRIMARY_NAVIGATION_ITEMS } from '../navigationMenu';
 import {
   Menu,
@@ -72,7 +74,10 @@ export function LayoutTopBar({
   installPrompt,
   onPromptInstall,
 }: LayoutTopBarProps) {
-  const { userPermissions } = usePermissions();
+  const { userPermissions, hasPermission } = usePermissions();
+  const { directTotal, groupTotal, channelTotal } = useMessageUnreadCounts();
+  const unread = (hasPermission('chat') ? directTotal : 0)
+    + (hasPermission('channels') ? groupTotal + channelTotal : 0);
   const showPortalConfig = canOpenPortalConfig(isAdmin, userPermissions);
 
   return (
@@ -96,8 +101,9 @@ export function LayoutTopBar({
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {mobileNavigation && (
-            <button type="button" onClick={onOpenMobileMenu} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700" aria-label="باز کردن منوی اصلی" aria-haspopup="dialog">
+            <button type="button" onClick={onOpenMobileMenu} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700" aria-label={unread > 0 ? `باز کردن منوی اصلی، ${unreadLabel(unread)}` : "باز کردن منوی اصلی"} aria-haspopup="dialog">
               <Menu className="h-5 w-5" />
+              <UnreadBadge count={unread} className="absolute end-0 top-0" />
             </button>
           )}
           <p className="min-w-0 truncate text-sm font-bold text-slate-800 dark:text-slate-100">

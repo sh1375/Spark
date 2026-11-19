@@ -1,3 +1,4 @@
+import { MessageUnreadProvider } from '../../features/messaging/messageUnreadCounts';
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { PermissionsProvider } from '../../context/PermissionsContext';
 import { GlobalCallProvider } from '../../context/GlobalCallContext';
@@ -100,21 +101,23 @@ export function AppShell(props: AppShellProps) {
         {showSplash && !splashDone && (
           <SplashScreen onDone={onSplashDone} />
         )}
-        <Layout
-          currentUserId={currentUserId}
-          activePage={activePage}
-          onPageChange={(p) => navigate(p as PageId)}
-          isAdmin={isAdmin}
-          userPermissions={userPermissions}
-          managementDashboardAllowed={rendererProps.managementDashboardAllowed}
-          sparkVisible={sparkVisible}
-          minutesFollowupAllowed={minutesFollowupAllowed}
-          minutesFollowupAccessLoading={minutesFollowupAccessLoading}
-        >
-          <Suspense fallback={<PageLoadingFallback />}>
-            {renderContent(rendererProps)}
-          </Suspense>
-        </Layout>
+        <MessageUnreadProvider key={currentUserId} userId={currentUserId}>
+          <Layout
+            currentUserId={currentUserId}
+            activePage={activePage}
+            onPageChange={(p) => navigate(p as PageId)}
+            isAdmin={isAdmin}
+            userPermissions={userPermissions}
+            managementDashboardAllowed={rendererProps.managementDashboardAllowed}
+            sparkVisible={sparkVisible}
+            minutesFollowupAllowed={minutesFollowupAllowed}
+            minutesFollowupAccessLoading={minutesFollowupAccessLoading}
+          >
+            <Suspense fallback={<PageLoadingFallback />}>
+              {renderContent(rendererProps)}
+            </Suspense>
+          </Layout>
+        </MessageUnreadProvider>
         {currentUserId && sparkVisible && assistantReady && (
           <Suspense fallback={null}>
             <SparkAssistant

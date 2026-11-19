@@ -1,6 +1,8 @@
+import { UnreadBadge } from '../../features/messaging/UnreadBadge';
+import { useMessageUnreadCounts } from '../../features/messaging/messageUnreadCounts';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useState } from 'react';
-import { Search, Plus, RefreshCw, SquareCheck as CheckSquare, Phone, MessageCircle, Settings2, Bookmark } from 'lucide-react';
+import { Search, Plus, RefreshCw, SquareCheck as CheckSquare, Phone, MessageCircle, Settings2, Bookmark, Users } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { ConversationWithProfile } from './types';
 import { ChatConversationItem } from './ChatConversationItem';
@@ -22,6 +24,7 @@ interface Props {
   onTabChange: (tab: SidebarTab) => void;
   onOpenSettings?: () => void;
   onMentionClick?: (convId: string, messageId: string) => void;
+  onOpenWorkGroups?: () => void;
   onClearHistory?: () => void;
 }
 
@@ -40,8 +43,10 @@ export function ChatSidebar({
   onTabChange,
   onOpenSettings,
   onMentionClick,
+  onOpenWorkGroups,
   onClearHistory,
 }: Props) {
+  const { directTotal, groupTotal } = useMessageUnreadCounts();
   const [search, setSearch] = useState('');
   const [presenceMap, setPresenceMap] = useState<Record<string, { last_seen: string | null; status: string | null }>>({});
 
@@ -53,7 +58,7 @@ export function ChatSidebar({
 
   const pinned = filtered.filter(c => c.isPinned);
   const unpinned = filtered.filter(c => !c.isPinned);
-  const unreadTotal = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+  const unreadTotal = directTotal + (onOpenWorkGroups ? groupTotal : 0);
   const mentionTotal = conversations.filter(c => c.hasMention).length;
 
   useLiveData(LIVE_DATA.presence, async () => {
@@ -90,11 +95,7 @@ export function ChatSidebar({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">چت سازمانی</h2>
-            {unreadTotal > 0 && (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-600 px-1.5 text-[9px] font-bold text-white shadow-sm">
-                {unreadTotal > 99 ? '۹۹+' : unreadTotal.toLocaleString('fa-IR')}
-              </span>
-            )}
+            <UnreadBadge count={unreadTotal} />
           </div>
           <div className="mt-0.5 flex items-center gap-2 text-[9px] text-slate-400 dark:text-slate-500">
             <span>{filtered.length.toLocaleString('fa-IR')} گفتگو</span>
@@ -151,8 +152,17 @@ export function ChatSidebar({
           }`}
         >
           <MessageCircle className="h-3.5 w-3.5" />
-          پیام‌ها
+          پیام‌ها <UnreadBadge count={directTotal} />
         </button>
+
+        {onOpenWorkGroups && (
+          <button
+            onClick={onOpenWorkGroups}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+          >
+            <Users className="h-3.5 w-3.5" /> گروه‌ها <UnreadBadge count={groupTotal} />
+          </button>
+        )}
 
         <button
           onClick={() => onTabChange('calls')}

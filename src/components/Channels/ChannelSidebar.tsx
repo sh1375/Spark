@@ -1,3 +1,4 @@
+import { UnreadBadge } from '../../features/messaging/UnreadBadge';
 import { useState } from 'react';
 import { Search, Plus, Users, Hash, Settings, ListTodo, LockKeyhole } from 'lucide-react';
 import { ChannelWithMeta, ChannelType } from './types';
@@ -55,11 +56,7 @@ function ChannelItem({ ch, selected, onClick }: { ch: ChannelWithMeta; selected:
             </span>
             {isPrivate && <LockKeyhole className="h-3 w-3 flex-shrink-0 text-slate-400 dark:text-slate-500" />}
           </div>
-          {hasUnread && (
-            <span className="inline-flex h-5 min-w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-600 px-1.5 text-[9px] font-bold text-white shadow-sm">
-              {ch.unreadCount > 99 ? '۹۹+' : ch.unreadCount.toLocaleString('fa-IR')}
-            </span>
-          )}
+          <UnreadBadge count={ch.unreadCount} />
         </div>
 
         <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[9px] text-slate-400 dark:text-slate-500">
@@ -89,7 +86,8 @@ export function ChannelSidebar({
   const items = activeTab === 'channels' ? channels : groups;
   const filtered = search ? items.filter(c => c.name.toLowerCase().includes(search.toLowerCase())) : items;
   const canCreate = activeTab === 'channels' ? canCreateChannel : canCreateGroup;
-  const unreadTotal = items.reduce((sum, ch) => sum + Number(ch.unreadCount || 0), 0);
+  const channelTotal = channels.reduce((sum, ch) => sum + ch.unreadCount, 0);
+  const groupTotal = groups.reduce((sum, ch) => sum + ch.unreadCount, 0);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-white dark:bg-slate-950" dir="rtl">
@@ -98,11 +96,7 @@ export function ChannelSidebar({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-slate-900 dark:text-white">کانال‌ها</h2>
-              {unreadTotal > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-600 px-1.5 text-[9px] font-bold text-white">
-                  {unreadTotal > 99 ? '۹۹+' : unreadTotal.toLocaleString('fa-IR')}
-                </span>
-              )}
+              <UnreadBadge count={channelTotal} />
             </div>
             <p className="mt-0.5 text-[9px] text-slate-400 dark:text-slate-500">
               {items.length.toLocaleString('fa-IR')} {activeTab === 'channels' ? 'کانال' : 'گروه'}
@@ -145,7 +139,7 @@ export function ChannelSidebar({
                 : 'text-slate-500 dark:text-slate-500'
             }`}
           >
-            <Hash className="h-3.5 w-3.5" /> کانال‌های من
+            <Hash className="h-3.5 w-3.5" /> کانال‌های من <UnreadBadge count={channelTotal} />
           </button>
           <button
             onClick={() => onTabChange('groups')}
@@ -155,7 +149,7 @@ export function ChannelSidebar({
                 : 'text-slate-500 dark:text-slate-500'
             }`}
           >
-            <Users className="h-3.5 w-3.5" /> گروه‌های من
+            <Users className="h-3.5 w-3.5" /> گروه‌های من <UnreadBadge count={groupTotal} />
           </button>
         </div>
 

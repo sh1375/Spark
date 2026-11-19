@@ -143,6 +143,14 @@ export type Database = Omit<BaseDatabase, 'public'> & {
       };
     };
     Functions: PublicSchema['Functions'] & {
+      get_message_unread_counts_v1: {
+        Args: Record<string, never>;
+        Returns: { thread_id: string; thread_kind: 'chat' | 'group' | 'channel'; unread_count: number }[];
+      };
+      mark_visible_messages_read_v1: {
+        Args: { p_thread_id: string; p_is_channel: boolean; p_message_ids: string[] };
+        Returns: undefined;
+      };
       get_my_call_history: { Args: { p_limit?: number }; Returns: { id: string; caller_id: string; callee_id: string; created_at: string; duration_seconds: number }[] };
       clear_my_call_history: { Args: Record<string, never>; Returns: number };
       admin_correct_minutes: {

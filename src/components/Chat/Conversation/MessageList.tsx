@@ -78,6 +78,7 @@ export function MessageList(props: {
             {group.messages.map(msg => (
               <div
                 key={msg.id}
+                data-unread-message-id={msg.sender_id !== currentUserId && !msg.read_by.includes(currentUserId) ? msg.id : undefined}
                 ref={el => { if (el) messageRefs.current.set(msg.id, el); else messageRefs.current.delete(msg.id); }}
                 className="rounded-xl transition-all duration-300"
               >

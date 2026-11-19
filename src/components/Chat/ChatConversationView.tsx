@@ -1,3 +1,4 @@
+import { useVisibleMessageReads } from '../../features/messaging/useVisibleMessageReads';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { MessageCircle, CalendarDays } from 'lucide-react';
@@ -121,7 +122,6 @@ export function ChatConversationView({
     fetchMessages();
     const sync = createChatRealtimeSync(() => refreshMessagesRef.current());
     subscribeToMessages(sync);
-    markAsRead();
     fetchReminders();
     fetchMentionBar();
     return () => {
@@ -332,13 +332,8 @@ export function ChatConversationView({
     setMessages(enriched);
     if (shouldScroll) setTimeout(() => { if (request === messageRequestRef.current) scrollToBottom(); }, 50);
 
-    // Mark incoming as read using a secure DB function (atomically appends uid to read_by)
     const unreadIncoming = msgs.filter(m => m.sender_id !== currentUserId && !(m.read_by || []).includes(currentUserId));
     if (unreadIncoming.length > 0 && document.visibilityState === 'visible') {
-      // Single RPC call marks all unread messages in this conversation as read
-      supabase.rpc('mark_conversation_messages_read', { p_conversation_id: conversation.id })
-        .then(() => { /* triggers realtime UPDATE for sender to see eye icon */ });
-
       // Show full-screen alarm for any unread urgent messages (uses global dedup to prevent re-firing)
       const urgentUnread = unreadIncoming.filter(m => m.message_type === 'urgent');
       if (urgentUnread.length > 0) {
@@ -457,16 +452,6 @@ export function ChatConversationView({
       fetchReminders();
     }
     setReminderAlarm(null);
-  };
-
-  const markAsRead = async () => {
-    if (document.visibilityState !== 'visible') return;
-    // Update read receipt timestamp
-    await supabase.from('chat_message_read_receipts').upsert({
-      conversation_id: conversation.id, user_id: currentUserId, last_read_at: new Date().toISOString(),
-    }, { onConflict: 'conversation_id,user_id' });
-    // Mark all unread messages as read via secure DB function
-    await supabase.rpc('mark_conversation_messages_read', { p_conversation_id: conversation.id });
   };
 
   const scrollToBottom = () => {
@@ -609,6 +594,7 @@ export function ChatConversationView({
     ? messages.filter(m => m.body?.toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
 
+  useVisibleMessageReads(scrollRef, messages, currentUserId, conversation.id, false, searchQuery);
   const grouped: { date: string; messages: MessageWithMeta[] }[] = [];
   for (const msg of filteredMessages) {
     const date = moment(msg.created_at).format('jYYYY/jMM/jDD');

@@ -1,3 +1,4 @@
+import { useVisibleMessageReads } from '../../features/messaging/useVisibleMessageReads';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -151,7 +152,7 @@ export function ChannelConversationView({ channel, currentUserId, allProfiles, o
     const { data: msgs } = await supabase
       .from('channel_messages').select('*')
       .eq('channel_id', channel.id)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false });
 
     const msgIds = (msgs || []).map(m => m.id);
     const [{ data: reacts }, { data: starsData }] = await Promise.all([
@@ -163,26 +164,12 @@ export function ChannelConversationView({ channel, currentUserId, allProfiles, o
         : Promise.resolve({ data: [] }),
     ]);
 
-    const raw = msgs || [];
+    const raw = (msgs || []).slice().reverse();
     setReactions(reacts || []);
     setStars(starsData || []);
     setMessages(buildMeta(raw, reacts || [], starsData || [], allProfiles, currentUserId));
 
     if (currentUserId) {
-      const hasUnread = raw.some(m => !m.deleted_for_all && m.sender_id !== currentUserId && !(m.read_by || []).includes(currentUserId));
-      if (hasUnread) {
-        supabase.rpc('mark_channel_messages_read', { p_channel_id: channel.id })
-          .then(() => {
-            supabase.from('channel_messages').select('*')
-              .eq('channel_id', channel.id)
-              .order('created_at', { ascending: true })
-              .then(({ data: fresh }) => {
-                if (fresh) setMessages(buildMeta(fresh, reacts || [], starsData || [], allProfiles, currentUserId));
-              });
-          })
-          .catch(() => {});
-      }
-
       const ownMsgIds = raw.filter(m => m.sender_id === currentUserId).map(m => m.id);
       if (ownMsgIds.length) fetchReadLog(ownMsgIds);
     }
@@ -451,6 +438,7 @@ export function ChannelConversationView({ channel, currentUserId, allProfiles, o
     ? messages.filter(m => m.body?.toLowerCase().includes(searchQuery.toLowerCase()))
     : messages;
 
+  useVisibleMessageReads(msgContainerRef, messages, currentUserId, channel.id, true, searchQuery);
   const grouped: { date: string; msgs: MessageWithMeta[] }[] = [];
   for (const msg of displayMessages) {
     const d = formatDate(msg.created_at);
@@ -494,7 +482,9 @@ export function ChannelConversationView({ channel, currentUserId, allProfiles, o
                   <span className="text-[11px] text-gray-400 bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full">{date}</span>
                 </div>
                 {grpMsgs.map(msg => (
-                  <div key={msg.id} data-msg-id={msg.id} style={{ transition: 'background-color 0.6s ease' }}>
+                  <div key={msg.id} data-msg-id={msg.id}
+                    data-unread-message-id={msg.sender_id !== currentUserId && !msg.deleted_for_all && !(msg.read_by || []).includes(currentUserId) ? msg.id : undefined}
+                    style={{ transition: 'background-color 0.6s ease' }}>
                     <ChannelMessageItem
                       msg={msg}
                       currentUserId={currentUserId}

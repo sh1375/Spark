@@ -1,3 +1,4 @@
+import { useMessageUnreadCounts } from '../../features/messaging/messageUnreadCounts';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -22,11 +23,13 @@ interface Props {
   currentUserId?: string | null;
   onNavigateToCalendar?: (mentionedUserIds?: string[], bodyText?: string) => void;
   onNavigateToTasks?: (messageBody: string, messageId: string) => void;
+  onOpenWorkGroups?: () => void;
   initialOpenUserId?: string | null;
   onInitialOpenUserConsumed?: () => void;
 }
 
-export function ChatPage({ currentUserId: providedCurrentUserId = null, onNavigateToCalendar, onNavigateToTasks, initialOpenUserId, onInitialOpenUserConsumed }: Props) {
+export function ChatPage({ currentUserId: providedCurrentUserId = null, onNavigateToCalendar, onNavigateToTasks, onOpenWorkGroups, initialOpenUserId, onInitialOpenUserConsumed }: Props) {
+  const { direct: unreadCounts } = useMessageUnreadCounts();
   const [currentUserId, setCurrentUserId] = useState<string | null>(providedCurrentUserId);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<ConversationWithProfile[]>([]);
@@ -77,8 +80,8 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
     const convIds = visibleData.map(c => c.id);
     const threshold = new Date(Date.now() - 3 * 60 * 1000).toISOString();
 
-    // Fetch profiles, presence, bulk unread counts, and mentions all in parallel
-    const [profilesRes, presenceRes, unreadRes, mentionRes] = await Promise.all([
+    // Fetch profiles, presence, and mentions all in parallel
+    const [profilesRes, presenceRes, mentionRes] = await Promise.all([
       supabase
         .from('profiles_public')
         .select('user_id, full_name, username, avatar_url')
@@ -87,7 +90,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
         .from('user_presence')
         .select('user_id, is_online, status, last_seen')
         .in('user_id', otherIds),
-      supabase.rpc('get_unread_counts', { p_user_id: uid }),
       supabase
         .from('chat_messages')
         .select('id, conversation_id')
@@ -144,10 +146,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
       });
     }
 
-    const countMap = new Map<string, number>(
-      (unreadRes.data || []).map((r: any) => [r.conversation_id, Number(r.unread_count)])
-    );
-
     // First unread mention per conversation
     const mentionMap = new Map<string, string>();
     for (const m of (mentionRes.data || [])) {
@@ -168,7 +166,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
           is_online: false,
           last_seen: null,
         },
-        unreadCount: countMap.get(c.id) || 0,
+        unreadCount: 0,
         hasMention: mentionMap.has(c.id),
         mentionMessageId: mentionMap.get(c.id) || null,
         isPinned: c.participant_a === uid ? !!c.pinned_for_a : !!c.pinned_for_b,
@@ -419,7 +417,8 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
           </Suspense>
         ) : (
           <ChatSidebar
-            conversations={conversations}
+            onOpenWorkGroups={onOpenWorkGroups}
+            conversations={conversations.map(c => ({ ...c, unreadCount: unreadCounts.get(c.id) ?? 0 }))}
             activeId={activeId}
             currentUserId={currentUserId}
             onSelect={handleSelectConv}

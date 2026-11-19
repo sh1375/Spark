@@ -1,3 +1,4 @@
+import { useMessageUnreadCounts } from '../../features/messaging/messageUnreadCounts';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
@@ -16,19 +17,22 @@ const ChatSettingsPage = lazy(() => import('../Chat/ChatSettingsPage').then((m) 
 interface Props {
   currentUserId: string | null;
   isAdmin: boolean;
+  openWorkGroups?: boolean;
+  onWorkGroupsOpened?: () => void;
   onNavigateToTasks?: (messageBody: string, messageId: string) => void;
   onOpenDirectChat?: (userId: string) => void;
 }
 
 type SidebarPanel = 'settings' | 'actions' | null;
 
-export function ChannelsPage({ currentUserId, isAdmin, onNavigateToTasks, onOpenDirectChat }: Props) {
+export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGroupsOpened, onNavigateToTasks, onOpenDirectChat }: Props) {
   useLiveData([...LIVE_DATA.channels, ...LIVE_DATA.people], async () => { await Promise.all([fetchChannels(), fetchProfiles()]); });
+  const { channels: unreadCounts } = useMessageUnreadCounts();
   const { hasPermission } = usePermissions();
   const [channels, setChannels] = useState<ChannelWithMeta[]>([]);
   const [groups, setGroups] = useState<ChannelWithMeta[]>([]);
   const [allProfiles, setAllProfiles] = useState<ChannelProfile[]>([]);
-  const [activeTab, setActiveTab] = useState<'channels' | 'groups'>('channels');
+  const [activeTab, setActiveTab] = useState<'channels' | 'groups'>(openWorkGroups ? 'groups' : 'channels');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -37,6 +41,12 @@ export function ChannelsPage({ currentUserId, isAdmin, onNavigateToTasks, onOpen
   const [showConversation, setShowConversation] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>(null);
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!openWorkGroups) return;
+    setActiveTab('groups');
+    onWorkGroupsOpened?.();
+  }, [openWorkGroups, onWorkGroupsOpened]);
 
   const fetchProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles_public').select('user_id, full_name, username, avatar_url');
@@ -58,16 +68,10 @@ export function ChannelsPage({ currentUserId, isAdmin, onNavigateToTasks, onOpen
 
       const roleMap = new Map(memberRows.map((m: any) => [m.channel_id, m.role]));
 
-      const unreadMap = new Map<string, number>();
-      try {
-        const { data: unreadData } = await supabase.rpc('get_channel_unread_counts', { p_user_id: currentUserId });
-        for (const row of (unreadData || [])) unreadMap.set(row.channel_id, Number(row.unread_count));
-      } catch { /* unread count is non-critical */ }
-
       const all: ChannelWithMeta[] = (raw || []).map((c: any) => ({
         ...c,
         myRole: roleMap.get(c.id) ?? null,
-        unreadCount: unreadMap.get(c.id) ?? 0,
+        unreadCount: 0,
       }));
       setChannels(all.filter(c => c.type === 'channel'));
       setGroups(all.filter(c => c.type === 'group'));
@@ -88,7 +92,6 @@ export function ChannelsPage({ currentUserId, isAdmin, onNavigateToTasks, onOpen
     const sub = supabase.channel(`channels-list-rt-${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => fetchChannels())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_members' }, () => fetchChannels())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_messages' }, () => fetchChannels())
       .subscribe();
     return () => { supabase.removeChannel(sub); };
   }, [currentUserId, fetchChannels]);
@@ -181,8 +184,8 @@ export function ChannelsPage({ currentUserId, isAdmin, onNavigateToTasks, onOpen
           </Suspense>
         ) : (
           <ChannelSidebar
-            channels={channels}
-            groups={groups}
+            channels={channels.map(c => ({ ...c, unreadCount: unreadCounts.get(c.id) ?? 0 }))}
+            groups={groups.map(c => ({ ...c, unreadCount: unreadCounts.get(c.id) ?? 0 }))}
             activeTab={activeTab}
             selectedId={selectedId}
             isAdmin={isAdmin}
@@ -198,7 +201,7 @@ export function ChannelsPage({ currentUserId, isAdmin, onNavigateToTasks, onOpen
         )}
       </div>
 
-      <div className={`min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950 ${!showConversation && !selectedChannel ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950 ${!showConversation ? 'hidden md:flex' : 'flex'}`}>
         {selectedChannel ? (
           <Suspense fallback={<div className="flex flex-1 items-center justify-center text-sm text-slate-400">در حال آماده‌سازی گفتگو...</div>}>
             <ChannelConversationView

@@ -1,3 +1,4 @@
+import { UnreadBadge } from '../../features/messaging/UnreadBadge';
 import React, { useState, useRef, useEffect } from 'react';
 import moment from 'moment-jalaali';
 import { EllipsisVertical as MoreVertical, Pin, Trash2, Clock, Bookmark } from 'lucide-react';
@@ -182,11 +183,7 @@ export function ChatConversationItem({ conversation: c, isActive, currentUserId,
                   @
                 </button>
               )}
-              {hasUnread && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-violet-600 px-1.5 text-[9px] font-bold text-white shadow-sm">
-                  {c.unreadCount > 99 ? '۹۹+' : c.unreadCount.toLocaleString('fa-IR')}
-                </span>
-              )}
+              <UnreadBadge count={c.unreadCount} />
               <span className={`text-[9px] ${hasUnread ? 'font-bold text-violet-600 dark:text-violet-300' : 'text-slate-400 dark:text-slate-500'}`}>
                 {formatTime(c.last_message_at)}
               </span>

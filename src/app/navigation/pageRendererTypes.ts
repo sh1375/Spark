@@ -39,6 +39,8 @@ export interface PageRendererProps {
   setSparkNavigateDate: (v: { jy: number; jm: number; jd: number; view?: string } | null) => void;
   sparkCalendarMeetingPrefill: unknown;
   setSparkCalendarMeetingPrefill: (v: unknown) => void;
+  openWorkGroups: boolean;
+  setOpenWorkGroups: (open: boolean) => void;
   chatInitUserId: string | null;
   setChatInitUserId: (v: string | null) => void;
   sparkVisible: boolean;

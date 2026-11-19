@@ -1,3 +1,5 @@
+import { UnreadBadge, unreadLabel } from '../../../features/messaging/UnreadBadge';
+import { useMessageUnreadCounts } from '../../../features/messaging/messageUnreadCounts';
 import { useRef } from 'react';
 import { useMobileNavigation } from '../hooks/useMobileNavigation';
 import { useModalFocus } from '../hooks/useModalFocus';
@@ -84,6 +86,7 @@ export function LayoutSidebar({
   accentColor,
 }: LayoutSidebarProps) {
   const mobileNavigation = useMobileNavigation();
+  const { directTotal, groupTotal, channelTotal } = useMessageUnreadCounts();
   const drawerRef = useRef<HTMLDivElement>(null);
   useModalFocus(mobileNavigation && isMobileMenuOpen, drawerRef, () => onMobileMenuOpenChange(false));
 
@@ -172,6 +175,9 @@ export function LayoutSidebar({
         >
           {menuItems.map((item) => {
             const Icon = item.icon;
+            const unread = item.id === 'chat'
+              ? directTotal + (menuItems.some(entry => entry.id === 'channels') ? groupTotal : 0)
+              : item.id === 'channels' ? channelTotal : 0;
             const isActive =
               activePage === item.id ||
               (activePage === 'create-meeting' && item.id === 'meetings') ||
@@ -195,10 +201,15 @@ export function LayoutSidebar({
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/60 hover:text-gray-800 dark:hover:text-gray-200'
                 }`}
                 style={isActive ? { backgroundColor: accentColor + '18', color: accentColor } : {}}
-                title={!showExpandedLabels ? item.title : undefined}
+                title={unread > 0 ? `${item.title}، ${unreadLabel(unread)}` : !showExpandedLabels ? item.title : undefined}
+                aria-label={unread > 0 ? `${item.title}، ${unreadLabel(unread)}` : item.title}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="relative shrink-0">
+                  <Icon className="w-5 h-5" />
+                  {!showExpandedLabels && <UnreadBadge count={unread} className="absolute -end-2 -top-2" />}
+                </span>
                 {showExpandedLabels && <span className="truncate">{item.title}</span>}
+                {showExpandedLabels && <UnreadBadge count={unread} className="ms-auto" />}
               </button>
             );
           })}
