@@ -1,3 +1,4 @@
+import { CredentialIdentityField } from '../ui/CredentialIdentityField';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, CircleCheck as CheckCircle, Circle as XCircle, Loader as Loader2, Save, RefreshCw, ChevronDown, ChevronUp, Eye, EyeOff, ExternalLink, TriangleAlert as AlertTriangle, Shield, Database, Link2, Key, Webhook, Trash2, Radio, Clock, CircleAlert as AlertCircle, CircleCheck as CheckCircle2, Globe, Shuffle, Zap } from 'lucide-react';
@@ -482,6 +483,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
 
         {/* Token — calls getMe */}
         <form onSubmit={event => { event.preventDefault(); void getBotInfo(); }}>
+          <CredentialIdentityField identity={config.bot_username || channel} />
           <FieldLabel
             label="توکن بات"
             required
@@ -618,6 +620,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
               <div className="flex gap-2">
                 <div className="flex-1">
                   <SecretInput
+                    identity={`${config.bot_username || channel}-webhook`}
                     value={config.webhook_secret}
                     onChange={v => set('webhook_secret', v)}
                     placeholder="a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0u1V2w3X4y5Z6a7b8c9d0e1F2"
@@ -704,6 +707,7 @@ export function ChannelCard({ channel, label, icon, accentClass }: {
                   hint="کلید سرویس‌رول برای احراز هویت backend-to-backend. هرگز در frontend استفاده نشود."
                 />
                 <SecretInput
+                  identity={config.ext_supabase_url || `${channel}-supabase`}
                   value={config.ext_supabase_service_key}
                   onChange={v => set('ext_supabase_service_key', v)}
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."

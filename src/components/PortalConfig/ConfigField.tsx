@@ -1,3 +1,4 @@
+import { CredentialIdentityField } from '../ui/CredentialIdentityField';
 import { useId, useState, useEffect } from 'react';
 import { Save, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
@@ -97,6 +98,7 @@ export function ConfigField({ entry, onSave }: { entry: ConfigEntry; onSave: (id
         </div>
       ) : entry.value_type === 'password' ? (
         <form className="relative min-w-0" onSubmit={event => event.preventDefault()}>
+          <CredentialIdentityField identity={`${entry.section}.${entry.key}`} />
           <input id={fieldId} type={showPass ? 'text' : 'password'} value={val} onChange={e => change(e.target.value)}
             className={`${inputCls} !pl-10 text-left`} dir="ltr" data-password-input="true" autoComplete="new-password" />
           <button type="button" onClick={() => setShowPass(v => !v)}

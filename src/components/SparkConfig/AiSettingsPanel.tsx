@@ -1,3 +1,4 @@
+import { CredentialIdentityField } from '../ui/CredentialIdentityField';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useId, useState, useEffect, useRef } from 'react';
 import { Brain, Save, Plus, X, Eye, EyeOff, Key, Play, CircleCheck as CheckCircle2, Circle as XCircle, Zap } from 'lucide-react';
@@ -132,6 +133,7 @@ export function AiSettingsPanel() {
 
         {/* API Key */}
         <form onSubmit={event => event.preventDefault()}>
+          <CredentialIdentityField identity={form.provider} />
           <label htmlFor={`${fieldId}-api-key`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5 flex items-center gap-1.5">
             <Key className="w-3 h-3" /> کلید API
           </label>

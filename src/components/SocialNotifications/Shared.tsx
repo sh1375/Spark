@@ -1,3 +1,4 @@
+import { CredentialIdentityField } from '../ui/CredentialIdentityField';
 import { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { inpMono } from './types';
@@ -23,10 +24,11 @@ export function FieldLabel({ label, required, hint }: { label: string; required?
   );
 }
 
-export function SecretInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+export function SecretInput({ identity, value, onChange, placeholder }: { identity: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [show, setShow] = useState(false);
   return (
     <form className="relative" onSubmit={event => event.preventDefault()}>
+      <CredentialIdentityField identity={identity} />
       <input
         className={inpMono + ' pl-10'}
         name="channel-secret" aria-label={placeholder || 'کلید محرمانه'} autoComplete="new-password"
