@@ -93,3 +93,9 @@ export async function deleteUserNotification(notificationId: string, userId: str
   if (error) throw error;
   if (!data) throw new Error('NOTIFICATION_NOT_FOUND');
 }
+
+export async function deleteAllUserNotifications(userId: string): Promise<void> {
+  if (!userId) throw new Error('AUTH_REQUIRED');
+  const { error } = await supabase.from('notifications').delete().eq('user_id', userId);
+  if (error) throw error;
+}

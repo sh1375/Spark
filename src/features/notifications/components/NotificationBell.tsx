@@ -18,7 +18,7 @@ export function NotificationBell({ onNavigate, currentUserId = null }: Notificat
   const [placement, setPlacement] = useState({ width: 320, left: 8, top: 60, maxHeight: 420 });
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { notifications, unreadCount, loading, handleNotificationClick, markAllAsRead, markAsRead, deleteNotification } = useNotificationBell(onNavigate, currentUserId);
+  const { notifications, unreadCount, loading, handleNotificationClick, markAllAsRead, markAsRead, deleteNotification, deleteAll, bulkActionPending } = useNotificationBell(onNavigate, currentUserId);
   useModalFocus(showPanel, panelRef, () => setShowPanel(false));
 
   useLayoutEffect(() => {
@@ -69,7 +69,7 @@ export function NotificationBell({ onNavigate, currentUserId = null }: Notificat
           >
             <NotificationPanelContent
               loading={loading} groups={grouped} unreadCount={unreadCount} notifications={notifications}
-              onMarkAllAsRead={markAllAsRead} onMarkAsRead={markAsRead} onDelete={deleteNotification} onClose={() => setShowPanel(false)}
+              onMarkAllAsRead={markAllAsRead} onDeleteAll={deleteAll} bulkActionPending={bulkActionPending} onMarkAsRead={markAsRead} onDelete={deleteNotification} onClose={() => setShowPanel(false)}
               onNotificationClick={notification => { setShowPanel(false); void handleNotificationClick(notification); }}
             />
           </div>

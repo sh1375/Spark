@@ -60,10 +60,8 @@ test('capture API failure does not break swipes; taps still open and read rows c
   const tap=fixture();const tapped=tap.render();tapped.props.onPointerDown(tap.event());tapped.props.onPointerUp(tap.event(3,2));tapped.props.onClick();assert.equal(tap.actions.open,1);
   const read=fixture(true);const readRow=read.render();readRow.props.onPointerDown(read.event());readRow.props.onPointerMove(read.event(100,0));readRow.props.onPointerUp(read.event(100,0));assert.equal(read.actions.read,0);
 });
-test('explicit read/delete buttons stay available and execute their actions',async()=>{
-  const h=fixture();const front=h.render();const buttons=front.props.children[1].props.children;
-  buttons[0].props.onClick();await Promise.resolve();await Promise.resolve();buttons[1].props.onClick();await Promise.resolve();
-  assert.deepEqual(h.actions,{open:0,read:1,delete:1});
+test('rows expose notification content without individual action buttons', () => {
+  assert.equal(fixture().render().props.children, 'متن اعلان');
 });
 
 test('a fast ambiguous drag without a move event does not become a click',()=>{

@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode, type PointerEvent } from 'react';
-import { CheckCheck, Trash2, Loader as Loader2 } from 'lucide-react';
+import { CheckCheck, Trash2 } from 'lucide-react';
 import { notificationRowAction, notificationRowGesture } from '../models/notificationRowGesture';
 
 interface Props {
@@ -79,13 +79,7 @@ export function NotificationSwipeRow({ read, title, onOpen, onRead, onDelete, ch
         onClick={() => { if (!busyRef.current && !suppressClick.current) onOpen(); }}
         onKeyDown={event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); if (!busyRef.current) onOpen(); } }}>
         {children}
-        <div className="flex items-center justify-end gap-1 px-3 pb-2 sm:px-4" onClick={event => event.stopPropagation()}>
-          <button type="button" disabled={busy || read} onClick={() => { void run(onRead); }}
-            title={read ? 'خوانده شده' : 'علامت‌گذاری به‌عنوان خوانده‌شده'} aria-label="خوانده‌شدن اعلان"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-400 dark:hover:bg-blue-950/30"><CheckCheck className="h-4 w-4" /></button>
-          <button type="button" disabled={busy} onClick={() => { void run(onDelete); }} title="حذف اعلان" aria-label="حذف اعلان"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-red-500 hover:bg-red-50 disabled:opacity-40 dark:hover:bg-red-950/30">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>
-        </div>
+
       </div>
     </div>
   );

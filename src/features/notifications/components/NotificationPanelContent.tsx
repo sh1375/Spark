@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { NoteMessageDetails } from '../../../components/Notes/NoteMessageDetails';
 import { NotificationSwipeRow } from './NotificationSwipeRow';
 import {
   Bell,
   CheckCheck,
+  Trash2,
   X,
 } from 'lucide-react';
 
@@ -34,8 +36,9 @@ export interface NotificationPanelContentProps {
   onMarkAsRead: (id: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 
-  onMarkAllAsRead:
-    () => void;
+  onMarkAllAsRead: () => Promise<void>;
+  onDeleteAll: () => Promise<void>;
+  bulkActionPending: boolean;
 
   onClose:
     () => void;
@@ -53,11 +56,14 @@ export function NotificationPanelContent({
   unreadCount,
   notifications,
   onMarkAllAsRead,
+  onDeleteAll,
+  bulkActionPending,
   onMarkAsRead,
   onDelete,
   onClose,
   onNotificationClick,
 }: NotificationPanelContentProps) {
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   return (
     <>
       <div className="flex items-center justify-between px-3 py-3 sm:px-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
@@ -76,17 +82,28 @@ export function NotificationPanelContent({
         </div>
 
         <div className="flex items-center gap-1">
-          {unreadCount > 0 && (
-            <button
-              onClick={onMarkAllAsRead}
-              title="همه خوانده شد"
-              aria-label="همه خوانده شد"
-              className="flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 px-2 text-xs sm:w-auto text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors font-medium"
-            >
-              <CheckCheck className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">خواندن همه</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => { void onMarkAllAsRead(); }}
+            disabled={loading || bulkActionPending || confirmDeleteAll || unreadCount === 0}
+            title="علامت‌گذاری همه به‌عنوان خوانده‌شده"
+            aria-label="علامت‌گذاری همه به‌عنوان خوانده‌شده"
+            className="flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:bg-blue-50 disabled:opacity-40 dark:text-blue-400 dark:hover:bg-blue-950/30"
+          >
+            <CheckCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">خواندن همه</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteAll(true)}
+            disabled={loading || bulkActionPending || confirmDeleteAll || (notifications.length === 0 && unreadCount === 0)}
+            title="حذف همه اعلان‌ها"
+            aria-label="حذف همه اعلان‌ها"
+            className="flex h-9 shrink-0 items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/30"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="hidden sm:inline">حذف همه</span>
+          </button>
 
           <button
             onClick={onClose}
@@ -97,6 +114,17 @@ export function NotificationPanelContent({
           </button>
         </div>
       </div>
+
+      {confirmDeleteAll && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-red-100 bg-red-50 px-3 py-2 text-xs dark:border-red-900/50 dark:bg-red-950/30">
+          <p className="flex-1 text-red-800 dark:text-red-200">همهٔ اعلان‌ها حذف شوند؟</p>
+          <button type="button" onClick={() => setConfirmDeleteAll(false)} className="rounded-md px-2 py-1 text-gray-700 dark:text-gray-200">انصراف</button>
+          <button type="button" disabled={bulkActionPending} onClick={() => {
+            setConfirmDeleteAll(false);
+            void onDeleteAll();
+          }} className="rounded-md bg-red-700 px-2 py-1 text-white">حذف همه</button>
+        </div>
+      )}
 
       <div className="relative isolate min-h-0 flex-1 overflow-y-auto overscroll-contain">
         {loading ? (

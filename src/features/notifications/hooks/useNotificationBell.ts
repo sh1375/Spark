@@ -27,6 +27,7 @@ import {
 } from '../navigation/notificationNavigation';
 import {
   deleteUserNotification,
+  deleteAllUserNotifications,
   fetchUserNotifications,
   fetchUnreadNotificationCount,
   markNotificationAsRead,
@@ -59,8 +60,9 @@ export interface UseNotificationBellResult {
   markAsRead: (id: string) => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
 
-  markAllAsRead:
-    () => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  deleteAll: () => Promise<void>;
+  bulkActionPending: boolean;
 }
 
 export function useNotificationBell(
@@ -77,6 +79,11 @@ export function useNotificationBell(
     useState(true);
   const [currentUserId, setCurrentUserId] =
     useState<string | null>(initialUserId);
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [bulkActionPending, setBulkActionPending] = useState(false);
+  const bulkLock = useRef(false);
+  const latestUserId = useRef(currentUserId);
+  latestUserId.current = currentUserId;
   const deletedNotificationIds = useRef(new Set<string>());
   const onNavigateRef =
     useRef(onNavigate);
@@ -267,6 +274,7 @@ export function useNotificationBell(
   }, [
     currentUserId,
     refreshUnreadCount,
+    reloadVersion,
   ]);
 
   const markAsRead = async (
@@ -340,35 +348,38 @@ export function useNotificationBell(
     return true;
   };
 
-  const markAllAsRead = async ():
-    Promise<void> => {
-    if (!currentUserId) return;
-
-    const prevNotifications =
-      notifications;
-
-    setNotifications((prev) =>
-      markAllNotificationsReadLocally(
-        prev
-      )
-    );
-    setUnreadCount(unreadTracker.current.markAllRead());
-
+  const runBulkAction = async (action: 'read' | 'delete'): Promise<void> => {
+    const userId = currentUserId;
+    if (!userId || bulkLock.current) return;
+    bulkLock.current = true;
+    setBulkActionPending(true);
     try {
-      await markAllUserNotificationsAsRead(
-        currentUserId
-      );
-      void refreshUnreadCount();
-      toast.success(
-        'همه اعلان‌ها خوانده شد'
-      );
+      if (action === 'delete') {
+        await deleteAllUserNotifications(userId);
+      } else {
+        await markAllUserNotificationsAsRead(userId);
+      }
+      if (latestUserId.current !== userId) return;
+
+      if (action === 'delete') {
+        unreadTracker.current.reset();
+        setNotifications([]);
+      } else {
+        unreadTracker.current.markAllRead();
+        setNotifications(markAllNotificationsReadLocally);
+      }
+      setUnreadCount(0);
+      // Reconcile against the server so inserts arriving during the mutation
+      // are visible even if the client did not receive their realtime event.
+      setReloadVersion(version => version + 1);
+      toast.success(action === 'delete' ? 'همه اعلان‌ها حذف شدند' : 'همه اعلان‌ها خوانده شدند');
     } catch {
-      unreadTracker.current.snapshot(prevNotifications);
-      setNotifications(prevNotifications);
-      void refreshUnreadCount();
-      toast.error(
-        'خطا در بروزرسانی اعلان‌ها'
-      );
+      if (latestUserId.current === userId) {
+        toast.error(action === 'delete' ? 'حذف همه اعلان‌ها ناموفق بود' : 'خطا در بروزرسانی اعلان‌ها');
+      }
+    } finally {
+      bulkLock.current = false;
+      setBulkActionPending(false);
     }
   };
 
@@ -379,6 +390,8 @@ export function useNotificationBell(
     handleNotificationClick,
     markAsRead,
     deleteNotification,
-    markAllAsRead,
+    markAllAsRead: () => runBulkAction('read'),
+    deleteAll: () => runBulkAction('delete'),
+    bulkActionPending,
   };
 }
