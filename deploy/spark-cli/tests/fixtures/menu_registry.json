@@ -39,9 +39,7 @@
     "airgap-status",
     "airgap-build-target-patch",
     "airgap-apply-target-patch",
-    "airgap-auto-target-bootstrap",
-    "airgap-build-observability-pack",
-    "airgap-import-observability-pack"
+    "airgap-auto-target-bootstrap"
   ],
   "Architecture & Provisioning": [
     "architecture-overview",

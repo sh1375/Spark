@@ -93,7 +93,7 @@ if airgap_build_bundle <<<' '; then exit 28; fi
     def test_compose_inventory_propagates_first_failure(self):
         self.run_shell(r'''
 source "$SCRIPT_DIR/lib/airgap-build.sh"
-mkdir -p "$SUPABASE_SOURCE/docker" "$SPARK_ROOT/deploy/spark-cli/livekit"
+mkdir -p "$SUPABASE_SOURCE/docker"
 docker() { if [[ "$PWD" == "$SUPABASE_SOURCE/docker" ]]; then return 9; else printf 'other/image:v1\n'; fi; }
 if airgap_collect_compose_images "$SUPABASE_SOURCE" "$WORK/images"; then exit 29; fi
 ''')

@@ -16,10 +16,10 @@ cp "$WORK/steps" "$WORK/full"
 : >"$WORK/steps"
 for n in "${AIRGAP_INSTALL_STEPS[@]}"; do airgap_install_one_step "$n"; done
 cmp "$WORK/full" "$WORK/steps"
-[[ "$(wc -l <"$WORK/steps")" == 21 ]]
-[[ "$(wc -l <"$WORK/preflight")" == 22 ]]
+[[ "$(wc -l <"$WORK/steps")" == 17 ]]
+[[ "$(wc -l <"$WORK/preflight")" == 18 ]]
 if grep -qx 18 "$WORK/steps"; then exit 1; fi
-if airgap_install_one_step 18; then exit 1; fi
+for retired in 16 18 19 20 22; do if airgap_install_one_step "$retired"; then exit 1; fi; done
 ''')
 
     def test_failed_step_stops_chain_and_clears_marker(self):
@@ -50,7 +50,7 @@ airgap_prepare_install() { :; }
 run_install_step() { return 1; }
 if airgap_install_one_step 10; then exit 1; fi
 [[ -f "$STEP_DIR/9.ok" ]]
-for n in 10 11 12 13 14 15 16 17 19 20 21 22; do [[ ! -f "$STEP_DIR/$n.ok" ]]; done
+for n in 10 11 12 13 14 15 17 21; do [[ ! -f "$STEP_DIR/$n.ok" ]]; done
 if spark_airgap_step21_prerequisite; then exit 1; fi
 ''')
 
@@ -138,7 +138,6 @@ root="$(airgap_extract_bundle_archive "${archive[0]}" "$WORK/extracted")"
 ufw() { touch "$WORK/ufw-called"; return 1; }
 firewall_optional_allow_port 5432
 firewall_optional_close_port 5432
-livekit_firewall_rules
 if install_step_18; then exit 1; fi
 [[ ! -e "$WORK/ufw-called" ]]
 ''')
@@ -150,6 +149,7 @@ test_supabase_health() { :; }; airgap_ip_test_nginx() { :; }
 touch "$STATE_DIR/airgap-db-integration.pending"
 spark_application_database_provisioned() { return 0; }
 restore_plain_database_interactive() { touch "$WORK/restore"; return 1; }
+_airgap_edge_runtime_probe() { :; }
 test_function_sync() { touch "$WORK/functions-checked"; }
 install_step_21
 [[ -f "$STEP_DIR/21.ok" && -f "$WORK/functions-checked" && ! -e "$WORK/restore" ]]

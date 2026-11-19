@@ -120,8 +120,6 @@ require_manager_values() {
     fail "Configured Air-Gap IPv4 is not assigned to this server: $AIRGAP_SERVER_IP"
     return 1
   }
-  [[ "${TURN_MIN_PORT:-}" =~ ^[0-9]+$ && "${TURN_MAX_PORT:-}" =~ ^[0-9]+$ ]] || return 1
-  (( TURN_MIN_PORT < TURN_MAX_PORT && TURN_MIN_PORT >= 1024 && TURN_MAX_PORT <= 65535 )) || return 1
 }
 
 test_values() {
@@ -130,7 +128,7 @@ test_values() {
 
 test_base_packages() {
   local cmd
-  for cmd in docker nginx turnserver turnutils_stunclient rsync jq python3 git openssl curl ip ss systemctl; do
+  for cmd in docker nginx rsync jq python3 git openssl curl ip ss systemctl; do
     command -v "$cmd" >/dev/null || return 1
   done
   python3 -c 'import yaml' || return 1
@@ -155,17 +153,6 @@ install_step_1() {
     fi
     fail "IPv4 must be valid and assigned to a local interface on this server."
   done
-
-  prompt_default TURN_MIN_PORT "TURN minimum relay port" "${TURN_MIN_PORT:-49160}"
-  prompt_default TURN_MAX_PORT "TURN maximum relay port" "${TURN_MAX_PORT:-49200}"
-  [[ "$TURN_MIN_PORT" =~ ^[0-9]+$ && "$TURN_MAX_PORT" =~ ^[0-9]+$ ]] || {
-    fail "TURN ports must be numeric."
-    return 1
-  }
-  (( TURN_MIN_PORT < TURN_MAX_PORT && TURN_MIN_PORT >= 1024 && TURN_MAX_PORT <= 65535 )) || {
-    fail "TURN relay range is invalid."
-    return 1
-  }
 
   airgap_ip_apply_compat_values
   save_config || return 1
@@ -496,7 +483,7 @@ server {
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Permissions-Policy "camera=(self), microphone=(self), geolocation=(), display-capture=(self)" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' http://accounts.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' http://accounts.google.com https://accounts.google.com; img-src 'self' data: blob: http: https:; font-src 'self' data:; connect-src 'self' http://${ip} ws://${ip} http://${ip}:8000 ws://${ip}:8000 http://${ip}:7880 ws://${ip}:7880 http://accounts.google.com https://accounts.google.com http://oauth2.googleapis.com https://oauth2.googleapis.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' http://accounts.google.com https://accounts.google.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self' http://accounts.google.com https://accounts.google.com; object-src 'none'; manifest-src 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' http://accounts.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' http://accounts.google.com https://accounts.google.com; img-src 'self' data: blob: http: https:; font-src 'self' data:; connect-src 'self' http://${ip} ws://${ip} http://${ip}:8000 ws://${ip}:8000 http://accounts.google.com https://accounts.google.com http://oauth2.googleapis.com https://oauth2.googleapis.com; media-src 'self' blob:; worker-src 'self' blob:; frame-src 'self' http://accounts.google.com https://accounts.google.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self' http://accounts.google.com https://accounts.google.com; object-src 'none'; manifest-src 'self'" always;
 
     location ^~ /realtime/v1/ {
         proxy_pass http://127.0.0.1:8000;
@@ -548,13 +535,6 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Forwarded-Proto http;
-    }
-    location ^~ /whip {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Forwarded-Proto http;
-        proxy_read_timeout 3600s;
     }
     location /assets/ { try_files \$uri =404; expires 30d; }
     location = /sw.js { try_files \$uri =404; expires -1; etag on; }
@@ -619,115 +599,6 @@ install_step_14() {
   return 1
 }
 
-test_turn() {
-  local escaped_ip deadline
-  escaped_ip="${AIRGAP_SERVER_IP//./\\.}"
-
-  deadline=$((SECONDS + 10))
-  while (( SECONDS < deadline )); do
-    if systemctl is-active --quiet coturn \
-      && ss -lunp 2>/dev/null | grep -Eq "${escaped_ip}:3478([[:space:]]|$)" \
-      && ss -ltnp 2>/dev/null | grep -Eq "${escaped_ip}:3478([[:space:]]|$)"; then
-      return 0
-    fi
-    sleep 1
-  done
-
-  if ! systemctl is-active --quiet coturn; then
-    echo "ERROR: coturn.service is not active." >>"$CURRENT_LOG"
-  elif ! ss -lunp 2>/dev/null | grep -Eq "${escaped_ip}:3478([[:space:]]|$)"; then
-    echo "ERROR: Coturn UDP listener is not bound to ${AIRGAP_SERVER_IP}:3478." >>"$CURRENT_LOG"
-  elif ! ss -ltnp 2>/dev/null | grep -Eq "${escaped_ip}:3478([[:space:]]|$)"; then
-    echo "ERROR: Coturn TCP listener is not bound to ${AIRGAP_SERVER_IP}:3478." >>"$CURRENT_LOG"
-  fi
-  ss -lunp >>"$CURRENT_LOG" 2>&1 || true
-  ss -ltnp >>"$CURRENT_LOG" 2>&1 || true
-  journalctl -u coturn --no-pager -n 80 >>"$CURRENT_LOG" 2>&1 || true
-  return 1
-}
-
-test_turn_stun_probe() {
-  local probe_log
-  probe_log="$(mktemp)"
-  if ! command -v turnutils_stunclient >/dev/null 2>&1; then
-    echo "ERROR: turnutils_stunclient is not installed." >>"$CURRENT_LOG"
-    rm -f "$probe_log"
-    return 1
-  fi
-  if timeout 8s turnutils_stunclient -L "$AIRGAP_SERVER_IP" -p 3478 "$AIRGAP_SERVER_IP" >"$probe_log" 2>&1; then
-    cat "$probe_log" >>"$CURRENT_LOG"
-    rm -f "$probe_log"
-    return 0
-  fi
-  echo "ERROR: STUN binding request through the active firewall to ${AIRGAP_SERVER_IP}:3478 failed." >>"$CURRENT_LOG"
-  cat "$probe_log" >>"$CURRENT_LOG" 2>&1 || true
-  ufw status verbose >>"$CURRENT_LOG" 2>&1 || true
-  ss -lunp >>"$CURRENT_LOG" 2>&1 || true
-  journalctl -u coturn --no-pager -n 80 >>"$CURRENT_LOG" 2>&1 || true
-  rm -f "$probe_log"
-  return 1
-}
-
-install_step_16() {
-  title
-  new_log "install-16-turn-internal-ip"
-  require_manager_values || return 1
-  local turn_env="${CONFIG_DIR}/turn-secret.env" secret
-  secret="$(env_get "$turn_env" TURN_SHARED_SECRET)"
-  [[ -n "$secret" ]] || secret="$(openssl rand -base64 48 | tr -d '\n')"
-  env_set "$turn_env" TURN_DOMAIN "$AIRGAP_SERVER_IP"
-  env_set "$turn_env" TURN_SHARED_SECRET "$secret"
-  env_set "$turn_env" TURN_URL "turn:${AIRGAP_SERVER_IP}:3478?transport=udp"
-  env_set "$turn_env" TURN_TCP_URL "turn:${AIRGAP_SERVER_IP}:3478?transport=tcp"
-  env_set "$turn_env" TURNS_URL ""
-  chmod 600 "$turn_env"
-
-  cat >/etc/turnserver.conf <<EOF_TURN
-listening-port=3478
-listening-ip=${AIRGAP_SERVER_IP}
-relay-ip=${AIRGAP_SERVER_IP}
-fingerprint
-use-auth-secret
-static-auth-secret=${secret}
-realm=${AIRGAP_SERVER_IP}
-server-name=${AIRGAP_SERVER_IP}
-min-port=${TURN_MIN_PORT}
-max-port=${TURN_MAX_PORT}
-no-tls
-no-dtls
-no-cli
-no-loopback-peers
-no-multicast-peers
-stale-nonce=600
-EOF_TURN
-  chown root:turnserver /etc/turnserver.conf
-  chmod 0640 /etc/turnserver.conf
-  if grep -q '^TURNSERVER_ENABLED=' /etc/default/coturn 2>/dev/null; then
-    sed -i 's/^TURNSERVER_ENABLED=.*/TURNSERVER_ENABLED=1/' /etc/default/coturn
-  else
-    printf '\nTURNSERVER_ENABLED=1\n' >>/etc/default/coturn
-  fi
-
-  if functions_reference_turn_secret; then
-    env_set "${CONFIG_DIR}/functions-extra.env" TURN_DOMAIN "$AIRGAP_SERVER_IP"
-    env_set "${CONFIG_DIR}/functions-extra.env" TURN_SHARED_SECRET "$secret"
-    env_set "${CONFIG_DIR}/functions-extra.env" TURN_URL "turn:${AIRGAP_SERVER_IP}:3478?transport=udp"
-    env_set "${CONFIG_DIR}/functions-extra.env" TURN_TCP_URL "turn:${AIRGAP_SERVER_IP}:3478?transport=tcp"
-    env_set "${CONFIG_DIR}/functions-extra.env" TURNS_URL ""
-    chmod 600 "${CONFIG_DIR}/functions-extra.env"
-    if [[ -f "${SUPABASE_ROOT}/docker-compose.yml" ]]; then
-      run_logged "Reload Functions for internal-IP TURN env" bash -c "cd '$SUPABASE_ROOT' && docker compose up -d --force-recreate functions" || return 1
-    fi
-  fi
-
-  run_logged "Enable Coturn service" systemctl enable coturn || return 1
-  run_logged "Restart Coturn with internal-IP configuration" systemctl restart coturn || {
-    journalctl -u coturn --no-pager -n 80 >>"$CURRENT_LOG" 2>&1 || true
-    return 1
-  }
-  if run_logged "Validate internal TURN listeners" test_turn; then mark_step 16; else unmark_step 16; return 1; fi
-}
-
 test_certbot_hook() {
   ! systemctl is-active --quiet certbot.timer 2>/dev/null
 }
@@ -749,7 +620,7 @@ firewall_optional_allow_port() { :; }
 firewall_optional_close_port() { :; }
 
 install_step_18() {
-  fail "Step 18 (UFW) was removed from offline installation. Use steps 1-17 or 19-22."
+  fail "Step 18 (UFW) was removed from offline installation. Use steps 1-15, 17 or 21."
   return 2
 }
 
@@ -775,10 +646,9 @@ airgap_full_preflight() {
 eval "$(declare -f installation_step_name | sed '1s/installation_step_name/installation_step_name_online/')"
 installation_step_name() {
   case "$1" in
-    1) printf 'Internal server IPv4 / TURN ports' ;;
+    1) printf 'Internal server IPv4' ;;
     13) printf 'Validate HTTP origin (no certificates)' ;;
     17) printf 'Disable external certificate renewal' ;;
-    19) printf 'LiveKit internal-IP configuration / secrets' ;;
     21) printf 'Spark database restore / full service validation' ;;
     *) installation_step_name_online "$1" ;;
   esac
@@ -799,191 +669,16 @@ install_step_21() {
     install_step_10 || return 1
   fi
   spark_application_database_provisioned || { fail "The restored database does not contain the Spark application schema."; return 1; }
+  if ! _airgap_edge_runtime_probe "$SUPABASE_ROOT"; then
+    _airgap_edge_capture_logs "${BACKUP_DIR}/edge-runtime-step21-$(date -u +%Y%m%d-%H%M%S).log"
+    return 1
+  fi
   if run_visible "Validate offline Edge Function synchronization" test_function_sync; then
     mark_step 21
   else
     unmark_step 21
     return 1
   fi
-}
-
-# LiveKit: internal IPv4 signaling/media without DNS or local TLS.
-AIRGAP_LIVEKIT_OVERRIDE="${LIVEKIT_ROOT}/docker-compose.airgap-ip.yml"
-
-livekit_compose() {
-  local -a args=(
-    -f "${LIVEKIT_ROOT}/docker-compose.yml"
-    -f "${LIVEKIT_ROOT}/docker-compose.spark-cli.yml"
-  )
-  [[ -f "$AIRGAP_LIVEKIT_OVERRIDE" ]] && args+=( -f "$AIRGAP_LIVEKIT_OVERRIDE" )
-  docker compose "${args[@]}" --env-file "$LIVEKIT_ENV" "$@"
-}
-
-livekit_observability_compose() {
-  livekit_compose --profile observability "$@"
-}
-
-airgap_ip_write_livekit_override() {
-  cat >"$AIRGAP_LIVEKIT_OVERRIDE" <<EOF_YAML
-services:
-  livekit:
-    environment:
-      LIVEKIT_CONFIG: |
-        port: 7880
-        log_level: info
-        rtc:
-          tcp_port: 7881
-          port_range_start: 50000
-          port_range_end: 60000
-          use_external_ip: false
-          node_ip: ${AIRGAP_SERVER_IP}
-          ips:
-            includes:
-              - ${AIRGAP_SERVER_IP}/32
-          stun_servers:
-            - ${AIRGAP_SERVER_IP}:443
-        redis:
-          address: \${LIVEKIT_REDIS_ADDRESS:-127.0.0.1:6379}
-        keys:
-          \${LIVEKIT_API_KEY}: \${LIVEKIT_API_SECRET}
-        prometheus_port: 6789
-        turn:
-          enabled: true
-          udp_port: 443
-          allow_restricted_peer_cidrs:
-            - ${AIRGAP_SERVER_IP}/32
-        ingress:
-          rtmp_base_url: rtmp://${AIRGAP_SERVER_IP}:1935/live
-          whip_base_url: http://${AIRGAP_SERVER_IP}/whip
-        room:
-          auto_create: false
-          empty_timeout: 300
-          departure_timeout: 60
-          max_participants: 20
-  ingress:
-    environment:
-      LIVEKIT_WS_URL: ws://127.0.0.1:7880
-      INGRESS_CONFIG_BODY: |
-        ws_url: ws://127.0.0.1:7880
-        api_key: \${LIVEKIT_API_KEY}
-        api_secret: \${LIVEKIT_API_SECRET}
-        redis:
-          address: \${LIVEKIT_REDIS_ADDRESS:-127.0.0.1:6379}
-        health_port: 9092
-        prometheus_port: 6787
-        rtmp_port: 1935
-        whip_port: 8080
-        rtc_config:
-          udp_port: 7885
-          use_external_ip: false
-        log_level: info
-  prometheus:
-    command:
-      - --config.file=/etc/prometheus/prometheus.yml
-      - --storage.tsdb.path=/prometheus
-      - --storage.tsdb.retention.time=15d
-      - --web.listen-address=127.0.0.1:\${SPARK_OBSERVABILITY_PROMETHEUS_PORT:-19090}
-      - --web.enable-lifecycle
-  alloy:
-    user: "473:473"
-    group_add:
-      - "\${DOCKER_SOCKET_GID:-0}"
-EOF_YAML
-  chmod 0600 "$AIRGAP_LIVEKIT_OVERRIDE"
-}
-
-livekit_test_dns() {
-  airgap_ip_is_local "$AIRGAP_SERVER_IP"
-}
-
-test_livekit_config() {
-  require_file "${LIVEKIT_ROOT}/docker-compose.yml" || return 1
-  require_file "${LIVEKIT_ROOT}/docker-compose.spark-cli.yml" || return 1
-  require_file "$AIRGAP_LIVEKIT_OVERRIDE" || return 1
-  require_file "$LIVEKIT_ENV" || return 1
-  livekit_require_env || return 1
-  livekit_test_dns || return 1
-  [[ "$(livekit_env_value LIVEKIT_DOMAIN)" == "$AIRGAP_SERVER_IP" ]] || return 1
-  [[ "$(livekit_env_value LIVEKIT_TURN_DOMAIN)" == "$AIRGAP_SERVER_IP" ]] || return 1
-  [[ "$(livekit_env_value LIVEKIT_INGRESS_DOMAIN)" == "$AIRGAP_SERVER_IP" ]] || return 1
-  [[ "$(livekit_env_value S3_ENDPOINT)" == "http://127.0.0.1:9000" ]] || return 1
-  livekit_compose config --quiet >>"$CURRENT_LOG" 2>&1 || return 1
-}
-
-install_step_19() {
-  title
-  new_log "install-19-livekit-internal-ip"
-  require_manager_values || return 1
-  require_file "${SUPABASE_ROOT}/.env" || return 1
-  require_dir "$LIVEKIT_SOURCE_DIR" || return 1
-
-  run_logged "Sync LiveKit deployment assets" livekit_sync_assets || return 1
-  [[ -f "$LIVEKIT_ENV" ]] || cp "${LIVEKIT_ROOT}/.env.example" "$LIVEKIT_ENV"
-  chmod 600 "$LIVEKIT_ENV"
-  env_set "$LIVEKIT_ENV" MINIO_IMAGE "minio/minio:RELEASE.2025-04-22T22-12-26Z"
-  env_set "$LIVEKIT_ENV" MINIO_MC_IMAGE "minio/mc:RELEASE.2025-08-13T08-35-41Z"
-  env_set "$LIVEKIT_ENV" PROMETHEUS_IMAGE "prom/prometheus:v3.14.0"
-  env_set "$LIVEKIT_ENV" ALERTMANAGER_IMAGE "prom/alertmanager:v0.34.0"
-  env_set "$LIVEKIT_ENV" GRAFANA_IMAGE "grafana/grafana:13.2.0"
-  env_set "$LIVEKIT_ENV" LOKI_IMAGE "grafana/loki:3.7.0"
-  env_set "$LIVEKIT_ENV" ALLOY_IMAGE "grafana/alloy:v1.19.0"
-  env_set "$LIVEKIT_ENV" NODE_EXPORTER_IMAGE "prom/node-exporter:v1.12.1"
-  env_set "$LIVEKIT_ENV" BLACKBOX_EXPORTER_IMAGE "prom/blackbox-exporter:v0.28.0"
-  env_set "$LIVEKIT_ENV" GRAFANA_ADMIN_USER "admin"
-  livekit_ensure_secret GRAFANA_ADMIN_PASSWORD "openssl rand -hex 24"
-
-  env_set "$LIVEKIT_ENV" LIVEKIT_DOMAIN "$AIRGAP_SERVER_IP"
-  env_set "$LIVEKIT_ENV" LIVEKIT_TURN_DOMAIN "$AIRGAP_SERVER_IP"
-  env_set "$LIVEKIT_ENV" LIVEKIT_INGRESS_DOMAIN "$AIRGAP_SERVER_IP"
-  [[ -n "$(livekit_env_value LIVEKIT_REDIS_ADDRESS)" ]] || env_set "$LIVEKIT_ENV" LIVEKIT_REDIS_ADDRESS "127.0.0.1:6379"
-  livekit_ensure_secret LIVEKIT_API_KEY "printf 'LK%s' \"\$(openssl rand -hex 12)\""
-  livekit_ensure_secret LIVEKIT_API_SECRET "openssl rand -hex 32"
-  livekit_configure_local_recording_storage || return 1
-  chmod 600 "$LIVEKIT_ENV"
-
-  install -d -m 0700 "$LIVEKIT_TURN_CERT_DIR"
-  airgap_ip_write_livekit_override || return 1
-  if run_logged "Validate LiveKit internal-IP config" test_livekit_config; then
-    mark_step 19
-    ok "LiveKit signaling origin: ws://${AIRGAP_SERVER_IP}:7880"
-  else
-    unmark_step 19
-    return 1
-  fi
-}
-
-livekit_install_certbot_hook() {
-  rm -f "$LIVEKIT_RENEW_HOOK"
-  return 0
-}
-
-livekit_firewall_rules() {
-  info "Firewall is externally managed; no host firewall rules were changed."
-}
-
-livekit_public_tls_probe() {
-  local code
-  code="$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 "http://${AIRGAP_SERVER_IP}:7880/" || true)"
-  [[ "$code" =~ ^[1-5][0-9][0-9]$ && "$code" != "000" ]]
-}
-
-livekit_turn_tls_probe() {
-  turnutils_stunclient -L "$AIRGAP_SERVER_IP" -p "$LIVEKIT_TURN_UDP_PORT" "$AIRGAP_SERVER_IP" >/dev/null 2>&1
-}
-
-livekit_airgap_http_reachable() {
-  local url="$1" code
-  code="$(curl --noproxy '*' -sS -o /dev/null -w '%{http_code}' --connect-timeout 5 "$url" || true)"
-  [[ "$code" =~ ^[1-5][0-9][0-9]$ && "$code" != "000" ]]
-}
-
-livekit_internal_api_exposure_probe() {
-  livekit_airgap_http_reachable "http://${AIRGAP_SERVER_IP}:${LIVEKIT_INTERNAL_API_PORT}/"
-}
-
-livekit_secret_file_permissions_probe() {
-  [[ "$(stat -c '%a' "$LIVEKIT_ENV")" == "600" ]] || return 1
-  [[ "$(stat -c '%a' "$AIRGAP_LIVEKIT_OVERRIDE")" == "600" ]] || return 1
 }
 
 spark_application_database_provisioned() {
@@ -999,344 +694,6 @@ SQL
   ) 2>>"$CURRENT_LOG" | grep -qx '1'
 }
 
-livekit_airgap_listener_probe() {
-  local protocol="$1" port="$2" sockets
-  case "$protocol" in
-    tcp) sockets="$(ss -H -lntp 2>/dev/null || true)" ;;
-    udp) sockets="$(ss -H -lunp 2>/dev/null || true)" ;;
-    *) return 1 ;;
-  esac
-  grep -Eq "(${AIRGAP_SERVER_IP//./\\.}|0\.0\.0\.0|\[::\]|\*):${port}\\b" <<<"$sockets"
-}
-
-livekit_airgap_minio_listener_probe() {
-  ss -H -lntp 2>/dev/null | grep -Eq '127\.0\.0\.1:9000\b'
-}
-
-livekit_airgap_validation_check() {
-  local label="$1" rc
-  shift
-  printf '[CHECK] %s\n' "$label" | tee -a "$CURRENT_LOG"
-  if "$@" >>"$CURRENT_LOG" 2>&1; then
-    printf '[PASS] %s\n' "$label" | tee -a "$CURRENT_LOG"
-    return 0
-  else
-    rc=$?
-    printf '[FAIL] %s (rc=%s)\n' "$label" "$rc" | tee -a "$CURRENT_LOG" >&2
-    return "$rc"
-  fi
-}
-
-livekit_airgap_validation_report_failure() {
-  {
-    printf '\n=== LiveKit Compose state ===\n'
-    livekit_compose ps 2>&1 || true
-    printf '\n=== Listening sockets ===\n'
-    ss -lntup 2>&1 || true
-    printf '\n=== UFW status ===\n'
-    ufw status verbose 2>&1 || true
-  } >>"$CURRENT_LOG"
-}
-
-test_livekit_full_validation() {
-  local function
-
-  livekit_airgap_validation_check "LiveKit internal-IP configuration" test_livekit_config || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit runtime readiness" livekit_runtime_ready || { livekit_report_start_failure; livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit signaling TCP 7880 listener" livekit_airgap_listener_probe tcp 7880 || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit ICE TCP 7881 listener" livekit_airgap_listener_probe tcp 7881 || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit embedded TURN UDP 443 listener" livekit_airgap_listener_probe udp 443 || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit ingress RTMP TCP 1935 listener" livekit_airgap_listener_probe tcp 1935 || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit ingress RTC UDP 7885 listener" livekit_airgap_listener_probe udp 7885 || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "Local MinIO TCP 9000 listener" livekit_airgap_minio_listener_probe || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "Local MinIO readiness" curl -fsS --connect-timeout 3 http://127.0.0.1:9000/minio/health/ready || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit internal HTTP reachability" livekit_public_tls_probe "$AIRGAP_SERVER_IP" || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit embedded TURN STUN UDP 443" livekit_turn_tls_probe || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit RoomService API smoke test" livekit_api_smoke || { livekit_airgap_validation_report_failure; return 1; }
-
-  livekit_airgap_validation_check "LiveKit secret leak scan" livekit_secret_leak_probe || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit secret file permissions" livekit_secret_file_permissions_probe || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "LiveKit internal API exposure" livekit_internal_api_exposure_probe || { livekit_airgap_validation_report_failure; return 1; }
-  livekit_airgap_validation_check "Legacy Coturn is disabled" bash -c '! systemctl is-active --quiet coturn 2>/dev/null' || { livekit_airgap_validation_report_failure; return 1; }
-  return 0
-}
-
-livekit_write_observability_targets() {
-  local target_file="${LIVEKIT_ROOT}/monitoring/targets/blackbox.json"
-  install -d -m 0755 "$(dirname "$target_file")"
-  cat >"${LIVEKIT_ROOT}/monitoring/blackbox.yml" <<'EOF_BLACKBOX'
-modules:
-  http_2xx:
-    prober: http
-    timeout: 8s
-    http:
-      method: GET
-      preferred_ip_protocol: ip4
-      ip_protocol_fallback: false
-      follow_redirects: true
-      fail_if_ssl: true
-      fail_if_not_ssl: false
-EOF_BLACKBOX
-  cat >"$target_file" <<EOF_TARGETS
-[
-  {
-    "targets": ["http://${AIRGAP_SERVER_IP}/auth/v1/.well-known/jwks.json"],
-    "labels": {"probe": "spark-api"}
-  },
-  {
-    "targets": ["http://${AIRGAP_SERVER_IP}:7880/"],
-    "labels": {"probe": "livekit-internal-ip"}
-  },
-  {
-    "targets": ["http://127.0.0.1:9092/"],
-    "labels": {"probe": "ingress-health"}
-  }
-]
-EOF_TARGETS
-  chmod 0644 "${LIVEKIT_ROOT}/monitoring/blackbox.yml" "$target_file"
-  python3 -m json.tool "$target_file" >/dev/null
-}
-
-
-livekit_airgap_select_prometheus_port() {
-  local current candidate listeners
-  current="$(env_get "$LIVEKIT_ENV" SPARK_OBSERVABILITY_PROMETHEUS_PORT)"
-  if [[ "$current" =~ ^[0-9]+$ ]] && (( current >= 1024 && current <= 65535 )); then
-    printf '%s\n' "$current"
-    return 0
-  fi
-
-  listeners="$(ss -H -lnt 2>/dev/null || true)"
-  for candidate in 19090 29090 39090 49090; do
-    if ! grep -Eq "127\.0\.0\.1:${candidate}\\b" <<<"$listeners"; then
-      env_set "$LIVEKIT_ENV" SPARK_OBSERVABILITY_PROMETHEUS_PORT "$candidate"
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-  printf 'No free loopback port is available for Spark Prometheus (tried 19090/29090/39090/49090).\n' >>"$CURRENT_LOG"
-  return 1
-}
-
-livekit_airgap_prepare_observability_runtime() {
-  local prometheus_port docker_gid
-  [[ -S /var/run/docker.sock ]] || {
-    printf 'Docker socket is missing: /var/run/docker.sock\n' >>"$CURRENT_LOG"
-    return 1
-  }
-  prometheus_port="$(livekit_airgap_select_prometheus_port)" || return 1
-  docker_gid="$(stat -c '%g' /var/run/docker.sock 2>>"$CURRENT_LOG")" || return 1
-  [[ "$docker_gid" =~ ^[0-9]+$ ]] || return 1
-  env_set "$LIVEKIT_ENV" DOCKER_SOCKET_GID "$docker_gid"
-  airgap_ip_write_livekit_override || return 1
-  printf 'Spark Prometheus loopback port: %s\n' "$prometheus_port" >>"$CURRENT_LOG"
-  printf 'Docker socket supplementary GID for Alloy: %s\n' "$docker_gid" >>"$CURRENT_LOG"
-}
-
-livekit_airgap_sync_observability_assets() {
-  local source="${LIVEKIT_SOURCE_DIR}/monitoring" prometheus_port
-  [[ -d "$source" ]] || {
-    printf 'Manager observability asset directory is missing: %s\n' "$source" >>"$CURRENT_LOG"
-    return 1
-  }
-  prometheus_port="$(env_get "$LIVEKIT_ENV" SPARK_OBSERVABILITY_PROMETHEUS_PORT)"
-  [[ "$prometheus_port" =~ ^[0-9]+$ ]] || {
-    printf 'Spark Prometheus loopback port is not configured.\n' >>"$CURRENT_LOG"
-    return 1
-  }
-
-  install -d -m 0755 "${LIVEKIT_ROOT}/monitoring"
-  rsync -a --delete "${source}/" "${LIVEKIT_ROOT}/monitoring/" >>"$CURRENT_LOG" 2>&1 || return 1
-
-  # Keep Spark observability loopback-only while avoiding collisions with an
-  # existing host Prometheus on the conventional 9090 port.
-  sed -i "s#127\.0\.0\.1:9090#127.0.0.1:${prometheus_port}#g"     "${LIVEKIT_ROOT}/monitoring/prometheus.yml"     "${LIVEKIT_ROOT}/monitoring/grafana/provisioning/datasources/datasources.yml" || return 1
-
-  # Grafana probes these standard provisioning directories even when Spark has
-  # no plugins/alerting provisioning files yet. Create them to avoid noisy
-  # startup errors while the whole provisioning tree remains read-only in the
-  # container.
-  install -d -m 0755     "${LIVEKIT_ROOT}/monitoring/grafana/provisioning/plugins"     "${LIVEKIT_ROOT}/monitoring/grafana/provisioning/alerting"
-}
-
-livekit_airgap_observability_config_ready() {
-  local file failed=0
-  for file in \
-    monitoring/prometheus.yml \
-    monitoring/rules/livekit-alerts.yml \
-    monitoring/alertmanager.yml \
-    monitoring/blackbox.yml \
-    monitoring/loki.yml \
-    monitoring/alloy.alloy \
-    monitoring/grafana/provisioning/datasources/datasources.yml \
-    monitoring/grafana/provisioning/dashboards/dashboards.yml \
-    monitoring/grafana/dashboards/spark-livekit-overview.json \
-    monitoring/grafana/dashboards/spark-livekit-operations.json \
-    monitoring/targets/blackbox.json; do
-    if [[ ! -f "${LIVEKIT_ROOT}/${file}" ]]; then
-      printf 'Missing observability file: %s\n' "${LIVEKIT_ROOT}/${file}" >>"$CURRENT_LOG"
-      failed=1
-    fi
-  done
-  (( failed == 0 )) || return 1
-
-  if ! python3 -m json.tool "${LIVEKIT_ROOT}/monitoring/targets/blackbox.json" >/dev/null 2>>"$CURRENT_LOG"; then
-    printf 'Invalid JSON: monitoring/targets/blackbox.json\n' >>"$CURRENT_LOG"
-    return 1
-  fi
-  if ! python3 -m json.tool "${LIVEKIT_ROOT}/monitoring/grafana/dashboards/spark-livekit-overview.json" >/dev/null 2>>"$CURRENT_LOG"; then
-    printf 'Invalid JSON: spark-livekit-overview.json\n' >>"$CURRENT_LOG"
-    return 1
-  fi
-  if ! python3 -m json.tool "${LIVEKIT_ROOT}/monitoring/grafana/dashboards/spark-livekit-operations.json" >/dev/null 2>>"$CURRENT_LOG"; then
-    printf 'Invalid JSON: spark-livekit-operations.json\n' >>"$CURRENT_LOG"
-    return 1
-  fi
-
-  if ! livekit_observability_compose config --quiet >>"$CURRENT_LOG" 2>&1; then
-    printf 'Docker Compose observability configuration validation failed.\n' >>"$CURRENT_LOG"
-    return 1
-  fi
-}
-
-
-livekit_observability_ready() {
-  local service state prometheus_port listeners port result
-  prometheus_port="$(env_get "$LIVEKIT_ENV" SPARK_OBSERVABILITY_PROMETHEUS_PORT)"
-  [[ "$prometheus_port" =~ ^[0-9]+$ ]] || return 1
-
-  for service in prometheus alertmanager loki alloy node-exporter blackbox-exporter grafana; do
-    state="$(livekit_observability_service_state "$service" 2>/dev/null || true)"
-    [[ "$state" == running* ]] || return 1
-    [[ "$state" != *unhealthy* && "$state" != *restarting* ]] || return 1
-  done
-
-  curl -fsS --connect-timeout 3 "http://127.0.0.1:${prometheus_port}/-/ready" >/dev/null || return 1
-  curl -fsS --connect-timeout 3 http://127.0.0.1:9093/-/ready >/dev/null || return 1
-  curl -fsS --connect-timeout 3 http://127.0.0.1:3100/ready >/dev/null || return 1
-  curl -fsS --connect-timeout 3 http://127.0.0.1:12345/-/ready >/dev/null || return 1
-  curl -fsS --connect-timeout 3 http://127.0.0.1:9100/metrics >/dev/null || return 1
-  curl -fsS --connect-timeout 3 http://127.0.0.1:9115/metrics >/dev/null || return 1
-  curl -fsS --connect-timeout 3 http://127.0.0.1:3000/api/health >/dev/null || return 1
-
-  listeners="$(ss -H -lnt 2>/dev/null || true)"
-  for port in 3000 "$prometheus_port" 9093 3100 12345 9100 9115; do
-    grep -Eq "127\\.0\\.0\\.1:${port}\\b" <<<"$listeners" || return 1
-    ! grep -Eq "(0\\.0\\.0\\.0|\\[::\\]|\\*):${port}\\b" <<<"$listeners" || return 1
-  done
-
-  result="$(curl -fsSG --connect-timeout 3 \
-    --data-urlencode 'query=min(up{job=~"livekit|livekit-egress|livekit-ingress|node|blackbox-exporter|alloy|loki"})' \
-    "http://127.0.0.1:${prometheus_port}/api/v1/query")" || return 1
-  python3 -c '
-import json,sys
-payload=json.load(sys.stdin)
-if payload.get("status")!="success":
-    raise SystemExit(1)
-items=payload.get("data",{}).get("result",[])
-if not items or float(items[0].get("value",[0,"0"])[1]) < 1:
-    raise SystemExit(1)
-' <<<"$result"
-}
-
-livekit_airgap_observability_image_list() {
-  local output="$1"
-  livekit_observability_compose config --images 2>>"$CURRENT_LOG" \
-    | sed '/^[[:space:]]*$/d' | sort -u >"$output"
-  [[ -s "$output" ]]
-}
-
-livekit_airgap_observability_images_ready() {
-  local list_file="$1" image failed=0
-  while IFS= read -r image; do
-    [[ -n "$image" ]] || continue
-    if ! "$AIRGAP_REAL_DOCKER" image inspect "$image" >/dev/null 2>&1; then
-      printf 'Missing observability Docker image: %s\n' "$image" >>"$CURRENT_LOG"
-      failed=1
-      continue
-    fi
-    if ! "$AIRGAP_REAL_DOCKER" image save "$image" >/dev/null 2>>"$CURRENT_LOG"; then
-      printf 'Unreadable observability Docker image content: %s\n' "$image" >>"$CURRENT_LOG"
-      failed=1
-    fi
-  done <"$list_file"
-  (( failed == 0 ))
-}
-
-install_step_22() {
-  title
-  new_log "install-22-livekit-observability-airgap"
-
-  test_livekit_full_validation || {
-    fail "Complete Step 21 LiveKit validation first."
-    return 1
-  }
-
-  run_logged "Prepare Air-Gap observability runtime" livekit_airgap_prepare_observability_runtime || {
-    fail "Unable to prepare the local-only observability runtime. See the Step 22 log for the exact port/socket error."
-    unmark_step 22
-    return 1
-  }
-  run_logged "Sync bundled observability assets" livekit_airgap_sync_observability_assets || {
-    fail "Bundled observability assets are missing from the installed Spark Manager. Update the Manager and retry Step 22."
-    unmark_step 22
-    return 1
-  }
-  run_logged "Generate observability HTTP targets" livekit_write_observability_targets || return 1
-  if ! run_logged "Validate observability configuration" livekit_airgap_observability_config_ready; then
-    fail "Observability configuration is not valid. See the Step 22 log for the exact missing/invalid file or Compose error."
-    unmark_step 22
-    return 1
-  fi
-
-  local image_list root
-  image_list="$(mktemp)"
-  if ! livekit_airgap_observability_image_list "$image_list"; then
-    rm -f "$image_list"
-    fail "Unable to resolve the observability Docker image list."
-    unmark_step 22
-    return 1
-  fi
-
-  if ! livekit_airgap_observability_images_ready "$image_list"; then
-    root="$(airgap_current_root 2>/dev/null || true)"
-    if [[ -n "$root" ]]; then
-      warn "One or more observability images are missing/unreadable; attempting an offline reload from the active Air-Gap bundle."
-      airgap_reload_image_archive "$root" >>"$CURRENT_LOG" 2>&1 || true
-    fi
-    if ! livekit_airgap_observability_images_ready "$image_list"; then
-      rm -f "$image_list"
-      fail "The active Air-Gap bundle does not provide a complete local observability image set. Rebuild/import the bundle with the updated builder; no Internet pull was attempted."
-      unmark_step 22
-      return 1
-    fi
-  fi
-  rm -f "$image_list"
-
-  if ! run_logged "Start bundled Prometheus/Grafana/Loki/Alertmanager observability" \
-    livekit_observability_compose up -d prometheus alertmanager loki alloy node-exporter blackbox-exporter grafana; then
-    livekit_report_observability_failure
-    unmark_step 22
-    return 1
-  fi
-
-  info "Waiting for observability readiness (max 90 seconds)..."
-  local deadline=$((SECONDS + 90))
-  while (( SECONDS < deadline )); do
-    if livekit_observability_ready; then
-      mark_step 22
-      ok "Prometheus/Grafana/Loki/Alertmanager and exporters are ready."
-      return 0
-    fi
-    sleep 3
-  done
-
-  unmark_step 22
-  warn "Observability did not become ready within the deadline."
-  livekit_report_observability_failure
-  return 1
-}
-
 airgap_status() {
   title
   new_log "airgap-status-internal-ip"
@@ -1348,8 +705,6 @@ airgap_status() {
     printf 'Web / API      : http://%s/\n' "$AIRGAP_SERVER_IP"
     printf 'Supabase direct: http://%s:8000/\n' "$AIRGAP_SERVER_IP"
     printf 'PostgreSQL     : %s:5432 (Supavisor session)\n' "$AIRGAP_SERVER_IP"
-    printf 'LiveKit        : ws://%s:7880\n' "$AIRGAP_SERVER_IP"
-    printf 'TURN           : turn:%s:443?transport=udp (LiveKit embedded after step 20)\n' "$AIRGAP_SERVER_IP"
   fi
   if [[ -z "$root" ]]; then
     printf 'Bundle          : NOT ACTIVE\n'

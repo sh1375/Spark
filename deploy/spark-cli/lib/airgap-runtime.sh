@@ -342,7 +342,7 @@ install_step_20() {
   fi
 }
 
-AIRGAP_INSTALL_STEPS=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 19 20 21 22)
+AIRGAP_INSTALL_STEPS=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 17 21)
 
 airgap_step_supported() {
   local step
@@ -362,7 +362,7 @@ airgap_prepare_install() {
 
 airgap_run_install_step() {
   local n="$1" step invalidate=0
-  airgap_step_supported "$n" || { fail "Offline step must be 1-17 or 19-22; firewall step 18 was removed."; return 2; }
+  airgap_step_supported "$n" || { fail "Offline step must be 1-15, 17 or 21; firewall step 18 was removed."; return 2; }
   for step in "${AIRGAP_INSTALL_STEPS[@]}"; do
     [[ "$step" != "$n" ]] || invalidate=1
     if (( invalidate )); then unmark_step "$step" || return 1; fi
@@ -389,9 +389,9 @@ airgap_install_one_step() (
     for step in "${AIRGAP_INSTALL_STEPS[@]}"; do
       printf '%02d  %s\n' "$step" "$(installation_step_name "$step")"
     done
-    read -r -p "Offline install step (1-17, 19-22; no firewall step): " n
+    read -r -p "Offline install step (1-15, 17, 21; no firewall step): " n
   fi
-  airgap_step_supported "$n" || { fail "Offline step must be 1-17 or 19-22."; return 2; }
+  airgap_step_supported "$n" || { fail "Offline step must be 1-15, 17 or 21."; return 2; }
   airgap_lock_install || return 1
   airgap_prepare_install || return 1
   airgap_run_install_step "$n"
@@ -403,11 +403,11 @@ airgap_install_all() (
   local n
   airgap_lock_install || return 1
   airgap_prepare_install || return 1
-  info "Running the same 21 offline steps offered by Run one offline install step."
+  info "Running the same 17 offline steps offered by Run one offline install step."
   for n in "${AIRGAP_INSTALL_STEPS[@]}"; do
     airgap_run_install_step "$n" || return 1
   done
-  ok "All 21 offline steps completed."
+  ok "All 17 offline steps completed."
 )
 
 airgap_status() {

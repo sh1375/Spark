@@ -145,7 +145,6 @@ for path in \
   lib/airgap-observability-quiet.sh lib/airgap-observability-quiet-base.sh; do
   [[ -f "${source_dir}/${path}" ]] || { echo "Bundled Spark control plane is missing: ${path}" >&2; exit 1; }
 done
-[[ -d "${SPARK_ROOT}/deploy/spark-cli/livekit" ]] || { echo "Bundled LiveKit assets are missing." >&2; exit 1; }
 
 bash -n "${source_dir}/spark"
 bash -n "${source_dir}/spark-airgap"
@@ -163,7 +162,7 @@ python3 "${source_dir}/spark-ui.py" --self-test
 # format-v2 intentionally makes the bundle authoritative.
 stage="$(mktemp -d /usr/local/lib/spark-manager.airgap.XXXXXX)"
 chmod 0755 "$stage"
-install -d -m 0755 "${stage}/lib" "${stage}/livekit"
+install -d -m 0755 "${stage}/lib"
 install -m 0755 "${source_dir}/spark" "${stage}/spark"
 install -m 0755 "${source_dir}/spark-airgap" "${stage}/spark-airgap"
 install -m 0644 "${source_dir}/spark-ui.py" "${stage}/spark-ui.py"
@@ -171,7 +170,6 @@ install -m 0644 "${source_dir}/spark-ui-core.py" "${stage}/spark-ui-core.py"
 for file in "${source_dir}"/lib/*.sh; do
   install -m 0644 "$file" "${stage}/lib/$(basename "$file")"
 done
-rsync -a --delete "${SPARK_ROOT}/deploy/spark-cli/livekit/" "${stage}/livekit/"
 printf '%s\n' "$spark_commit" >"${stage}/.spark-control-plane-commit"
 chmod 0644 "${stage}/.spark-control-plane-commit"
 

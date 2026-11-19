@@ -150,13 +150,13 @@ AIRGAP_ACTIONS = [
     core.Action(
         "airgap-step",
         "04  Run one offline install step",
-        "Run one of 21 offline steps (IDs 1-17, 19-22); no firewall changes, DNS or certificates.",
+        "Run one of 17 offline steps (IDs 1-15, 17, 21); no firewall changes, DNS or certificates.",
         "confirm",
     ),
     core.Action(
         "airgap-install-all",
         "05  Run complete offline installation",
-        "Run the same 21 offline steps in order on the internal IPv4; no firewall changes, DNS or certificates. Step 21 requires a provisioned Spark database or local backup.",
+        "Run the same 17 offline steps in order on the internal IPv4; no firewall changes, DNS or certificates. Step 21 requires a provisioned Spark database or local backup.",
         "confirm",
     ),
     core.Action(
@@ -180,18 +180,6 @@ AIRGAP_ACTIONS = [
         "airgap-auto-target-bootstrap",
         "09  Auto prepare + bootstrap offline target",
         "Automatically find matching artifacts, verify them, prepare the target bundle, install local packages and import Docker images.",
-        "controlled",
-    ),
-    core.Action(
-        "airgap-build-observability-pack",
-        "10  Build observability image supplement",
-        "Build only the seven pinned linux/amd64 Docker images required by Step 22 on a connected staging host.",
-        "controlled",
-    ),
-    core.Action(
-        "airgap-import-observability-pack",
-        "11  Import observability image supplement",
-        "Verify and load a checksum-protected Step 22 observability image supplement without replacing the active Air-Gap bundle.",
         "controlled",
     ),
 ]
@@ -499,8 +487,6 @@ def logical_self_test() -> int:
         "airgap-build-target-patch",
         "airgap-apply-target-patch",
         "airgap-auto-target-bootstrap",
-        "airgap-build-observability-pack",
-        "airgap-import-observability-pack",
     }
     if not required.issubset(ids):
         missing = ", ".join(sorted(required - ids))

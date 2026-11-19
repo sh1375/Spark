@@ -176,8 +176,6 @@ spark_airgap_dispatch_inner() {
     airgap-build-target-patch) airgap_build_target_patch "${1:-}" "${2:-}" "${3:-}" ;;
     airgap-apply-target-patch) airgap_apply_target_patch "${1:-}" "${2:-}" ;;
     airgap-auto-target-bootstrap) airgap_auto_apply_and_bootstrap "${1:-}" "${2:-}" ;;
-    airgap-build-observability-pack) airgap_build_observability_pack "${1:-}" ;;
-    airgap-import-observability-pack) airgap_import_observability_pack "${1:-}" ;;
     airgap-build-edge-functions-pack) airgap_build_edge_functions_pack "${1:-}" "${2:-}" ;;
     airgap-import-edge-functions-pack) airgap_import_edge_functions_pack "${1:-}" ;;
     *) fail "Unknown Spark Air-Gap backend action: $action"; return 2 ;;
@@ -210,8 +208,6 @@ case "${1:-}" in
   --build-target-patch) shift; spark_airgap_backend_action airgap-build-target-patch "${1:-}" "${2:-}" "${3:-}" ;;
   --apply-target-patch) shift; spark_airgap_backend_action airgap-apply-target-patch "${1:-}" "${2:-}" ;;
   --auto-target-bootstrap) shift; spark_airgap_backend_action airgap-auto-target-bootstrap "${1:-}" "${2:-}" ;;
-  --build-observability-pack) shift; spark_airgap_backend_action airgap-build-observability-pack "${1:-}" ;;
-  --import-observability-pack) shift; spark_airgap_backend_action airgap-import-observability-pack "${1:-}" ;;
   --build-edge-functions-pack) shift; spark_airgap_backend_action airgap-build-edge-functions-pack "${1:-}" "${2:-}" ;;
   --import-edge-functions-pack) shift; spark_airgap_backend_action airgap-import-edge-functions-pack "${1:-}" ;;
   --help|-h|"")
@@ -221,14 +217,12 @@ Usage: spark-airgap [option]
   --build                                      Build a complete offline bundle on a connected staging host
   --validate [bundle]                          Validate bundle structure and target compatibility
   --import [bundle]                            Import bundle and load all Docker images locally
-  --step [1-17|19-22]                         Run one installation step in internal-IP offline mode
+  --step [1-15|17|21]                         Run one installation step in internal-IP offline mode
   --install-all                                Run the complete 21-step IP-only installation (no firewall changes)
   --status                                     Show active bundle and internal IPv4 service endpoints
   --build-target-patch [base] [os]             Build a small Ubuntu target patch
   --apply-target-patch [base] [patch]          Apply a verified target patch
   --auto-target-bootstrap [base] [patch]       Auto-discover and bootstrap an offline target
-  --build-observability-pack [output]          Build only Step 22 observability images
-  --import-observability-pack [pack]           Import observability image supplement
   --build-edge-functions-pack [base] [output]  Build a small offline Edge Functions supplement from an existing base bundle
   --import-edge-functions-pack [pack]          Import Edge Functions supplement, restart functions and validate cold start
   --version                                    Show air-gap installer version

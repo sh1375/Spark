@@ -85,9 +85,6 @@ spark_manager_airgap_build() (
     [[ -d "$source/$dir" ]] || { fail "Manager source directory missing: $dir"; return 1; }
     cp -a "$source/$dir" "$root/manager/$dir"
   done
-  if [[ -d "${source_root}/deploy/spark-cli/livekit" ]]; then
-    cp -a "${source_root}/deploy/spark-cli/livekit" "$root/manager/livekit"
-  fi
   cp -a "$source/bootstrap-manager-airgap.sh" "$root/install.sh"
   chmod 0755 "$root/install.sh" "$root/manager/spark" "$root/manager/spark-airgap" "$root/manager/spark-architecture" "$root/manager/spark-database" "$root/manager/spark-migrate" "$root/manager/spark-manager-airgap-bootstrap" "$root/manager/lib/spark-manager-airgap" "$root/manager/lib/build-manager-airgap"
 
