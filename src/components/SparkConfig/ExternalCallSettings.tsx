@@ -9,6 +9,7 @@ interface Connection {
   capability: keyof typeof labels;
   endpoint: string;
   has_key: boolean;
+  alert_timing: 'immediate' | 'unanswered';
   sms_enabled: boolean;
   bale_enabled: boolean;
   sms_template: string;
@@ -26,8 +27,8 @@ function ConnectionForm({ initial }: { initial: Connection }) {
       if (saving) return;
       setSaving(true);
       try {
-        const { error } = await (supabase as any).rpc('save_external_call_connection', {
-          p_capability: settings.capability, p_endpoint: settings.endpoint, p_key: key || null,
+        const { error } = await (supabase as any).rpc('save_external_call_connection_v2', {
+          p_alert_timing: settings.alert_timing, p_capability: settings.capability, p_endpoint: settings.endpoint, p_key: key || null,
           p_sms_enabled: settings.sms_enabled, p_bale_enabled: settings.bale_enabled,
           p_sms_template: settings.sms_template, p_bale_template: settings.bale_template,
         });
@@ -50,6 +51,12 @@ function ConnectionForm({ initial }: { initial: Connection }) {
           <input className={inputClass} type="password" autoComplete="new-password" dir="ltr" name="api_key"
             value={key} onChange={e => setKey(e.target.value)} />
         </label>
+        <label className="block">زمان ارسال پیامک و بله
+          <select name="alert_timing" className={inputClass} value={settings.alert_timing} onChange={e => setSettings({ ...settings, alert_timing: e.target.value as Connection['alert_timing'] })}>
+            <option value="immediate">هم‌زمان با دعوت در اسپارک</option>
+            <option value="unanswered">اگر تا ۳۰ ثانیه به دعوت پاسخ داده نشد</option>
+          </select>
+        </label>
         {(['sms', 'bale'] as const).map(channel => {
           const title = channel === 'sms' ? 'پیامک' : 'بله';
           const enabled = `${channel}_enabled` as const;
@@ -58,7 +65,7 @@ function ConnectionForm({ initial }: { initial: Connection }) {
             <label className="flex items-center gap-2">
               <input name={enabled} type="checkbox" checked={settings[enabled]}
                 onChange={e => setSettings({ ...settings, [enabled]: e.target.checked })} />
-              ارسال فوری از طریق {title}
+              ارسال از طریق {title}
             </label>
             <label className="block">متن {title}
               <textarea required className={inputClass} name={template} value={settings[template]}
@@ -79,7 +86,7 @@ export function ExternalCallSettings() {
     let active = true;
     (async () => {
       try {
-        const { data, error } = await (supabase as any).rpc('get_external_call_connections');
+        const { data, error } = await (supabase as any).rpc('get_external_call_connections_v2');
         if (error) throw error;
         if (active) setRows(data);
       } catch { if (active) setFailed(true); }

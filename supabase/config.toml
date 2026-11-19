@@ -50,3 +50,7 @@ verify_jwt = false
 
 [functions.note-reminder-worker]
 verify_jwt = false # Dedicated database-generated worker token is verified before any work.
+
+# Authenticated using the dedicated database queue token.
+[functions.external-call-alert-worker]
+verify_jwt = false
