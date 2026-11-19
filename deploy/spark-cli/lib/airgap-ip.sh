@@ -799,11 +799,7 @@ install_step_21() {
     install_step_10 || return 1
   fi
   spark_application_database_provisioned || { fail "The restored database does not contain the Spark application schema."; return 1; }
-  livekit_worker_config_contracts_ready || { fail "Spark conference DB contracts are missing; use a current compatible local backup."; return 1; }
-  # A historical pending marker must never skip Edge Function guard checks
-  # when complete installation claims readiness.
-  livekit_clear_database_integration_pending
-  if run_visible "Validate offline application DB, API, functions and LiveKit" test_livekit_full_validation; then
+  if run_visible "Validate offline Edge Function synchronization" test_function_sync; then
     mark_step 21
   else
     unmark_step 21
@@ -859,10 +855,6 @@ services:
         ingress:
           rtmp_base_url: rtmp://${AIRGAP_SERVER_IP}:1935/live
           whip_base_url: http://${AIRGAP_SERVER_IP}/whip
-        webhook:
-          api_key: \${LIVEKIT_API_KEY}
-          urls:
-            - http://${AIRGAP_SERVER_IP}/functions/v1/livekit-webhook
         room:
           auto_create: false
           empty_timeout: 300
@@ -904,22 +896,6 @@ livekit_test_dns() {
   airgap_ip_is_local "$AIRGAP_SERVER_IP"
 }
 
-livekit_sync_function_env() {
-  local extra="${CONFIG_DIR}/functions-extra.env"
-  touch "$extra"
-  chmod 600 "$extra"
-  env_set "$extra" LIVEKIT_URL "http://${AIRGAP_SERVER_IP}:7880"
-  env_set "$extra" LIVEKIT_WS_URL "ws://${AIRGAP_SERVER_IP}:7880"
-  env_set "$extra" LIVEKIT_API_KEY "$(livekit_env_value LIVEKIT_API_KEY)"
-  env_set "$extra" LIVEKIT_API_SECRET "$(livekit_env_value LIVEKIT_API_SECRET)"
-  env_set "$extra" RECORDING_STORAGE_BUCKET "$(livekit_env_value S3_BUCKET)"
-  env_set "$extra" RECORDING_STORAGE_REGION "$(livekit_env_value S3_REGION)"
-  env_set "$extra" RECORDING_STORAGE_ACCESS_KEY "$(livekit_env_value S3_ACCESS_KEY)"
-  env_set "$extra" RECORDING_STORAGE_SECRET_KEY "$(livekit_env_value S3_SECRET_KEY)"
-  env_set "$extra" RECORDING_STORAGE_ENDPOINT "$(livekit_env_value S3_ENDPOINT)"
-  chmod 600 "$extra"
-}
-
 test_livekit_config() {
   require_file "${LIVEKIT_ROOT}/docker-compose.yml" || return 1
   require_file "${LIVEKIT_ROOT}/docker-compose.spark-cli.yml" || return 1
@@ -930,14 +906,8 @@ test_livekit_config() {
   [[ "$(livekit_env_value LIVEKIT_DOMAIN)" == "$AIRGAP_SERVER_IP" ]] || return 1
   [[ "$(livekit_env_value LIVEKIT_TURN_DOMAIN)" == "$AIRGAP_SERVER_IP" ]] || return 1
   [[ "$(livekit_env_value LIVEKIT_INGRESS_DOMAIN)" == "$AIRGAP_SERVER_IP" ]] || return 1
-  [[ "$(livekit_env_value LIVEKIT_WEBHOOK_URL)" == "http://${AIRGAP_SERVER_IP}/functions/v1/livekit-webhook" ]] || return 1
   [[ "$(livekit_env_value S3_ENDPOINT)" == "http://127.0.0.1:9000" ]] || return 1
   livekit_compose config --quiet >>"$CURRENT_LOG" 2>&1 || return 1
-  local extra="${CONFIG_DIR}/functions-extra.env"
-  [[ "$(env_get "$extra" LIVEKIT_URL)" == "http://${AIRGAP_SERVER_IP}:7880" ]] || return 1
-  [[ "$(env_get "$extra" LIVEKIT_WS_URL)" == "ws://${AIRGAP_SERVER_IP}:7880" ]] || return 1
-  [[ "$(env_get "$extra" LIVEKIT_API_KEY)" == "$(livekit_env_value LIVEKIT_API_KEY)" ]] || return 1
-  [[ "$(env_get "$extra" LIVEKIT_API_SECRET)" == "$(livekit_env_value LIVEKIT_API_SECRET)" ]] || return 1
 }
 
 install_step_19() {
@@ -945,7 +915,6 @@ install_step_19() {
   new_log "install-19-livekit-internal-ip"
   require_manager_values || return 1
   require_file "${SUPABASE_ROOT}/.env" || return 1
-  require_file "${CONFIG_DIR}/functions-extra.env" || return 1
   require_dir "$LIVEKIT_SOURCE_DIR" || return 1
 
   run_logged "Sync LiveKit deployment assets" livekit_sync_assets || return 1
@@ -966,7 +935,6 @@ install_step_19() {
   env_set "$LIVEKIT_ENV" LIVEKIT_DOMAIN "$AIRGAP_SERVER_IP"
   env_set "$LIVEKIT_ENV" LIVEKIT_TURN_DOMAIN "$AIRGAP_SERVER_IP"
   env_set "$LIVEKIT_ENV" LIVEKIT_INGRESS_DOMAIN "$AIRGAP_SERVER_IP"
-  env_set "$LIVEKIT_ENV" LIVEKIT_WEBHOOK_URL "http://${AIRGAP_SERVER_IP}/functions/v1/livekit-webhook"
   [[ -n "$(livekit_env_value LIVEKIT_REDIS_ADDRESS)" ]] || env_set "$LIVEKIT_ENV" LIVEKIT_REDIS_ADDRESS "127.0.0.1:6379"
   livekit_ensure_secret LIVEKIT_API_KEY "printf 'LK%s' \"\$(openssl rand -hex 12)\""
   livekit_ensure_secret LIVEKIT_API_SECRET "openssl rand -hex 32"
@@ -975,7 +943,6 @@ install_step_19() {
 
   install -d -m 0700 "$LIVEKIT_TURN_CERT_DIR"
   airgap_ip_write_livekit_override || return 1
-  livekit_sync_function_env || return 1
   if run_logged "Validate LiveKit internal-IP config" test_livekit_config; then
     mark_step 19
     ok "LiveKit signaling origin: ws://${AIRGAP_SERVER_IP}:7880"
@@ -1032,84 +999,6 @@ SQL
   ) 2>>"$CURRENT_LOG" | grep -qx '1'
 }
 
-livekit_worker_config_contracts_ready() {
-  (
-    cd "$SUPABASE_ROOT"
-    docker compose exec -T db psql -U postgres -d postgres -Atq <<'SQL'
-select case when
-  to_regclass('private.conference_speaker_timer_worker_config') is not null
-  and to_regclass('private.conference_phase_worker_config') is not null
-  and to_regprocedure('private.configure_conference_speaker_timer_worker(text)') is not null
-  and to_regprocedure('private.configure_conference_phase_worker(text)') is not null
-then 1 else 0 end;
-SQL
-  ) 2>>"$CURRENT_LOG" | grep -qx '1'
-}
-
-livekit_defer_database_integration() {
-  install -d -m 0700 "$STATE_DIR"
-  printf '%s\n' "$(date -Is)" >"${STATE_DIR}/airgap-db-integration.pending"
-  chmod 0600 "${STATE_DIR}/airgap-db-integration.pending"
-  printf '[DEFER] Spark application database is not provisioned yet; conference DB contracts and worker URL configuration are deferred until database restore.\n' | tee -a "$CURRENT_LOG"
-}
-
-livekit_clear_database_integration_pending() {
-  rm -f "${STATE_DIR}/airgap-db-integration.pending"
-}
-
-livekit_configure_speaker_timer_worker() {
-  local worker_url="http://${AIRGAP_SERVER_IP}/functions/v1/conference-speaker-timer-enforcer"
-  (
-    cd "$SUPABASE_ROOT"
-    docker compose exec -T db psql -v ON_ERROR_STOP=1 -v worker_url="$worker_url" -U postgres -d postgres <<'SQL'
-DO $spark$
-BEGIN
-  IF to_regprocedure('private.configure_conference_speaker_timer_worker(text)') IS NULL THEN
-    RAISE EXCEPTION 'speaker timer worker configuration RPC is missing';
-  END IF;
-END
-$spark$;
-SELECT private.configure_conference_speaker_timer_worker(:'worker_url');
-SQL
-  ) >>"$CURRENT_LOG" 2>&1
-}
-
-livekit_configure_phase_worker() {
-  local worker_url="http://${AIRGAP_SERVER_IP}/functions/v1/conference-phase-enforcer"
-  (
-    cd "$SUPABASE_ROOT"
-    docker compose exec -T db psql -v ON_ERROR_STOP=1 -v worker_url="$worker_url" -U postgres -d postgres <<'SQL'
-DO $spark$
-BEGIN
-  IF to_regprocedure('private.configure_conference_phase_worker(text)') IS NULL THEN
-    RAISE EXCEPTION 'conference phase worker configuration RPC is missing';
-  END IF;
-END
-$spark$;
-SELECT private.configure_conference_phase_worker(:'worker_url');
-SQL
-  ) >>"$CURRENT_LOG" 2>&1
-}
-
-livekit_function_unauthorized_probe() {
-  local function="$1" anon code body
-  anon="$(env_get "${SUPABASE_ROOT}/.env" ANON_KEY)"
-  [[ -n "$anon" ]] || { printf 'Edge Function %s: ANON_KEY is missing\n' "$function" >>"$CURRENT_LOG"; return 1; }
-  body="$(mktemp)"
-  code="$(curl -sS -o "$body" -w '%{http_code}' --connect-timeout 5 \
-    -H "apikey: ${anon}" \
-    -H 'Content-Type: application/json' \
-    -X POST "http://127.0.0.1:8000/functions/v1/${function}" \
-    --data '{}' || true)"
-  printf 'Edge Function %s unauthenticated probe -> HTTP %s\n' "$function" "${code:-000}" >>"$CURRENT_LOG"
-  if [[ "$code" != "401" && "$code" != "403" ]]; then
-    sed -n '1,20p' "$body" >>"$CURRENT_LOG" 2>/dev/null || true
-    rm -f "$body"
-    return 1
-  fi
-  rm -f "$body"
-}
-
 livekit_airgap_listener_probe() {
   local protocol="$1" port="$2" sockets
   case "$protocol" in
@@ -1164,27 +1053,6 @@ test_livekit_full_validation() {
   livekit_airgap_validation_check "LiveKit internal HTTP reachability" livekit_public_tls_probe "$AIRGAP_SERVER_IP" || { livekit_airgap_validation_report_failure; return 1; }
   livekit_airgap_validation_check "LiveKit embedded TURN STUN UDP 443" livekit_turn_tls_probe || { livekit_airgap_validation_report_failure; return 1; }
   livekit_airgap_validation_check "LiveKit RoomService API smoke test" livekit_api_smoke || { livekit_airgap_validation_report_failure; return 1; }
-
-  if spark_application_database_provisioned; then
-    livekit_airgap_validation_check "Conference worker DB contracts" livekit_worker_config_contracts_ready || { livekit_airgap_validation_report_failure; return 1; }
-    livekit_airgap_validation_check "Configure speaker timer worker" livekit_configure_speaker_timer_worker || { livekit_airgap_validation_report_failure; return 1; }
-    livekit_airgap_validation_check "Configure conference phase worker" livekit_configure_phase_worker || { livekit_airgap_validation_report_failure; return 1; }
-
-    for function in \
-      conference-livekit-token conference-host-control conference-recording \
-      conference-speaker-timer-control conference-speaker-queue-control conference-speaker-timer-enforcer \
-      conference-phase-control conference-phase-enforcer conference-chat-control conference-private-chat-control \
-      conference-moderator-chat-control conference-reaction conference-poll-control conference-whiteboard-control \
-      conference-presentation-control livekit-webhook; do
-      livekit_airgap_validation_check "Edge Function unauthorized guard: ${function}" livekit_function_unauthorized_probe "$function" || { livekit_airgap_validation_report_failure; return 1; }
-    done
-
-    livekit_clear_database_integration_pending
-  else
-    livekit_defer_database_integration
-    fail "Spark application database is missing. Restore a local Spark backup and rerun offline step 21."
-    return 1
-  fi
 
   livekit_airgap_validation_check "LiveKit secret leak scan" livekit_secret_leak_probe || { livekit_airgap_validation_report_failure; return 1; }
   livekit_airgap_validation_check "LiveKit secret file permissions" livekit_secret_file_permissions_probe || { livekit_airgap_validation_report_failure; return 1; }

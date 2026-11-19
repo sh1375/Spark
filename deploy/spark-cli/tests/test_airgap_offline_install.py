@@ -149,11 +149,10 @@ STEP_DIR="$WORK/steps"; mkdir "$STEP_DIR"
 test_supabase_health() { :; }; airgap_ip_test_nginx() { :; }
 touch "$STATE_DIR/airgap-db-integration.pending"
 spark_application_database_provisioned() { return 0; }
-livekit_worker_config_contracts_ready() { return 0; }
 restore_plain_database_interactive() { touch "$WORK/restore"; return 1; }
-test_livekit_full_validation() { [[ ! -f "$STATE_DIR/airgap-db-integration.pending" ]]; }
+test_function_sync() { touch "$WORK/functions-checked"; }
 install_step_21
-[[ -f "$STEP_DIR/21.ok" && ! -e "$WORK/restore" ]]
+[[ -f "$STEP_DIR/21.ok" && -f "$WORK/functions-checked" && ! -e "$WORK/restore" ]]
 ''')
 
     def test_missing_database_restore_failure_cannot_mark_success(self):

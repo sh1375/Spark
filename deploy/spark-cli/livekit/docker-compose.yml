@@ -91,10 +91,6 @@ services:
         ingress:
           rtmp_base_url: rtmp://${LIVEKIT_INGRESS_DOMAIN}:1935/live
           whip_base_url: https://${LIVEKIT_INGRESS_DOMAIN}/whip
-        webhook:
-          api_key: ${LIVEKIT_API_KEY}
-          urls:
-            - ${LIVEKIT_WEBHOOK_URL}
         room:
           auto_create: false
           empty_timeout: 300

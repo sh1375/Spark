@@ -21,10 +21,6 @@ turn:
   udp_port: 3478
   tls_port: 5349
 
-webhook:
-  api_key: ${LIVEKIT_API_KEY}
-  urls:
-    - ${LIVEKIT_WEBHOOK_URL}
 
 room:
   auto_create: false

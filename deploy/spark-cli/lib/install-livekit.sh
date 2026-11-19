@@ -54,7 +54,7 @@ livekit_require_env() {
   local key value
   for key in \
     LIVEKIT_DOMAIN LIVEKIT_TURN_DOMAIN LIVEKIT_INGRESS_DOMAIN LIVEKIT_API_KEY LIVEKIT_API_SECRET \
-    LIVEKIT_WEBHOOK_URL S3_ACCESS_KEY S3_SECRET_KEY S3_REGION S3_BUCKET \
+    S3_ACCESS_KEY S3_SECRET_KEY S3_REGION S3_BUCKET \
     LIVEKIT_SERVER_IMAGE LIVEKIT_EGRESS_IMAGE LIVEKIT_INGRESS_IMAGE REDIS_IMAGE CADDY_IMAGE MINIO_IMAGE MINIO_MC_IMAGE \
     PROMETHEUS_IMAGE ALERTMANAGER_IMAGE GRAFANA_IMAGE LOKI_IMAGE ALLOY_IMAGE NODE_EXPORTER_IMAGE BLACKBOX_EXPORTER_IMAGE \
     GRAFANA_ADMIN_USER GRAFANA_ADMIN_PASSWORD; do
@@ -115,25 +115,6 @@ livekit_configure_local_recording_storage() {
   livekit_ensure_secret S3_SECRET_KEY "openssl rand -hex 32"
 }
 
-livekit_sync_function_env() {
-  local extra="${CONFIG_DIR}/functions-extra.env"
-  local api_url ws_url
-  api_url="https://$(livekit_env_value LIVEKIT_DOMAIN)"
-  ws_url="wss://$(livekit_env_value LIVEKIT_DOMAIN)"
-  touch "$extra"
-  chmod 600 "$extra"
-  env_set "$extra" LIVEKIT_URL "$api_url"
-  env_set "$extra" LIVEKIT_WS_URL "$ws_url"
-  env_set "$extra" LIVEKIT_API_KEY "$(livekit_env_value LIVEKIT_API_KEY)"
-  env_set "$extra" LIVEKIT_API_SECRET "$(livekit_env_value LIVEKIT_API_SECRET)"
-  env_set "$extra" RECORDING_STORAGE_BUCKET "$(livekit_env_value S3_BUCKET)"
-  env_set "$extra" RECORDING_STORAGE_REGION "$(livekit_env_value S3_REGION)"
-  env_set "$extra" RECORDING_STORAGE_ACCESS_KEY "$(livekit_env_value S3_ACCESS_KEY)"
-  env_set "$extra" RECORDING_STORAGE_SECRET_KEY "$(livekit_env_value S3_SECRET_KEY)"
-  env_set "$extra" RECORDING_STORAGE_ENDPOINT "$(livekit_env_value S3_ENDPOINT)"
-  chmod 600 "$extra"
-}
-
 test_livekit_config() {
   require_file "${LIVEKIT_ROOT}/docker-compose.yml" || { echo "LiveKit config failed: missing docker-compose.yml" >>"$CURRENT_LOG"; return 1; }
   require_file "${LIVEKIT_ROOT}/docker-compose.spark-cli.yml" || { echo "LiveKit config failed: missing docker-compose.spark-cli.yml" >>"$CURRENT_LOG"; return 1; }
@@ -145,11 +126,6 @@ test_livekit_config() {
   [[ "$(livekit_env_value S3_ENDPOINT)" == "http://127.0.0.1:9000" ]] || { echo "LiveKit config failed: local MinIO endpoint" >>"$CURRENT_LOG"; return 1; }
   livekit_compose config --quiet >>"$CURRENT_LOG" 2>&1 || { echo "LiveKit config failed: docker compose config" >>"$CURRENT_LOG"; return 1; }
 
-  local extra="${CONFIG_DIR}/functions-extra.env"
-  [[ "$(env_get "$extra" LIVEKIT_URL)" == "https://$(livekit_env_value LIVEKIT_DOMAIN)" ]] || { echo "LiveKit config failed: LIVEKIT_URL mismatch" >>"$CURRENT_LOG"; return 1; }
-  [[ "$(env_get "$extra" LIVEKIT_WS_URL)" == "wss://$(livekit_env_value LIVEKIT_DOMAIN)" ]] || { echo "LiveKit config failed: LIVEKIT_WS_URL mismatch" >>"$CURRENT_LOG"; return 1; }
-  [[ "$(env_get "$extra" LIVEKIT_API_KEY)" == "$(livekit_env_value LIVEKIT_API_KEY)" ]] || { echo "LiveKit config failed: LIVEKIT_API_KEY mismatch" >>"$CURRENT_LOG"; return 1; }
-  [[ "$(env_get "$extra" LIVEKIT_API_SECRET)" == "$(livekit_env_value LIVEKIT_API_SECRET)" ]] || { echo "LiveKit config failed: LIVEKIT_API_SECRET mismatch" >>"$CURRENT_LOG"; return 1; }
 }
 
 
@@ -265,7 +241,6 @@ install_step_19() {
   new_log "install-19-livekit-config"
   require_manager_values || return 1
   require_file "${SUPABASE_ROOT}/.env" || return 1
-  require_file "${CONFIG_DIR}/functions-extra.env" || return 1
   require_dir "$LIVEKIT_SOURCE_DIR" || return 1
 
   run_logged "Sync LiveKit deployment assets" livekit_sync_assets || return 1
@@ -289,7 +264,6 @@ install_step_19() {
   env_set "$LIVEKIT_ENV" LIVEKIT_TURN_DOMAIN "$TURN_DOMAIN"
   env_set "$LIVEKIT_ENV" LIVEKIT_INGRESS_DOMAIN "ingress.${APP_DOMAIN}"
 
-  env_set "$LIVEKIT_ENV" LIVEKIT_WEBHOOK_URL "https://${API_DOMAIN}/functions/v1/livekit-webhook"
   [[ -n "$(livekit_env_value LIVEKIT_REDIS_ADDRESS)" ]] || env_set "$LIVEKIT_ENV" LIVEKIT_REDIS_ADDRESS "127.0.0.1:6379"
   livekit_ensure_secret LIVEKIT_API_KEY "printf 'LK%s' \"\$(openssl rand -hex 12)\""
   livekit_ensure_secret LIVEKIT_API_SECRET "openssl rand -hex 32"
@@ -314,9 +288,8 @@ install_step_19() {
     unmark_step 19
     return 1
   }
-  livekit_sync_function_env
 
-  if run_logged "Validate LiveKit config + Edge Function secrets" test_livekit_config; then
+  if run_logged "Validate LiveKit config" test_livekit_config; then
     mark_step 19
   else
     unmark_step 19
@@ -458,63 +431,6 @@ livekit_turn_tls_probe() {
     | grep -Eq 'Verification: OK|Verify return code: 0'
 }
 
-livekit_function_unauthorized_probe() {
-  local function="$1" anon code
-  anon="$(env_get "${SUPABASE_ROOT}/.env" ANON_KEY)"
-  [[ -n "$anon" ]] || return 1
-  code="$(curl -sS -o /tmp/spark-livekit-function-probe.$$ -w '%{http_code}' --connect-timeout 5 \
-    -H "apikey: ${anon}" \
-    -H 'Content-Type: application/json' \
-    -X POST "http://127.0.0.1:8000/functions/v1/${function}" \
-    --data '{}' || true)"
-  rm -f /tmp/spark-livekit-function-probe.$$
-  [[ "$code" == "401" || "$code" == "403" ]]
-}
-
-livekit_configure_speaker_timer_worker() {
-  local worker_url
-  worker_url="https://${API_DOMAIN}/functions/v1/conference-speaker-timer-enforcer"
-
-  (
-    cd "$SUPABASE_ROOT"
-    docker compose exec -T db psql \
-      -v ON_ERROR_STOP=1 \
-      -v worker_url="$worker_url" \
-      -U postgres -d postgres <<'SQL'
-DO $spark$
-BEGIN
-  IF to_regprocedure('private.configure_conference_speaker_timer_worker(text)') IS NULL THEN
-    RAISE EXCEPTION 'speaker timer worker configuration RPC is missing';
-  END IF;
-END
-$spark$;
-SELECT private.configure_conference_speaker_timer_worker(:'worker_url');
-SQL
-  ) >>"$CURRENT_LOG" 2>&1
-}
-
-livekit_configure_phase_worker() {
-  local worker_url
-  worker_url="https://${API_DOMAIN}/functions/v1/conference-phase-enforcer"
-
-  (
-    cd "$SUPABASE_ROOT"
-    docker compose exec -T db psql \
-      -v ON_ERROR_STOP=1 \
-      -v worker_url="$worker_url" \
-      -U postgres -d postgres <<'SQL'
-DO $spark$
-BEGIN
-  IF to_regprocedure('private.configure_conference_phase_worker(text)') IS NULL THEN
-    RAISE EXCEPTION 'conference phase worker configuration RPC is missing';
-  END IF;
-END
-$spark$;
-SELECT private.configure_conference_phase_worker(:'worker_url');
-SQL
-  ) >>"$CURRENT_LOG" 2>&1
-}
-
 livekit_api_smoke() {
   local key secret token body
   key="$(livekit_env_value LIVEKIT_API_KEY)"
@@ -590,24 +506,6 @@ test_livekit_full_validation() {
   turnutils_stunclient "$(livekit_env_value LIVEKIT_TURN_DOMAIN)" -p "$LIVEKIT_TURN_UDP_PORT" >/dev/null 2>&1 || return 1
   livekit_turn_tls_probe || return 1
   livekit_api_smoke || return 1
-  livekit_configure_speaker_timer_worker || return 1
-  livekit_configure_phase_worker || return 1
-  livekit_function_unauthorized_probe conference-livekit-token || return 1
-  livekit_function_unauthorized_probe conference-host-control || return 1
-  livekit_function_unauthorized_probe conference-recording || return 1
-  livekit_function_unauthorized_probe conference-speaker-timer-control || return 1
-  livekit_function_unauthorized_probe conference-speaker-queue-control || return 1
-  livekit_function_unauthorized_probe conference-speaker-timer-enforcer || return 1
-  livekit_function_unauthorized_probe conference-phase-control || return 1
-  livekit_function_unauthorized_probe conference-phase-enforcer || return 1
-  livekit_function_unauthorized_probe conference-chat-control || return 1
-  livekit_function_unauthorized_probe conference-private-chat-control || return 1
-  livekit_function_unauthorized_probe conference-moderator-chat-control || return 1
-  livekit_function_unauthorized_probe conference-reaction || return 1
-  livekit_function_unauthorized_probe conference-poll-control || return 1
-  livekit_function_unauthorized_probe conference-whiteboard-control || return 1
-  livekit_function_unauthorized_probe conference-presentation-control || return 1
-  livekit_function_unauthorized_probe livekit-webhook || return 1
   livekit_secret_leak_probe || return 1
   livekit_secret_file_permissions_probe || return 1
   livekit_internal_api_exposure_probe || return 1
