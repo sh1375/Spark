@@ -47,7 +47,7 @@ function ConnectionForm({ initial }: { initial: Connection }) {
           <select className={inputClass} name="provider" value={settings.endpoint.replace(/\/$/, '') === 'https://api.daily.co/v1' ? 'daily' : ''}
             onChange={e => setSettings({ ...settings, endpoint: e.target.value === 'daily' ? 'https://api.daily.co/v1' : '' })}>
             <option value="">انتخاب سرویس</option>
-            <option value="daily" disabled={settings.capability === 'conference'}>Daily</option>
+            <option value="daily">Daily</option>
           </select>
         </label>
         <label className="block">نشانی API سرویس
@@ -104,7 +104,7 @@ export function ExternalCallSettings() {
   if (!rows.length) return <p role="status">در حال دریافت تنظیمات تماس…</p>;
   return <section className="space-y-4">
     <h3 className="font-bold">اتصال به سرویس تماس بیرونی</h3>
-    <p className="text-sm">Daily ارائه‌دهندهٔ پیش‌فرض برای تماس صوتی و تصویری است. برای فعال‌شدن، Daily را انتخاب کنید و کلید API را ذخیره کنید. رابط ویدئوکنفرانس گروهی هنوز فعال نیست.</p>
+    <p className="text-sm">برای فعال‌سازی هر قابلیت، Daily را انتخاب و کلید API آن را ذخیره کنید.</p>
     {rows.map(row => <ConnectionForm key={row.capability} initial={row} />)}
   </section>;
 }

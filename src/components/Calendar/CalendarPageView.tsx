@@ -5,7 +5,6 @@ import { ChevronRight, Calendar, RefreshCw, X, Plus, Users, CalendarPlus } from 
 import { CalendarViews } from './CalendarViews';
 import { supabase } from '../../lib/supabase';
 import { meetingLocalDate } from '../../features/meetings/meetingLocalDate';
-import { MEETING_VIDEO_CONFERENCE_ENABLED } from '../CalendarMeetingForm/services';
 import { MeetingInboxButton } from '../MeetingInboxButton';
 import { JALAALI_MONTHS, VIEW_OPTIONS, parseRequestDateToDateStr } from './utils';
 import { CalendarSidebar } from './CalendarSidebar';
@@ -126,7 +125,7 @@ export function CalendarPageView({ model }: { model: Record<string, any> }) {
                 ? meeting.meeting_manager
                 : '',
               reminderMinutes: meeting.reminder_minutes ?? 15,
-              isOnline: MEETING_VIDEO_CONFERENCE_ENABLED ? Boolean(meeting.is_online) : false,
+              isOnline: Boolean(meeting.is_online),
               agendaItems: sourceAgendaItems.map((item) => ({
                 title: item.title,
                 presenter: item.presenter ?? null,

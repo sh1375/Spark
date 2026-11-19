@@ -45,6 +45,7 @@ export function MeetingDetailModal({
   meeting: m, currentUserId, resolveName, calendars, subscribedCalendars,
   getMeetingColor, onClose, onEdit, onDelete, onGoogleCalendar, onCreateSimilar, onRegisterMinutes,
 }: Props) {
+  const [joiningConference, setJoiningConference] = useState(false);
   const isOwner = m.user_id === currentUserId;
   const isManager = m.meeting_manager === currentUserId;
   const [retryingTimingSms, setRetryingTimingSms] = useState(false);
@@ -724,7 +725,19 @@ const getJalaliDate = (): string => {
                 <Video className="w-5 h-5 text-sky-600 dark:text-sky-400 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-sky-800 dark:text-sky-200">جلسه آنلاین</p>
-                  <p className="text-xs">ورود به ویدیوکنفرانس فعلاً غیرفعال است.</p>
+                  <button type="button" disabled={joiningConference} className="mt-1 text-sm font-medium text-sky-700 dark:text-sky-300 disabled:opacity-50"
+                    onClick={async () => {
+                      setJoiningConference(true);
+                      try {
+                        const { data, error } = await supabase.functions.invoke('start-external-call', { body: { capability: 'conference', meetingId: m.id } });
+                        if (error) throw error;
+                        if (data?.available) window.location.assign(data.joinUrl);
+                        else toast.error(data?.state === 'waiting' ? 'میزبان هنوز ویدیوکنفرانس را شروع نکرده است.' : 'سرویس ویدیوکنفرانس هنوز فعال نشده است.');
+                      } catch { toast.error('ورود به ویدیوکنفرانس انجام نشد. دوباره تلاش کنید.'); }
+                      finally { setJoiningConference(false); }
+                    }}>
+                    {joiningConference ? 'در حال اتصال…' : isOwner ? 'شروع یا ورود به ویدیوکنفرانس' : 'ورود به ویدیوکنفرانس'}
+                  </button>
                 </div>
               </div>
 
