@@ -43,6 +43,13 @@ function ConnectionForm({ initial }: { initial: Connection }) {
       <fieldset disabled={saving} className="space-y-3">
         <legend className="font-bold">{labels[settings.capability]}</legend>
         <CredentialIdentityField identity={settings.capability} />
+        <label className="block">سرویس تماس
+          <select className={inputClass} name="provider" value={settings.endpoint.replace(/\/$/, '') === 'https://api.daily.co/v1' ? 'daily' : ''}
+            onChange={e => setSettings({ ...settings, endpoint: e.target.value === 'daily' ? 'https://api.daily.co/v1' : '' })}>
+            <option value="">انتخاب سرویس</option>
+            <option value="daily" disabled={settings.capability === 'conference'}>Daily</option>
+          </select>
+        </label>
         <label className="block">نشانی API سرویس
           <input className={inputClass} type="url" dir="ltr" name="endpoint" value={settings.endpoint}
             onChange={e => setSettings({ ...settings, endpoint: e.target.value })} />
@@ -97,7 +104,7 @@ export function ExternalCallSettings() {
   if (!rows.length) return <p role="status">در حال دریافت تنظیمات تماس…</p>;
   return <section className="space-y-4">
     <h3 className="font-bold">اتصال به سرویس تماس بیرونی</h3>
-    <p className="text-sm">تنظیمات برای اتصال آینده ذخیره می‌شوند. برقراری تماس و ارسال اعلان پس از راه‌اندازی رابط سرویس مقصد در دسترس خواهد بود.</p>
+    <p className="text-sm">Daily ارائه‌دهندهٔ پیش‌فرض برای تماس صوتی و تصویری است. برای فعال‌شدن، Daily را انتخاب کنید و کلید API را ذخیره کنید. رابط ویدئوکنفرانس گروهی هنوز فعال نیست.</p>
     {rows.map(row => <ConnectionForm key={row.capability} initial={row} />)}
   </section>;
 }

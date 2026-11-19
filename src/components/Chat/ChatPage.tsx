@@ -16,10 +16,6 @@ const CallHistoryPage = lazy(() => import('./CallHistoryPage').then((m) => ({ de
 const NewConversationModal = lazy(() => import('./NewConversationModal').then((m) => ({ default: m.NewConversationModal })));
 
 
-function showCallUnavailable() {
-  toast.error('سرویس تماس هنوز فعال نشده است');
-}
-
 interface Props {
   currentUserId?: string | null;
   onNavigateToCalendar?: (mentionedUserIds?: string[], bodyText?: string) => void;
@@ -30,6 +26,35 @@ interface Props {
 }
 
 export function ChatPage({ currentUserId: providedCurrentUserId = null, onNavigateToCalendar, onNavigateToTasks, onOpenWorkGroups, initialOpenUserId, onInitialOpenUserConsumed }: Props) {
+  const outgoingCall = useRef<AbortController | null>(null);
+  useEffect(() => () => outgoingCall.current?.abort(), [providedCurrentUserId]);
+  async function startCall(recipient: UserProfile, capability: 'audio' | 'video') {
+    if (outgoingCall.current) return;
+    const controller = new AbortController();
+    outgoingCall.current = controller;
+    const message = toast.loading('در حال ارسال دعوت تماس…');
+    try {
+      const { data, error } = await supabase.functions.invoke('start-external-call', { body: { recipient: recipient.user_id, capability } });
+      if (controller.signal.aborted) return;
+      if (error) throw error;
+      if (!data?.available) { toast.error('سرویس تماس هنوز فعال نشده است', { id: message }); return; }
+      toast.loading('در انتظار پاسخ مخاطب…', { id: message });
+      for (let attempt = 0; attempt < 46 && !controller.signal.aborted; attempt++) {
+        const { data: decision, error: decisionError } = await (supabase as any).rpc('get_my_outgoing_call_decision', { p_id: data.invitation });
+        if (controller.signal.aborted) return;
+        if (!decisionError && decision === 'accepted') { window.location.assign(data.joinUrl); return; }
+        if (decision === 'declined') { toast.error('مخاطب تماس را رد کرد', { id: message }); return; }
+        if (!decisionError && decision !== 'pending') break;
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      if (!controller.signal.aborted) toast.error('تماس بدون پاسخ ماند', { id: message });
+    } catch {
+      if (!controller.signal.aborted) toast.error('ارسال دعوت تماس انجام نشد', { id: message });
+    } finally {
+      if (outgoingCall.current === controller) outgoingCall.current = null;
+      if (controller.signal.aborted) toast.dismiss(message);
+    }
+  }
   const { direct: unreadCounts } = useMessageUnreadCounts();
   const [currentUserId, setCurrentUserId] = useState<string | null>(providedCurrentUserId);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
@@ -337,7 +362,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
           <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-violet-500" /></div>}>
             <CallHistoryPage
             currentUserId={currentUserId}
-            onStartCall={showCallUnavailable}
+            onStartCall={(recipient, capability) => void startCall(recipient, capability)}
             onClose={() => { setSidebarTab('chats'); }}
             />
           </Suspense>
@@ -385,7 +410,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
               onConversationUpdate={() => fetchConversations(currentUserId)}
               initialScrollToMessageId={navToConvId === activeConv.id ? navToMsgId : null}
               onScrollToMessageConsumed={() => { setNavToConvId(null); setNavToMsgId(null); }}
-              onStartCall={showCallUnavailable}
+              onStartCall={capability => void startCall(activeConv.otherUser, capability)}
               msgRefreshKey={msgRefreshKey}
               onOpenDirectChat={async (userId) => {
                 const { data: convId, error } = await supabase.rpc('find_or_create_direct_conversation', {
