@@ -1,20 +1,19 @@
 import { UnreadBadge } from '../../features/messaging/UnreadBadge';
 import { useState } from 'react';
-import { Search, Plus, Users, Hash, Settings, ListTodo, LockKeyhole } from 'lucide-react';
+import { ArrowRight, Search, Plus, Users, Hash, Settings, ListTodo, LockKeyhole } from 'lucide-react';
 import { ChannelWithMeta, ChannelType } from './types';
 
 interface Props {
-  channels: ChannelWithMeta[];
-  groups: ChannelWithMeta[];
-  activeTab: 'channels' | 'groups';
+  items: ChannelWithMeta[];
+  type: ChannelType;
   selectedId: string | null;
-  isAdmin: boolean;
   loading: boolean;
-  canCreateChannel?: boolean;
-  canCreateGroup?: boolean;
-  onTabChange: (tab: 'channels' | 'groups') => void;
   onSelect: (id: string) => void;
-  onCreateChannel: (type: ChannelType) => void;
+  onCreate?: () => void;
+  onBackToChat?: () => void;
+  openGroups: { id: string; name: string }[];
+  joiningGroupId: string | null;
+  onJoinGroup: (id: string) => void;
   onOpenSettings: () => void;
   onOpenActions: () => void;
 }
@@ -77,17 +76,13 @@ function ChannelItem({ ch, selected, onClick }: { ch: ChannelWithMeta; selected:
 }
 
 export function ChannelSidebar({
-  channels, groups, activeTab, selectedId, isAdmin, loading,
-  canCreateChannel = true, canCreateGroup = true,
-  onTabChange, onSelect, onCreateChannel, onOpenSettings, onOpenActions,
+  items, type, selectedId, loading, onSelect, onCreate, onBackToChat, openGroups, joiningGroupId, onJoinGroup, onOpenSettings, onOpenActions,
 }: Props) {
   const [search, setSearch] = useState('');
-
-  const items = activeTab === 'channels' ? channels : groups;
+  const isChannel = type === 'channel';
   const filtered = search ? items.filter(c => c.name.toLowerCase().includes(search.toLowerCase())) : items;
-  const canCreate = activeTab === 'channels' ? canCreateChannel : canCreateGroup;
-  const channelTotal = channels.reduce((sum, ch) => sum + ch.unreadCount, 0);
-  const groupTotal = groups.reduce((sum, ch) => sum + ch.unreadCount, 0);
+  const matchingOpenGroups = openGroups.filter(group => group.name.toLowerCase().includes(search.toLowerCase()));
+  const unreadTotal = items.reduce((sum, item) => sum + item.unreadCount, 0);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-white dark:bg-slate-950" dir="rtl">
@@ -95,11 +90,16 @@ export function ChannelSidebar({
         <div className="mb-2 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white">کانال‌ها</h2>
-              <UnreadBadge count={channelTotal} />
+              {onBackToChat && (
+                <button type="button" onClick={onBackToChat} aria-label="بازگشت به گفتگوهای فردی">
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              )}
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white">{isChannel ? 'کانال‌ها' : 'گروه‌های چت سازمانی'}</h2>
+              <UnreadBadge count={unreadTotal} />
             </div>
             <p className="mt-0.5 text-[9px] text-slate-400 dark:text-slate-500">
-              {items.length.toLocaleString('fa-IR')} {activeTab === 'channels' ? 'کانال' : 'گروه'}
+              {items.length.toLocaleString('fa-IR')} {isChannel ? 'کانال' : 'گروه'}
             </p>
           </div>
 
@@ -118,11 +118,11 @@ export function ChannelSidebar({
             >
               <Settings className="h-4 w-4" />
             </button>
-            {(isAdmin || canCreate) && (
+            {onCreate && (
               <button
-                onClick={() => onCreateChannel(activeTab === 'channels' ? 'channel' : 'group')}
+                onClick={onCreate}
                 className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-sm transition hover:from-violet-500 hover:to-indigo-500"
-                title={activeTab === 'channels' ? 'کانال جدید' : 'گروه جدید'}
+                title={isChannel ? 'کانال جدید' : 'گروه جدید'}
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -130,35 +130,12 @@ export function ChannelSidebar({
           </div>
         </div>
 
-        <div className="flex gap-1 rounded-xl bg-slate-100/90 p-1 dark:bg-slate-900">
-          <button
-            onClick={() => onTabChange('channels')}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition ${
-              activeTab === 'channels'
-                ? 'bg-white text-indigo-700 shadow-sm dark:bg-slate-800 dark:text-indigo-300'
-                : 'text-slate-500 dark:text-slate-500'
-            }`}
-          >
-            <Hash className="h-3.5 w-3.5" /> کانال‌های من <UnreadBadge count={channelTotal} />
-          </button>
-          <button
-            onClick={() => onTabChange('groups')}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-[10px] font-bold transition ${
-              activeTab === 'groups'
-                ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-800 dark:text-cyan-300'
-                : 'text-slate-500 dark:text-slate-500'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5" /> گروه‌های من <UnreadBadge count={groupTotal} />
-          </button>
-        </div>
-
         <div className="relative mt-2">
           <Search className="absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="جستجوی کانال یا گروه..."
+            placeholder={isChannel ? 'جستجوی کانال...' : 'جستجوی گروه...'}
             className="w-full rounded-xl border border-slate-200 bg-slate-50/80 py-2 pl-3 pr-9 text-xs text-slate-800 outline-none transition focus:border-violet-300 focus:bg-white focus:ring-2 focus:ring-violet-500/10 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:focus:border-violet-500/30"
           />
         </div>
@@ -169,19 +146,33 @@ export function ChannelSidebar({
           <div className="flex justify-center py-10">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filtered.length === 0 && matchingOpenGroups.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
-              {activeTab === 'channels' ? <Hash className="h-5 w-5 text-slate-400" /> : <Users className="h-5 w-5 text-slate-400" />}
+              {isChannel ? <Hash className="h-5 w-5 text-slate-400" /> : <Users className="h-5 w-5 text-slate-400" />}
             </div>
             <p className="mt-2 text-[10px] text-slate-400 dark:text-slate-500">
-              {search ? 'موردی یافت نشد' : `هنوز ${activeTab === 'channels' ? 'کانالی' : 'گروهی'} ندارید`}
+              {search ? 'موردی یافت نشد' : `هنوز ${isChannel ? 'کانالی' : 'گروهی'} ندارید`}
             </p>
           </div>
         ) : (
           filtered.map(ch => (
             <ChannelItem key={ch.id} ch={ch} selected={selectedId === ch.id} onClick={() => onSelect(ch.id)} />
           ))
+        )}
+        {!loading && matchingOpenGroups.length > 0 && (
+          <section className="mt-3 border-t border-slate-100 px-2 pt-3 dark:border-slate-800">
+            <h3 className="mb-2 text-xs font-bold text-slate-700 dark:text-slate-300">گروه‌های قابل عضویت</h3>
+            {matchingOpenGroups.map(group => (
+              <div key={group.id} className="flex items-center justify-between gap-2 py-1.5 text-xs">
+                <span className="truncate">{group.name}</span>
+                <button type="button" disabled={joiningGroupId !== null} onClick={() => onJoinGroup(group.id)}
+                  className="rounded-lg bg-indigo-50 px-2 py-1 text-indigo-700 disabled:opacity-50 dark:bg-indigo-900 dark:text-indigo-200">
+                  {joiningGroupId === group.id ? 'در حال عضویت…' : 'عضویت'}
+                </button>
+              </div>
+            ))}
+          </section>
         )}
       </div>
     </div>

@@ -139,10 +139,11 @@ interface ProviderProps {
   currentUserId: string | null;
   onNavigateToChat?: () => void;
   onNavigateToChannels?: () => void;
+  onNavigateToGroups?: () => void;
   children: React.ReactNode;
 }
 
-export function UrgentMessageProvider({ currentUserId, onNavigateToChat, onNavigateToChannels, children }: ProviderProps) {
+export function UrgentMessageProvider({ currentUserId, onNavigateToChat, onNavigateToChannels, onNavigateToGroups, children }: ProviderProps) {
   const [urgentAlarm, setUrgentAlarm] = useState<UrgentAlarmData | null>(null);
   const [alarmVisible, setAlarmVisible] = useState(false);
   const urgentChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -154,6 +155,8 @@ export function UrgentMessageProvider({ currentUserId, onNavigateToChat, onNavig
   onNavigateToChatRef.current = onNavigateToChat;
   const onNavigateToChannelsRef = useRef(onNavigateToChannels);
   onNavigateToChannelsRef.current = onNavigateToChannels;
+  const onNavigateToGroupsRef = useRef(onNavigateToGroups);
+  onNavigateToGroupsRef.current = onNavigateToGroups;
   // Keep currentUserId in a ref so alarm callbacks don't capture a stale value
   const currentUserIdRef = useRef(currentUserId);
   currentUserIdRef.current = currentUserId;
@@ -274,6 +277,8 @@ export function UrgentMessageProvider({ currentUserId, onNavigateToChat, onNavig
         const msg = payload.new as any;
         if (!['urgent', 'important'].includes(msg.message_type)) return;
         if (msg.sender_id === currentUserId) return;
+        const { data: thread } = await supabase.from('channels').select('type').eq('id', msg.channel_id).maybeSingle();
+        if (!thread) return;
         const { data: sender } = await supabase
           .from('profiles_public')
           .select('full_name')
@@ -284,7 +289,7 @@ export function UrgentMessageProvider({ currentUserId, onNavigateToChat, onNavig
           msg.message_type,
           senderName,
           msg.body || '',
-          () => onNavigateToChannelsRef.current?.(),
+          () => (thread.type === 'group' ? onNavigateToGroupsRef : onNavigateToChannelsRef).current?.(),
         );
         if (msg.message_type === 'urgent') {
           triggerUrgentAlarm({

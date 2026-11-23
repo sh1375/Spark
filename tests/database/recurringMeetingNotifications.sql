@@ -32,6 +32,46 @@ do $$ declare s uuid:=(select operation_id from series_test_input); begin
  assert (select count(*) from public.notifications where metadata->>'series_id'=s::text)=11,'one internal notification per unique recipient';
  assert not exists(select 1 from private.meeting_notification_jobs where series_id=s and context->>'occurrence_count'<>'52'),'summary includes the entire series';
 end $$;
+-- Scoped people edits follow creation order even when a later occurrence was moved.
+savepoint scoped_people_edit;
+create temp table scoped_series_fixture as
+select first_id, anchor_id, last_id
+from private.meeting_series_batches b
+cross join lateral (
+  select b.meeting_ids[1] first_id, b.meeting_ids[51] anchor_id, b.meeting_ids[52] last_id
+) ids
+where b.id=(select operation_id from series_test_input);
+grant select on scoped_series_fixture to authenticated;
+insert into public.contacts_email(user_id,name,phone)
+select user_id,'Scoped outside observer','09128887766' from series_test_users where n=0;
+select set_config('spark.series_notify','off',true);
+update public.meetings set request_date=((now() at time zone 'Asia/Tehran')::date+60)::text
+where id=(select anchor_id from scoped_series_fixture);
+update public.meetings set request_date=((now() at time zone 'Asia/Tehran')::date+50)::text,
+ external_informees=array['Occurrence-specific observer']
+where id=(select last_id from scoped_series_fixture);
+delete from private.meeting_notification_jobs where series_id=(select operation_id from series_test_input);
+
+set local role authenticated;
+do $$ begin
+ assert public.update_meeting_series_scope_v1(
+  (select anchor_id from scoped_series_fixture),'following','{}',
+  '{"external_informees":{"add":["Scoped outside observer"],"remove":[]}}',true
+ )=2,'following scope includes the selected and moved later occurrence';
+end $$;
+reset role;
+do $$ begin
+ assert (select external_informees from public.meetings where id=(select last_id from scoped_series_fixture))
+   =array['Occurrence-specific observer','Scoped outside observer'],'keep the occurrence-specific observer';
+ assert not exists(select from public.meetings where id=(select first_id from scoped_series_fixture)
+   and 'Scoped outside observer'=any(external_informees)),'earlier occurrence is untouched';
+ assert exists(select from private.meeting_notification_jobs
+   where series_id=(select operation_id from series_test_input) and audience='external_observers'
+     and event_type='series_invite' and jsonb_array_length(meetings)=2
+     and context ? 'external_schedule'),'external observer gets the exact changed schedule';
+end $$;
+rollback to savepoint scoped_people_edit;
+
 -- A new user added to every occurrence gets exactly one invitation. Existing
 -- recipients receive no change alert solely for the membership change.
 delete from private.meeting_notification_jobs where series_id=(select operation_id from series_test_input);

@@ -33,7 +33,10 @@ export type Database = {
           meeting_manager: string | null;
           participant_user_ids: string[] | null;
           reminder_minutes: number | null;
-          notify_users: boolean | null;
+          notify_users: string[] | null;
+          series_id: string | null;
+          external_informees: string[];
+          send_sms: boolean | null;
           shared_count: number | null;
           external_participants: any[] | null;
         };
@@ -66,7 +69,9 @@ export type Database = {
           meeting_manager?: string | null;
           participant_user_ids?: string[] | null;
           reminder_minutes?: number | null;
-          notify_users?: boolean | null;
+          notify_users?: string[] | null;
+          external_informees?: string[];
+          send_sms?: boolean | null;
           shared_count?: number | null;
           external_participants?: any[] | null;
         };
@@ -99,7 +104,9 @@ export type Database = {
           meeting_manager?: string | null;
           participant_user_ids?: string[] | null;
           reminder_minutes?: number | null;
-          notify_users?: boolean | null;
+          notify_users?: string[] | null;
+          external_informees?: string[];
+          send_sms?: boolean | null;
           shared_count?: number | null;
           external_participants?: any[] | null;
         };

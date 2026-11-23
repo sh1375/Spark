@@ -11,9 +11,17 @@ export interface CalendarEntry {
   is_personal_public?: boolean;
 }
 
+export type SeriesEditScope = 'following' | 'all';
+
 export type CommitSnapshot = {
   operationId: string;
   updateRecord: Record<string, any>;
+  scopedSeriesEdit?: {
+    scope: SeriesEditScope;
+    agendaChanged: boolean;
+    patch: import('../../types/supabase').Json;
+    recipients: import('../../types/supabase').Json;
+  };
   baseFields: Record<string, any> | null;
   isFirstSchedule: boolean;
   senderName: string;
@@ -80,5 +88,6 @@ export interface CalendarMeetingFormProps {
     repeatEndDate?: string;
     repeatWeekday?: number;
     editAllIds?: string[];
+    seriesEditScope?: SeriesEditScope;
   } | null;
 }

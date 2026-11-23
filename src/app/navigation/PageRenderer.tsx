@@ -94,7 +94,10 @@ export function renderContent(props: PageRendererProps): ReactNode {
     }
   }
 
-  const permKey = activePage === 'management-dashboard' ? undefined : PAGE_PERMISSION_KEY[activePage];
+  const canOpenDirectChat = checkPermission('chat', isAdmin, userPermissions);
+  const canOpenWorkGroups = checkPermission('channels', isAdmin, userPermissions);
+  const permKey = activePage === 'management-dashboard' || (activePage === 'chat' && canOpenWorkGroups)
+    ? undefined : PAGE_PERMISSION_KEY[activePage];
   if (permKey && !checkPermission(permKey, isAdmin, userPermissions)) {
     return <AccessDenied onReturn={() => navigate('profile')} />;
   }
@@ -138,6 +141,19 @@ export function renderContent(props: PageRendererProps): ReactNode {
         }}
       />;
     case 'chat':
+      if (canOpenWorkGroups && (!canOpenDirectChat || (openWorkGroups && !chatInitUserId))) {
+        return <ChannelsPage key="groups" type="group" currentUserId={currentUserId} isAdmin={isAdmin}
+          onBackToChat={canOpenDirectChat ? () => setOpenWorkGroups(false) : undefined}
+          onNavigateToTasks={(body, id) => {
+            setTaskPrefillDescription(body);
+            setTaskPrefillMessageId(id);
+            navigate('tasks');
+          }}
+          onOpenDirectChat={canOpenDirectChat ? (userId) => {
+            setOpenWorkGroups(false);
+            setChatInitUserId(userId);
+          } : undefined} />;
+      }
       return <ChatPage
         currentUserId={currentUserId}
         onNavigateToCalendar={(ids, bodyText) => {
@@ -150,12 +166,9 @@ export function renderContent(props: PageRendererProps): ReactNode {
           setTaskPrefillMessageId(messageId);
           navigate('tasks');
         }}
-        onOpenWorkGroups={checkPermission('channels', isAdmin, userPermissions) ? () => {
-          setOpenWorkGroups(true);
-          navigate('channels');
-        } : undefined}
+        onOpenWorkGroups={canOpenWorkGroups ? () => setOpenWorkGroups(true) : undefined}
         initialOpenUserId={chatInitUserId}
-        onInitialOpenUserConsumed={() => setChatInitUserId(null)}
+        onInitialOpenUserConsumed={() => { setOpenWorkGroups(false); setChatInitUserId(null); }}
       />;
     case 'create-meeting':
       return modernPage(<CreateMeetingPage
@@ -197,7 +210,6 @@ export function renderContent(props: PageRendererProps): ReactNode {
       return modernPage(<GroupsPage currentUserId={currentUserId} isAdmin={isAdmin} />);
     case 'channels':
       return <ChannelsPage currentUserId={currentUserId} isAdmin={isAdmin}
-        openWorkGroups={openWorkGroups} onWorkGroupsOpened={() => setOpenWorkGroups(false)}
         onNavigateToTasks={(body, id) => {
         setTaskPrefillDescription(body);
         setTaskPrefillMessageId(id);

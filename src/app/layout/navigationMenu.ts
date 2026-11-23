@@ -76,6 +76,7 @@ export function getVisiblePrimaryNavigationItems(
     if (!item.permissionKey) return true;
     if (context.userPermissions === null) return true;
     if (context.userPermissions === undefined) return false;
+    if (item.id === 'chat') return Boolean(context.userPermissions.chat || context.userPermissions.channels);
     return !!context.userPermissions[item.permissionKey];
   });
 }
