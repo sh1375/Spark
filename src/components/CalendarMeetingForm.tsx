@@ -49,7 +49,9 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
   const [scheduleDate, setScheduleDate] = useState<{jy:number;jm:number;jd:number}|null>(null);
   // Identity is an input, never mutable draft state. Similar drafts cannot edit the source.
   const prefillMeetingId = prefillData?.mode === 'create' ? null : prefillData?.meetingId || null;
+  const seriesEditScope = prefillData?.seriesEditScope;
   const prefillEditAllIds = prefillMeetingId && prefillData?.editAllIds?.length ? prefillData.editAllIds : null;
+  const loadedRecipientsRef = useRef<Record<'participant_user_ids' | 'notify_users' | 'external_participants' | 'external_informees', string[]> | null>(null);
   const currentEditIdRef = useRef(prefillMeetingId);
   currentEditIdRef.current = prefillMeetingId;
   const [saveContact, setSaveContact] = useState(false);
@@ -246,8 +248,19 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
   }, [prefillData]);
 
   const loadMeetingParticipants = async (meetingId: string) => {
-    const { data } = await supabase.from('meetings').select('participant_user_ids, notify_users, external_participants, external_informees, meeting_manager, is_online, send_sms').eq('id', meetingId).maybeSingle();
-    if (!data || currentEditIdRef.current !== meetingId) return;
+    loadedRecipientsRef.current = null;
+    const { data, error } = await supabase.from('meetings').select('participant_user_ids, notify_users, external_participants, external_informees, meeting_manager, is_online, send_sms').eq('id', meetingId).maybeSingle();
+    if (currentEditIdRef.current !== meetingId) return;
+    if (error || !data) {
+      toast.error('دریافت فهرست افراد جلسه انجام نشد. فرم ویرایش را دوباره باز کنید.');
+      return;
+    }
+    loadedRecipientsRef.current = {
+      participant_user_ids: data.participant_user_ids ?? [],
+      notify_users: data.notify_users ?? [],
+      external_participants: data.external_participants ?? [],
+      external_informees: data.external_informees ?? [],
+    };
     if (data.is_online !== undefined && data.is_online !== null) setIsOnline(!!data.is_online);
     if (data.send_sms !== undefined && data.send_sms !== null) setSendSms(!!data.send_sms);
 
@@ -289,6 +302,11 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
     e.preventDefault();
     if (creationRecoveryErrorRef.current) {
       toast.error(creationRecoveryErrorRef.current, { duration: 10000 });
+      return;
+    }
+    const loadedRecipients = loadedRecipientsRef.current;
+    if (prefillMeetingId && !loadedRecipients) {
+      toast.error('فهرست افراد جلسه هنوز بارگذاری نشده است');
       return;
     }
     if (!userId) { toast.error('لطفا وارد شوید'); return; }
@@ -391,10 +409,13 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
 
       if (prefillMeetingId) {
         const bulkIds = prefillEditAllIds && prefillEditAllIds.length > 0 ? prefillEditAllIds : [prefillMeetingId];
-        const { data: existingRows } = await supabase
+        const { data: existingRows, error: existingError } = await supabase
           .from('meetings')
           .select('id, subject, request_date, start_time, end_time, location, representative, phone, notes, priority, meeting_manager, is_online, participant_user_ids, notify_users, external_participants, external_informees, reminder_minutes, calendar_id, send_sms, members_only, repeat_type, repeat_interval, repeat_end_date, repeat_weekday')
           .in('id', bulkIds);
+        if (existingError || !existingRows?.some(row => row.id === prefillMeetingId)) {
+          throw new Error('دریافت اطلاعات جلسه برای ویرایش انجام نشد');
+        }
         const existingMap = new Map<string, any>();
         for (const row of existingRows || []) existingMap.set(row.id, row);
 
@@ -449,7 +470,7 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
           const changeSet = computeScopedMeetingChangeSet(
             existing,
             nextFields,
-            Boolean(prefillEditAllIds && prefillEditAllIds.length > 0),
+            Boolean(seriesEditScope || prefillEditAllIds?.length),
           );
           changeSetsByMeetingId[id] = changeSet;
           for (const field of changeSet.importantFields) importantSet.add(field);
@@ -510,10 +531,35 @@ export function CalendarMeetingForm({ onSuccess, onCancel, prefillData, calendar
           };
         }
 
+        const scopedSeriesEdit = seriesEditScope ? {
+          scope: seriesEditScope,
+          agendaChanged: changeSet.minorFields.includes('agenda'),
+          patch: {
+            ...Object.fromEntries([...changeSet.importantFields, ...changeSet.minorFields]
+              .filter(key => key !== 'agenda' && key !== 'external_informees' && key in updateRecord)
+              .map(key => [key, updateRecord[key]])),
+            ...(changeSet.importantFields.some(key => key === 'start_time' || key === 'end_time')
+              ? { start_time: startTime, end_time: endTime }
+              : {}),
+          },
+          recipients: Object.fromEntries(
+            (['participant_user_ids', 'notify_users', 'external_participants', 'external_informees'] as const)
+              .map(key => {
+                const before = loadedRecipients?.[key] ?? [];
+                const after: string[] = nextFields[key];
+                const relevant = (value: string) => value && !(key === 'notify_users' && value === userId);
+                return [key, {
+                  add: [...new Set(after.filter(value => relevant(value) && !before.includes(value)))],
+                  remove: [...new Set(before.filter(value => relevant(value) && !after.includes(value)))],
+                }];
+              }),
+          ),
+        } : undefined;
+
         const operationId = (crypto as any)?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const snapshot: CommitSnapshot = {
           operationId,
-          updateRecord, baseFields, isFirstSchedule, senderName,
+          updateRecord, baseFields, scopedSeriesEdit, isFirstSchedule, senderName,
           meetingDateStr, meetingTimeStr, smsPlaceholders, agendaSummary,
           participantNameMap, observerIds,
           prevNotifyUserIds: (existingMtg?.notify_users || []).filter((value: string) => value && value !== userId),

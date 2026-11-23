@@ -1,3 +1,4 @@
+import { usePermissions } from '../../../context/PermissionsContext';
 import { UnreadBadge, unreadLabel } from '../../../features/messaging/UnreadBadge';
 import { useMessageUnreadCounts } from '../../../features/messaging/messageUnreadCounts';
 import { useRef } from 'react';
@@ -86,6 +87,7 @@ export function LayoutSidebar({
   accentColor,
 }: LayoutSidebarProps) {
   const mobileNavigation = useMobileNavigation();
+  const { hasPermission } = usePermissions();
   const { directTotal, groupTotal, channelTotal } = useMessageUnreadCounts();
   const drawerRef = useRef<HTMLDivElement>(null);
   useModalFocus(mobileNavigation && isMobileMenuOpen, drawerRef, () => onMobileMenuOpenChange(false));
@@ -176,7 +178,7 @@ export function LayoutSidebar({
           {menuItems.map((item) => {
             const Icon = item.icon;
             const unread = item.id === 'chat'
-              ? directTotal + (menuItems.some(entry => entry.id === 'channels') ? groupTotal : 0)
+              ? (hasPermission('chat') ? directTotal : 0) + (hasPermission('channels') ? groupTotal : 0)
               : item.id === 'channels' ? channelTotal : 0;
             const isActive =
               activePage === item.id ||

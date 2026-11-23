@@ -1,3 +1,4 @@
+import type { SeriesEditScope } from '../CalendarMeetingForm/types';
 import { dispatchRecurringMeetingDelivery } from '../../features/meetings/services/dispatchRecurringMeetingDelivery';
 import { isPersonalCalendarMeetingVisible } from './personalCalendarVisibility';
 import { mergeLiveSelection } from '../../shared/realtime/mergeLiveSelection';
@@ -569,7 +570,7 @@ export function useCalendarDataActions(scope: Record<string, any>) {
     }
   };
 
-  const openEditForm = (m: MeetingData & { _editAllIds?: string[] }) => {
+  const openEditForm = (m: MeetingData, seriesEditScope?: SeriesEditScope) => {
     const date = parseRequestDateToDateStr(m.request_date);
     let dateJy, dateJm, dateJd;
     if (date) { const d = new Date(date + 'T00:00:00'); const j = toJalaali(d); dateJy = j.jy; dateJm = j.jm; dateJd = j.jd; }
@@ -585,7 +586,7 @@ export function useCalendarDataActions(scope: Record<string, any>) {
       repeatInterval: m.repeat_interval || 1,
       repeatEndDate: m.repeat_end_date || '',
       repeatWeekday: m.repeat_weekday ?? 0,
-      editAllIds: m._editAllIds,
+      seriesEditScope,
     });
     setDetailMeeting(null);
     setPreviewMeeting(null);
@@ -599,7 +600,7 @@ export function useCalendarDataActions(scope: Record<string, any>) {
 
   const handleEditMeeting = (m: MeetingData) => {
     const hasRepeat = !!(m.repeat_type && m.repeat_type !== 'none');
-    if (hasRepeat) { setRepeatEditDialog({ meeting: m }); setDetailMeeting(null); setPreviewMeeting(null); }
+    if (m.series_id || hasRepeat) { setRepeatEditDialog({ meeting: m }); setDetailMeeting(null); setPreviewMeeting(null); }
     else openEditForm(m);
   };
 

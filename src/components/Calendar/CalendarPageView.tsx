@@ -4,7 +4,6 @@ import { createPortal } from 'react-dom';
 import { ChevronRight, Calendar, RefreshCw, X, Plus, Users, CalendarPlus } from 'lucide-react';
 import { CalendarViews } from './CalendarViews';
 import { supabase } from '../../lib/supabase';
-import { meetingLocalDate } from '../../features/meetings/meetingLocalDate';
 import { MeetingInboxButton } from '../MeetingInboxButton';
 import { JALAALI_MONTHS, VIEW_OPTIONS, parseRequestDateToDateStr } from './utils';
 import { CalendarSidebar } from './CalendarSidebar';
@@ -162,14 +161,8 @@ export function CalendarPageView({ model }: { model: Record<string, any> }) {
                   <p className="text-xs text-gray-400 mt-0.5">تنها همین جلسه تغییر می‌کند</p>
                 </div>
               </button>
-              <button onClick={async () => {
-                const m = repeatEditDialog.meeting;
-                if (!m.series_id) { openEditForm(m); setRepeatEditDialog(null); return; }
-                const { data: allRepeat } = await supabase.from('meetings').select('id').eq('series_id', m.series_id).eq('user_id', m.user_id || '').gte('request_local_date', meetingLocalDate(m.request_date));
-                if (allRepeat && allRepeat.length > 0) {
-                  const ids = allRepeat.map((r: any) => r.id);
-                  openEditForm({ ...m, id: m.id, _editAllIds: ids } as any);
-                }
+              <button disabled={!repeatEditDialog.meeting.series_id} onClick={() => {
+                openEditForm(repeatEditDialog.meeting, 'following');
                 setRepeatEditDialog(null);
               }}
                 className="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-orange-500 dark:hover:border-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all text-right group">
@@ -181,11 +174,8 @@ export function CalendarPageView({ model }: { model: Record<string, any> }) {
                   <p className="text-xs text-gray-400 mt-0.5">{repeatEditDialog.meeting.series_id ? 'از این جلسه به بعد تغییر می‌کنند' : 'سری قدیمی: فقط همین نوبت قابل انتخاب است'}</p>
                 </div>
               </button>
-              <button onClick={async () => {
-                const m = repeatEditDialog.meeting;
-                if (!m.series_id) { openEditForm(m); setRepeatEditDialog(null); return; }
-                const { data: allRepeat } = await supabase.from('meetings').select('id').eq('series_id', m.series_id).eq('user_id', m.user_id || '');
-                if (allRepeat && allRepeat.length > 0) openEditForm({ ...m, id: m.id, _editAllIds: allRepeat.map((r: any) => r.id) } as any);
+              <button disabled={!repeatEditDialog.meeting.series_id} onClick={() => {
+                openEditForm(repeatEditDialog.meeting, 'all');
                 setRepeatEditDialog(null);
               }}
                 className="w-full flex items-start gap-3 p-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-red-500 dark:hover:border-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all text-right group">

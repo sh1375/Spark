@@ -65,6 +65,7 @@ export async function commitCalendarMeetingEdit({
     const {
       updateRecord,
       baseFields,
+      scopedSeriesEdit,
       isFirstSchedule,
       senderName,
       meetingDateStr,
@@ -84,9 +85,19 @@ export async function commitCalendarMeetingEdit({
 
     const { data: identity, error: identityError } = await supabase.from('meetings').select('series_id').eq('id', prefillMeetingId).single();
     if (identityError) throw identityError;
-    const managedSeries = Boolean((identity as any)?.series_id);
+    const seriesId = identity?.series_id;
     const queuedTimingIds = new Set<string>();
-    if (managedSeries) {
+    if (scopedSeriesEdit) {
+      if (!seriesId) throw new Error('شناسه مجموعه جلسه پیدا نشد');
+      const { error } = await supabase.rpc('update_meeting_series_scope_v1', {
+        p_meeting_id: prefillMeetingId,
+        p_scope: scopedSeriesEdit.scope,
+        p_patch: scopedSeriesEdit.patch,
+        p_recipients: scopedSeriesEdit.recipients,
+        p_notify: notifyExistingParticipants,
+      });
+      if (error) throw error;
+    } else if (seriesId) {
       const patch = { ...(baseFields && prefillEditAllIds?.length ? baseFields : updateRecord), participant_user_ids: selectedParticipantIds };
       const { error } = await (supabase as any).rpc('update_meeting_series', {
         p_ids: prefillEditAllIds?.length ? prefillEditAllIds : [prefillMeetingId],
@@ -108,18 +119,20 @@ export async function commitCalendarMeetingEdit({
       }
     }
 
-    const { error: agendaSyncError } = await (supabase as any).rpc('sync_linked_meeting_agenda_v1', {
-      p_meeting_id: prefillMeetingId,
-      p_items: agendaEnabled ? agendaItems.map(item => ({
-        id: item.id, title: item.title, presenter: item.presenter,
-        duration_minutes: item.duration_minutes, description: item.description,
-        source_decision_id: (item as { source_decision_id?: string | null }).source_decision_id ?? null,
-      })) : [],
-    });
-    if (agendaSyncError) throw new Error('خطا در ذخیره دستور جلسه: ' + agendaSyncError.message);
+    if (!scopedSeriesEdit || scopedSeriesEdit.agendaChanged) {
+      const { error: agendaSyncError } = await (supabase as any).rpc('sync_linked_meeting_agenda_v1', {
+        p_meeting_id: prefillMeetingId,
+        p_items: agendaEnabled ? agendaItems.map(item => ({
+          id: item.id, title: item.title, presenter: item.presenter,
+          duration_minutes: item.duration_minutes, description: item.description,
+          source_decision_id: (item as { source_decision_id?: string | null }).source_decision_id ?? null,
+        })) : [],
+      });
+      if (agendaSyncError) throw new Error('خطا در ذخیره دستور جلسه: ' + agendaSyncError.message);
+    }
 
-    if (managedSeries) {
-      await dispatchRecurringMeetingDelivery((identity as any).series_id);
+    if (seriesId) {
+      await dispatchRecurringMeetingDelivery(seriesId);
       setEditDecision(null);
       onSuccess(subject, true);
       return;

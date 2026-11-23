@@ -90,7 +90,7 @@ export function AppShell(props: AppShellProps) {
 
   return (
     <PermissionsProvider isAdmin={isAdmin} userPermissions={userPermissions}>
-      <UrgentMessageProvider currentUserId={currentUserId} onNavigateToChat={() => navigate('chat')} onNavigateToChannels={() => navigate('channels')}>
+      <UrgentMessageProvider currentUserId={currentUserId} onNavigateToChat={() => { rendererProps.setOpenWorkGroups(false); navigate('chat'); }} onNavigateToChannels={() => navigate('channels')} onNavigateToGroups={() => { rendererProps.setOpenWorkGroups(true); navigate('chat'); }}>
         {showSplash && !splashDone && (
           <SplashScreen onDone={onSplashDone} />
         )}

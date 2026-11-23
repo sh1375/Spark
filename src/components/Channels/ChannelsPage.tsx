@@ -17,36 +17,31 @@ const ChatSettingsPage = lazy(() => import('../Chat/ChatSettingsPage').then((m) 
 interface Props {
   currentUserId: string | null;
   isAdmin: boolean;
-  openWorkGroups?: boolean;
-  onWorkGroupsOpened?: () => void;
+  type?: ChannelType;
+  onBackToChat?: () => void;
   onNavigateToTasks?: (messageBody: string, messageId: string) => void;
   onOpenDirectChat?: (userId: string) => void;
 }
 
 type SidebarPanel = 'settings' | 'actions' | null;
 
-export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGroupsOpened, onNavigateToTasks, onOpenDirectChat }: Props) {
+export function ChannelsPage({ currentUserId, isAdmin, type = 'channel', onBackToChat, onNavigateToTasks, onOpenDirectChat }: Props) {
   useLiveData([...LIVE_DATA.channels, ...LIVE_DATA.people], async () => { await Promise.all([fetchChannels(), fetchProfiles()]); });
   const { channels: unreadCounts } = useMessageUnreadCounts();
   const { hasPermission } = usePermissions();
+  const [openGroups, setOpenGroups] = useState<{ id: string; name: string }[]>([]);
+  const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [channels, setChannels] = useState<ChannelWithMeta[]>([]);
-  const [groups, setGroups] = useState<ChannelWithMeta[]>([]);
   const [allProfiles, setAllProfiles] = useState<ChannelProfile[]>([]);
-  const [activeTab, setActiveTab] = useState<'channels' | 'groups'>(openWorkGroups ? 'groups' : 'channels');
+  const isChannel = type === 'channel';
+  const canCreate = isChannel ? isAdmin : isAdmin || hasPermission('channels_create_group');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createType, setCreateType] = useState<ChannelType>('channel');
   const [loading, setLoading] = useState(true);
   const [showConversation, setShowConversation] = useState(false);
   const [sidebarPanel, setSidebarPanel] = useState<SidebarPanel>(null);
   const [scrollToMessageId, setScrollToMessageId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!openWorkGroups) return;
-    setActiveTab('groups');
-    onWorkGroupsOpened?.();
-  }, [openWorkGroups, onWorkGroupsOpened]);
 
   const fetchProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles_public').select('user_id, full_name, username, avatar_url');
@@ -59,32 +54,39 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
       const { data: memberRows, error: membErr } = await supabase
         .from('channel_members').select('channel_id, role').eq('user_id', currentUserId);
       if (membErr) throw membErr;
-      if (!memberRows || !memberRows.length) { setChannels([]); setGroups([]); return []; }
+      const memberships = memberRows ?? [];
+      if (type === 'group') {
+        const myIds = new Set(memberships.map(row => row.channel_id));
+        const { data: publicGroups, error: publicGroupsError } = await supabase
+          .from('channels').select('id, name').eq('type', 'group').eq('is_private', false).order('name');
+        if (publicGroupsError) toast.error('بارگذاری گروه‌های قابل عضویت انجام نشد');
+        setOpenGroups((publicGroups ?? []).filter(group => !myIds.has(group.id)));
+      }
+      if (memberships.length === 0) { setChannels([]); return []; }
 
-      const channelIds = memberRows.map((m: any) => m.channel_id);
+      const channelIds = memberships.map(m => m.channel_id);
       const { data: raw, error: chanErr } = await supabase
-        .from('channels').select('*').in('id', channelIds).order('created_at', { ascending: false });
+        .from('channels').select('*').in('id', channelIds).eq('type', type).order('created_at', { ascending: false });
       if (chanErr) throw chanErr;
 
-      const roleMap = new Map(memberRows.map((m: any) => [m.channel_id, m.role]));
+      const roleMap = new Map(memberships.map(m => [m.channel_id, m.role]));
 
       const all: ChannelWithMeta[] = (raw || []).map((c: any) => ({
         ...c,
         myRole: roleMap.get(c.id) ?? null,
         unreadCount: 0,
       }));
-      setChannels(all.filter(c => c.type === 'channel'));
-      setGroups(all.filter(c => c.type === 'group'));
+      setChannels(all);
       return all;
     } catch (e: any) {
       toast.error(`خطا در بارگذاری: ${e?.message || e}`);
       setChannels([]);
-      setGroups([]);
+      setOpenGroups([]);
       return [];
     } finally {
       setLoading(false);
     }
-  }, [currentUserId]);
+  }, [currentUserId, type]);
 
   useEffect(() => {
     fetchChannels();
@@ -103,7 +105,7 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
   }, [selectedChannel, sidebarPanel, fetchProfiles]);
 
   const handleCreate = async (data: { name: string; description: string; type: ChannelType; is_private: boolean }) => {
-    if (!currentUserId) return;
+    if (!currentUserId || !canCreate || data.type !== type) return;
 
     const { data: channelId, error } = await supabase.rpc('create_channel', {
       p_name: data.name,
@@ -117,8 +119,6 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
     setShowCreate(false);
 
     const all = await fetchChannels();
-    const newType = data.type === 'channel' ? 'channels' : 'groups';
-    setActiveTab(newType);
 
     const created = (all || []).find((c: any) => c.id === channelId);
     if (created) {
@@ -129,24 +129,38 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
       const { data: ch } = await supabase.from('channels').select('*').eq('id', channelId).single();
       if (ch) {
         setSelectedId(ch.id);
-        setSelectedChannel(ch);
+        setSelectedChannel({ ...ch, last_message_at: null });
         setShowConversation(true);
       }
     }
   };
 
+  const handleJoinGroup = async (groupId: string) => {
+    if (isChannel || !currentUserId || joiningGroupId) return;
+    setJoiningGroupId(groupId);
+    try {
+      const { error } = await supabase.rpc('join_public_work_group_v1', { p_group_id: groupId });
+      if (error) throw error;
+      const joined = (await fetchChannels()).find(group => group.id === groupId);
+      if (joined) {
+        setSelectedId(joined.id);
+        setSelectedChannel(joined);
+        setShowConversation(true);
+      }
+      toast.success('به گروه پیوستید');
+    } catch {
+      toast.error('عضویت در گروه انجام نشد');
+    } finally {
+      setJoiningGroupId(null);
+    }
+  };
+
   const handleSelect = (id: string) => {
     setSelectedId(id);
-    const found = [...channels, ...groups].find(c => c.id === id);
+    const found = channels.find(c => c.id === id);
     if (found) setSelectedChannel(found);
     setShowConversation(true);
     setSidebarPanel(null);
-  };
-
-  const handleOpenCreate = (type: ChannelType) => {
-    if (type === 'channel' && !isAdmin) { toast.error('فقط مدیران می‌توانند کانال ایجاد کنند'); return; }
-    setCreateType(type);
-    setShowCreate(true);
   };
 
   const toggleSidebarPanel = (panel: SidebarPanel) => {
@@ -154,7 +168,6 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
   };
 
   const emptyGroupTasks: GroupTask[] = [];
-  const activeItems = activeTab === 'channels' ? channels : groups;
 
   return (
     <div
@@ -184,17 +197,16 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
           </Suspense>
         ) : (
           <ChannelSidebar
-            channels={channels.map(c => ({ ...c, unreadCount: unreadCounts.get(c.id) ?? 0 }))}
-            groups={groups.map(c => ({ ...c, unreadCount: unreadCounts.get(c.id) ?? 0 }))}
-            activeTab={activeTab}
+            items={channels.map(c => ({ ...c, unreadCount: unreadCounts.get(c.id) ?? 0 }))}
+            type={type}
             selectedId={selectedId}
-            isAdmin={isAdmin}
-            onTabChange={setActiveTab}
             onSelect={handleSelect}
-            onCreateChannel={handleOpenCreate}
+            onCreate={canCreate ? () => setShowCreate(true) : undefined}
+            onBackToChat={onBackToChat}
+            openGroups={openGroups}
+            joiningGroupId={joiningGroupId}
+            onJoinGroup={handleJoinGroup}
             loading={loading}
-            canCreateChannel={hasPermission('channels_create_channel')}
-            canCreateGroup={hasPermission('channels_create_group')}
             onOpenSettings={() => toggleSidebarPanel('settings')}
             onOpenActions={() => toggleSidebarPanel('actions')}
           />
@@ -220,21 +232,21 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-gradient-to-br from-white via-slate-50 to-indigo-50/40 px-6 text-center dark:from-slate-950 dark:via-slate-950 dark:to-indigo-950/15">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-indigo-100 bg-indigo-50 text-indigo-500 shadow-sm dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300">
-              {activeTab === 'channels' ? <Hash className="h-7 w-7" /> : <Users className="h-7 w-7" />}
+              {isChannel ? <Hash className="h-7 w-7" /> : <Users className="h-7 w-7" />}
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{activeTab === 'channels' ? 'کانال‌های سازمانی' : 'گروه‌های کاری'}</h3>
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">{isChannel ? 'کانال‌های سازمانی' : 'گروه‌های کاری'}</h3>
               <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                {activeItems.length > 0 ? 'یک مورد را برای مشاهده پیام‌ها انتخاب کنید' : `هنوز ${activeTab === 'channels' ? 'کانالی' : 'گروهی'} برای شما وجود ندارد`}
+                {channels.length > 0 ? 'یک مورد را برای مشاهده پیام‌ها انتخاب کنید' : `هنوز ${isChannel ? 'کانالی' : 'گروهی'} برای شما وجود ندارد`}
               </p>
             </div>
-            {(isAdmin || (activeTab === 'channels' ? hasPermission('channels_create_channel') : hasPermission('channels_create_group'))) && (
+            {canCreate && (
               <button
-                onClick={() => handleOpenCreate(activeTab === 'channels' ? 'channel' : 'group')}
+                onClick={() => setShowCreate(true)}
                 className="mt-1 flex items-center gap-1.5 rounded-xl bg-gradient-to-l from-violet-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-[0_7px_20px_rgba(79,70,229,0.18)] transition hover:from-violet-500 hover:to-indigo-500"
               >
                 <Plus className="h-4 w-4" />
-                {activeTab === 'channels' ? 'کانال جدید' : 'گروه جدید'}
+                {isChannel ? 'کانال جدید' : 'گروه جدید'}
               </button>
             )}
           </div>
@@ -244,7 +256,7 @@ export function ChannelsPage({ currentUserId, isAdmin, openWorkGroups, onWorkGro
       {showCreate && (
         <Suspense fallback={null}>
           <CreateChannelModal
-          type={createType}
+          type={type}
           onClose={() => setShowCreate(false)}
           onCreate={handleCreate}
           />
