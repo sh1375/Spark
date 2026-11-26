@@ -27,7 +27,6 @@ test('preserves the primary navigation order', () => {
       'minutes-hub',
       'chat',
       'channels',
-      'video-conference',
       'tasks',
       'notes',
       'contacts',
@@ -93,7 +92,8 @@ test('administrator access does not bypass the dedicated management dashboard ga
     managementDashboardAllowed: false,
   });
 
-  assert.equal(items.length, 11);
+  assert.equal(items.length, 10);
+  assert.ok(!items.some(i => i.id === 'video-conference'));
   assert.ok(!items.some(i => i.id === 'management-dashboard'));
 });
 
@@ -105,7 +105,8 @@ test('null permissions remain full access except for the dedicated management da
     managementDashboardAllowed: false,
   });
 
-  assert.equal(items.length, 11);
+  assert.equal(items.length, 10);
+  assert.ok(!items.some(i => i.id === 'video-conference'));
   assert.ok(!items.some(i => i.id === 'management-dashboard'));
 });
 
