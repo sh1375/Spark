@@ -1,21 +1,21 @@
-# Spark — ممیزی مخزن و معماری نرم‌افزار (مرحله ۱)
+# Spark — ممیزی فنی و معماری نرم‌افزار (مرحله ۱)
 
 > تاریخ: 2026-11-26 / ۱۴۰۵-۰۹-۰۵ · وضعیت: **Baseline / PARTIAL — در حال تکمیل، نه تأییدیه امنیتی**
 >
-> مبنای ثابت: [Commit c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42](https://github.com/sh1375/Spark/commit/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42)، شاخه main.
+> مبنای ارزیابی: نسخه سورس‌کد دریافت‌شده در تاریخ ۱۴۰۵-۰۹-۰۵؛ شناسه نسخه فنی: `c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42`.
 >
-> این نسخه برای انتشار در مخزن عمومی تهیه شده است. داده عملیاتی، Secrets، جزئیات یافته‌های آسیب‌پذیری رفع‌نشده، اطلاعات محیط داخلی و مسیرهای دسترسی محرمانه نباید در این سند درج شوند. ارزیابی تفصیلی امنیتی باید در فضای دارای کنترل دسترسی نگهداری شود.
+> این سند صرفاً وضعیت فنی نرم‌افزار و شواهد ممیزی را ثبت می‌کند. داده‌های واقعی، مقادیر محرمانه و جزئیات حساس امنیتی در آن درج نمی‌شوند.
 
 ## ۱. هدف و دامنه
 
-ثبت معماری منطقی، قابلیت‌ها، وابستگی‌های نرم‌افزار و شواهد بررسی اولیه به عنوان خط مبنا برای آمادگی استقرار سازمانی. Git Tree کامل (بدون truncation)، manifestها و lockfileهای npm و نمونه‌های منتخب کد و تنظیمات خوانده شدند. آرشیو Commit روی محیط محلی دریافت شد و هر ۸۶۷ فایل JavaScript/TypeScript با تحلیل متنی importها و الگوهای مشخص بررسی شد. npm audit و بررسی pin وابستگی Edge نیز انجام شد. این بررسی به معنی بازبینی معنایی خط‌به‌خط همه فایل‌ها، تست رگرسیون، اندازه‌گیری RAM، اسکن جامع همه CVEها، ممیزی دیتابیس فعال یا تست نفوذ نیست. هیچ تغییری در کد اجرایی یا دیتابیس داده نشده است.
+ثبت معماری منطقی، قابلیت‌ها، وابستگی‌های نرم‌افزار و شواهد بررسی اولیه به عنوان خط مبنا برای آمادگی استقرار سازمانی. فهرست کامل فایل‌های نسخه نرم‌افزار، manifestها و lockfileهای npm و نمونه‌های منتخب کد و تنظیمات خوانده شدند. نسخه سورس‌کد در محیط محلی استخراج شد و هر ۸۶۷ فایل JavaScript/TypeScript با تحلیل متنی importها و الگوهای مشخص بررسی شد. npm audit و بررسی pin وابستگی Edge نیز انجام شد. این بررسی به معنی بازبینی معنایی خط‌به‌خط همه فایل‌ها، تست رگرسیون، اندازه‌گیری RAM، اسکن جامع همه CVEها، ممیزی دیتابیس فعال یا تست نفوذ نیست. هیچ تغییری در کد اجرایی یا دیتابیس داده نشده است.
 
 ### وضعیت اقدامات
 
 | فعالیت | وضعیت | شاهد |
 |---|---|---|
-| ثبت Commit و ساختار کامل مخزن | انجام شد | Git Tree ثابت، ۱٬۲۶۰ فایل |
-| شمارش ماژول‌ها و تست‌ها | انجام شد | Git Tree |
+| شناسایی نسخه و ساختار نرم‌افزار | انجام شد | فهرست کامل ۱٬۲۶۰ فایل |
+| شمارش ماژول‌ها و تست‌ها | انجام شد | فهرست فایل‌ها |
 | وابستگی‌های مستقیم و نسخه‌های قفل‌شده | انجام شد | package.json و دو package-lock.json |
 | بررسی ورودی SPA و مسیرهای UI | نمونه‌برداری انجام شد | main، App، AuthenticatedApp، PageRenderer |
 | بررسی client API و PWA | نمونه‌برداری انجام شد | supabase.ts، invokeEdgeFunction، sw.js، manifest |
@@ -24,7 +24,7 @@
 | نقشه import داخلی و چرخه‌ها | تحلیل متنی انجام شد؛ اعتبارسنجی باز | ۸۶۷ فایل، نیازمند AST/build |
 | اسکن CVE npm | انجام شد، موارد باز | ۲ Moderate در root، صفر در Worker؛ محدوده npm |
 | SBOM استاندارد، CVE غیر npm و License review | باز | نیازمند تکمیل بررسی |
-| Secrets scan شامل تاریخچه | باز | نیازمند clone کامل و اسکن محلی |
+| اسکن مقادیر محرمانه در سورس‌کد و خروجی build | باز | نیازمند اسکن محلی |
 | تست‌های رگرسیون و build | باز | اجرا نشده |
 | اندازه‌گیری RAM/CPU، heap و منابع | باز | اجرا نشده |
 | ممیزی Supabase runtime، RLS و RPC | مرحله ۲ | خارج از دامنه فعلی |
@@ -77,7 +77,7 @@ flowchart TD
   MGR -.-> DB
 ```
 
-این نمودار معماری منطقی استخراج‌شده از مخزن است؛ نقشه شبکه واقعی، توپولوژی HA، تنظیمات Gateway و وضعیت واقعی سرویس‌های مقصد را نشان نمی‌دهد.
+این نمودار معماری منطقی استخراج‌شده از سورس‌کد است؛ نقشه شبکه واقعی، توپولوژی HA، تنظیمات Gateway و وضعیت واقعی سرویس‌های مقصد را نشان نمی‌دهد.
 
 - Presentation: React 19، TypeScript، Vite، Tailwind، رابط فارسی RTL، نصب PWA و فایل‌های محلی فونت.
 - Application: تقسیم بارگذاری با lazy/Suspense و مسیر جداگانه ورود عمومی و برنامه احراز هویت‌شده. مسیریابی و کنترل نمایش صفحات در app/navigation، داده‌ها و وضعیت دسترسی در hookها و feature moduleها.
@@ -213,9 +213,9 @@ flowchart TD
 
 ## ۸. برنامه تکمیل ممیزی
 
-۱. snapshot کامل دریافت شد؛ clone تاریخچه و تأیید گراف import/cycle/orphan/duplicate با تحلیل AST باقی مانده است.
+۱. نسخه کامل سورس‌کد دریافت شد؛ تأیید گراف import/cycle/orphan/duplicate با تحلیل AST باقی مانده است.
 ۲. npm audit اولیه و بررسی pin انجام شد؛ رفع و بازآزمون، ساخت SBOM و بررسی Edge/OS/container dependency، CVE و مجوزها و اسکن Secrets بدون چاپ مقادیر باقی مانده است.
-۳. اجرای build و مجموعه تست‌های مرتبط و regression در staging؛ ثبت exit code، نسخه ابزار، commit و نتیجه.
+۳. اجرای build و مجموعه تست‌های مرتبط و regression در staging؛ ثبت exit code، نسخه ابزار، شناسه نسخه و نتیجه.
 ۴. بررسی امنیتی کد و انطباق کنترل‌های ASVS؛ نگهداری جزئیات یافته‌های رفع‌نشده در گزارش محدود.
 ۵. ممیزی runtime Supabase، RLS، RPC، Storage، Auth و privileges در مرحله ۲؛ عدم استفاده از داده واقعی در ابزار خارجی.
 ۶. بررسی عملی airgap و عدم وابستگی غیرمجاز، بررسی ظرفیت، backup/restore، rollback و سپس تست امنیتی مجاز و Retest.
@@ -223,36 +223,36 @@ flowchart TD
 
 ## ۹. منابع بررسی‌شده
 
-- [package.json](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/package.json)
-- [package-lock.json](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/package-lock.json)
-- [worker/package.json](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/worker/package.json)
-- [worker/package-lock.json](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/worker/package-lock.json)
-- [README.md](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/README.md)
-- [vite.config.ts](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/vite.config.ts)
-- [netlify.toml](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/netlify.toml)
-- [src/main.tsx](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/main.tsx)
-- [src/App.tsx](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/App.tsx)
-- [src/AuthenticatedRoot.tsx](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/AuthenticatedRoot.tsx)
-- [src/AuthenticatedApp.tsx](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/AuthenticatedApp.tsx)
-- [src/app/navigation/PageRenderer.tsx](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/app/navigation/PageRenderer.tsx)
-- [src/app/navigation/rootPath.ts](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/app/navigation/rootPath.ts)
-- [src/lib/supabase.ts](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/lib/supabase.ts)
-- [src/lib/invokeEdgeFunction.ts](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/src/lib/invokeEdgeFunction.ts)
-- [public/sw.js](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/public/sw.js)
-- [public/manifest.json](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/public/manifest.json)
-- [worker/Dockerfile](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/worker/Dockerfile)
-- [worker/index.js](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/worker/index.js)
-- [supabase/config.toml](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/supabase/config.toml)
-- [scripts/check-edge-import-pins.mjs](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/scripts/check-edge-import-pins.mjs)
-- [.gitignore](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/.gitignore)
-- [deploy/spark-cli/README.md](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/deploy/spark-cli/README.md)
-- [deploy/spark-cli/spark-build.yaml](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/deploy/spark-cli/spark-build.yaml)
+- `package.json`
+- `package-lock.json`
+- `worker/package.json`
+- `worker/package-lock.json`
+- `README.md`
+- `vite.config.ts`
+- `netlify.toml`
+- `src/main.tsx`
+- `src/App.tsx`
+- `src/AuthenticatedRoot.tsx`
+- `src/AuthenticatedApp.tsx`
+- `src/app/navigation/PageRenderer.tsx`
+- `src/app/navigation/rootPath.ts`
+- `src/lib/supabase.ts`
+- `src/lib/invokeEdgeFunction.ts`
+- `public/sw.js`
+- `public/manifest.json`
+- `worker/Dockerfile`
+- `worker/index.js`
+- `supabase/config.toml`
+- `scripts/check-edge-import-pins.mjs`
+- `.gitignore`
+- `deploy/spark-cli/README.md`
+- `deploy/spark-cli/spark-build.yaml`
 
 **نتیجه:** خط مبنای معماری و inventory اولیه مستند شد؛ ممیزی کامل و تأیید امنیت یا آمادگی production هنوز حاصل نشده است.
 
 ## ۱۰. نتایج اجرای ابزارهای تحلیل ایستا در محیط محلی
 
-تاریخ بررسی: 2026-11-26. آرشیو commit ثابت شامل ۱٬۲۶۰ فایل دریافت و استخراج شد. هیچ package نصب نشد، کد برنامه اجرا نشد و هیچ endpoint عملیاتی فراخوانی نشد.
+تاریخ بررسی: 2026-11-26. نسخه ثابت سورس‌کد شامل ۱٬۲۶۰ فایل دریافت و استخراج شد. هیچ package نصب نشد، کد برنامه اجرا نشد و هیچ endpoint عملیاتی فراخوانی نشد.
 
 | آزمون / معیار | نتیجه |
 |---|---|
@@ -275,4 +275,4 @@ flowchart TD
 
 ### وضعیت پذیرش
 
-**PARTIAL / NO-GO برای تأیید امنیتی نهایی.** یافته‌های npm و pin باید بررسی، اصلاح و بازآزمون شوند؛ تحلیل semantic، تست build/regression، ممیزی database runtime و pentest همچنان باز هستند. جزئیات ریسک‌های رفع‌نشده و گزارش خصوصی در این مخزن عمومی منتشر نشده‌اند.
+**PARTIAL / NO-GO برای تأیید امنیتی نهایی.** یافته‌های npm و pin باید بررسی، اصلاح و بازآزمون شوند؛ تحلیل semantic، تست build/regression، ممیزی database runtime و pentest همچنان باز هستند. جزئیات حساس یافته‌ها در گزارش فنی با دسترسی محدود نگهداری می‌شوند.
