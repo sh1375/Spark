@@ -8,7 +8,7 @@
 
 ## ۱. هدف و دامنه
 
-ثبت معماری منطقی، قابلیت‌ها، وابستگی‌های نرم‌افزار و شواهد بررسی اولیه به عنوان خط مبنا برای آمادگی استقرار سازمانی. Git Tree کامل (بدون truncation)، manifestها و lockfileهای npm و نمونه‌های منتخب کد و تنظیمات خوانده شدند. این بررسی ایستا به معنی خواندن خط‌به‌خط همه فایل‌ها، اجرای تست، اندازه‌گیری RAM، اسکن CVE، ممیزی دیتابیس فعال یا تست نفوذ نیست. هیچ تغییری در کد اجرایی یا دیتابیس داده نشده است.
+ثبت معماری منطقی، قابلیت‌ها، وابستگی‌های نرم‌افزار و شواهد بررسی اولیه به عنوان خط مبنا برای آمادگی استقرار سازمانی. Git Tree کامل (بدون truncation)، manifestها و lockfileهای npm و نمونه‌های منتخب کد و تنظیمات خوانده شدند. آرشیو Commit روی محیط محلی دریافت شد و هر ۸۶۷ فایل JavaScript/TypeScript با تحلیل متنی importها و الگوهای مشخص بررسی شد. npm audit و بررسی pin وابستگی Edge نیز انجام شد. این بررسی به معنی بازبینی معنایی خط‌به‌خط همه فایل‌ها، تست رگرسیون، اندازه‌گیری RAM، اسکن جامع همه CVEها، ممیزی دیتابیس فعال یا تست نفوذ نیست. هیچ تغییری در کد اجرایی یا دیتابیس داده نشده است.
 
 ### وضعیت اقدامات
 
@@ -21,8 +21,9 @@
 | بررسی client API و PWA | نمونه‌برداری انجام شد | supabase.ts، invokeEdgeFunction، sw.js، manifest |
 | بررسی Worker و تعریف container | نمونه‌برداری انجام شد | worker/index.js، Dockerfile، package.json |
 | بررسی معماری نصب و مدیریت سرور | مستند و manifest منتخب خوانده شد | Server Manager README و spark-build.yaml |
-| نقشه import داخلی و چرخه‌ها | باز | نیازمند تحلیل استاتیک تمام فایل‌ها |
-| اسکن CVE، SBOM استاندارد، License review | باز | نیازمند ابزار و پایگاه آسیب‌پذیری معتبر |
+| نقشه import داخلی و چرخه‌ها | تحلیل متنی انجام شد؛ اعتبارسنجی باز | ۸۶۷ فایل، نیازمند AST/build |
+| اسکن CVE npm | انجام شد، موارد باز | ۲ Moderate در root، صفر در Worker؛ محدوده npm |
+| SBOM استاندارد، CVE غیر npm و License review | باز | نیازمند تکمیل بررسی |
 | Secrets scan شامل تاریخچه | باز | نیازمند clone کامل و اسکن محلی |
 | تست‌های رگرسیون و build | باز | اجرا نشده |
 | اندازه‌گیری RAM/CPU، heap و منابع | باز | اجرا نشده |
@@ -187,7 +188,7 @@ flowchart TD
 | Worker | `@supabase/supabase-js` | `2.119.0` | `2.119.0` | runtime |
 | Worker | `sharp` | `^0.35.5` | `0.35.5` | runtime |
 
-وابستگی‌های خارج از npm: Deno/Edge Runtime، PostgreSQL و اجزای Supabase، Docker، Nginx، Bash، Python و ابزارهای سیستم عامل؛ برای نصب offline باید نسخه و digest تمام artifactها، مجوز نرم‌افزارها و فهرست منابع خروجی مشخص شوند. نسخه دقیق runtime و images باید از پیکربندی استقرار نهایی استخراج و بررسی شود. وجود اسکریپت check-edge-import-pins ثبت شده است اما اجرا نشده است.
+وابستگی‌های خارج از npm: Deno/Edge Runtime، PostgreSQL و اجزای Supabase، Docker، Nginx، Bash، Python و ابزارهای سیستم عامل؛ برای نصب offline باید نسخه و digest تمام artifactها، مجوز نرم‌افزارها و فهرست منابع خروجی مشخص شوند. نسخه دقیق runtime و images باید از پیکربندی استقرار نهایی استخراج و بررسی شود. اسکریپت check-edge-import-pins اجرا شد (Exit 1) و یک import غیر دقیق گزارش کرد؛ جزئیات رفع در گزارش محدود نگهداری شود.
 
 ## ۶. داده و مرزهای اعتماد
 
@@ -212,8 +213,8 @@ flowchart TD
 
 ## ۸. برنامه تکمیل ممیزی
 
-۱. دریافت snapshot کامل و clone تاریخچه در محیط مجاز؛ تولید گراف import و شناسایی cycle/orphan/duplicate با تحلیل AST.
-۲. ساخت SBOM و بررسی npm/Edge/OS/container dependency، CVE و مجوزها؛ اسکن Secrets بدون چاپ مقادیر.
+۱. snapshot کامل دریافت شد؛ clone تاریخچه و تأیید گراف import/cycle/orphan/duplicate با تحلیل AST باقی مانده است.
+۲. npm audit اولیه و بررسی pin انجام شد؛ رفع و بازآزمون، ساخت SBOM و بررسی Edge/OS/container dependency، CVE و مجوزها و اسکن Secrets بدون چاپ مقادیر باقی مانده است.
 ۳. اجرای build و مجموعه تست‌های مرتبط و regression در staging؛ ثبت exit code، نسخه ابزار، commit و نتیجه.
 ۴. بررسی امنیتی کد و انطباق کنترل‌های ASVS؛ نگهداری جزئیات یافته‌های رفع‌نشده در گزارش محدود.
 ۵. ممیزی runtime Supabase، RLS، RPC، Storage، Auth و privileges در مرحله ۲؛ عدم استفاده از داده واقعی در ابزار خارجی.
@@ -248,3 +249,30 @@ flowchart TD
 - [deploy/spark-cli/spark-build.yaml](https://github.com/sh1375/Spark/blob/c1bc5a80e1ef5d033da1f3f227ef34a8d0acdf42/deploy/spark-cli/spark-build.yaml)
 
 **نتیجه:** خط مبنای معماری و inventory اولیه مستند شد؛ ممیزی کامل و تأیید امنیت یا آمادگی production هنوز حاصل نشده است.
+
+## ۱۰. نتایج اجرای ابزارهای تحلیل ایستا در محیط محلی
+
+تاریخ بررسی: 2026-11-26. آرشیو commit ثابت شامل ۱٬۲۶۰ فایل دریافت و استخراج شد. هیچ package نصب نشد، کد برنامه اجرا نشد و هیچ endpoint عملیاتی فراخوانی نشد.
+
+| آزمون / معیار | نتیجه |
+|---|---|
+| فایل‌های JS/TS مشمول تحلیل | 867 |
+| src / supabase / tests | 619 / 83 / 150 |
+| public / scripts / worker / deploy | 5 / 6 / 3 / 1 |
+| یال داخلی متمایز در گراف متنی | 1757 |
+| specifier خارجی متمایز | 44 |
+| import نسبی حل‌نشده در تحلیل متنی | 48 نامزد بررسی |
+| مؤلفه چرخه‌ای (SCC) | 4 نامزد، 9 عضو، بزرگ‌ترین 3 عضو |
+| npm audit --package-lock-only --ignore-scripts (root) | Exit 1؛ 2 Moderate، صفر High/Critical |
+| npm audit --package-lock-only --ignore-scripts (worker) | Exit 0؛ صفر مورد گزارش‌شده |
+| node scripts/check-edge-import-pins.mjs | Exit 1؛ یک مورد نیازمند اصلاح |
+
+تحلیل import با الگوی متنی و resolution ساده فایل‌های نسبی و الگوریتم SCC انجام شده است؛ aliasهای bundler، importهای چندخطی یا پویا، متن نمونه‌ها و resolution کامل TypeScript ممکن است پوشش کامل نداشته باشند. بنابراین unresolved و cycle صرفاً نامزد بررسی هستند، نه باگ تأییدشده. npm audit فقط advisoryهای قابل دسترس registry و lockfileها را در زمان اجرا پوشش می‌دهد و صفر High/Critical به معنی صفر آسیب‌پذیری سامانه نیست. دو مورد Moderate گزارش‌شده لزوماً دو CVE مستقل نیستند.
+
+### نقاط تمرکز بررسی حافظه و چرخه عمر
+
+شمارش متنی در src، supabase، worker و public (بدون tests): addEventListener=139، setInterval=25، subscribe=11، localStorage/sessionStorage=70، console log/debug/warn/error=288. شمارش occurrence است و نشان‌دهنده Memory Leak، افشای اطلاعات یا خطای قطعی نیست. گام بعدی تحلیل cleanup و رفتار واقعی تحت بار و تست نشست‌های متوالی است.
+
+### وضعیت پذیرش
+
+**PARTIAL / NO-GO برای تأیید امنیتی نهایی.** یافته‌های npm و pin باید بررسی، اصلاح و بازآزمون شوند؛ تحلیل semantic، تست build/regression، ممیزی database runtime و pentest همچنان باز هستند. جزئیات ریسک‌های رفع‌نشده و گزارش خصوصی در این مخزن عمومی منتشر نشده‌اند.
