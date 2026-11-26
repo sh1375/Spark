@@ -10,7 +10,7 @@ import {
   TEMPLATE_EVENT_TYPES as EVENT_TYPES,
 } from '../../config/templateCatalog';
 import { JalaliDateFilter } from './JalaliDateFilter';
-import { jalaliToUtcRange } from './jalaliDateFilter';
+import { jalaliToUtcRange } from './jalaliDateFilterUtils';
 import type { NotifLog } from './types';
 
 export function LogsTab() {

@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {matchingReminderUsers} from '../../src/components/Notes/reminderRecipients';
-import {reminderServiceError} from '../../src/components/Notes/reminderDeliveryStatus';
+import {reminderServiceError} from '../../src/components/Notes/reminderDeliveryStatusModel';
 const users=[{user_id:'1',full_name:'علي كريمي'},{user_id:'2',full_name:'محمد\u200cرضا محمدی'},{user_id:'3',full_name:null}];
 test('recipient search handles Persian/Arabic characters, diacritics, spacing and multiple terms',()=>{
  assert.equal(matchingReminderUsers(users,[],'علی کریمی')[0].user_id,'1');

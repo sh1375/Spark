@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { reminderServiceError, deliveryLabel, type NoteReminderStatus } from './reminderDeliveryStatus';
+import { reminderServiceError, deliveryLabel, type NoteReminderStatus } from './reminderDeliveryStatusModel';
 import type { ReminderUser } from './ReminderField';
 
 export function ReminderDeliveryStatus({ noteId, ownerId, users = [] }: { noteId?: string; ownerId?: string; users?: ReminderUser[] }) {

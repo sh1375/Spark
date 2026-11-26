@@ -7,7 +7,7 @@ import {
   TEMPLATE_CATEGORIES as SMS_CATEGORIES,
 } from '../../config/templateCatalog';
 import { JalaliDateFilter } from '../NotificationsConfig/JalaliDateFilter';
-import { jalaliToUtcRange } from '../NotificationsConfig/jalaliDateFilter';
+import { jalaliToUtcRange } from '../NotificationsConfig/jalaliDateFilterUtils';
 import type { DispatchLog } from './types';
 import {
   CATEGORY_COLORS,

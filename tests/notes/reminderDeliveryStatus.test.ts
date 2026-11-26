@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { deliveryLabel } from '../../src/components/Notes/reminderDeliveryStatus';
+import { deliveryLabel } from '../../src/components/Notes/reminderDeliveryStatusModel';
 
 test('unlinked Bale accounts and disabled SMS rules give specific recipient-facing reasons', () => {
   assert.equal(deliveryLabel({ recipient_id: 'owner', channel: 'bale', status: 'skipped', reason: 'BALE_NOT_LINKED' }), 'حساب بله این کاربر متصل نیست');

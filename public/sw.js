@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'spark-static-v10';
-const RUNTIME_CACHE = 'spark-runtime-v10';
+const STATIC_CACHE = 'spark-static-v11';
+const RUNTIME_CACHE = 'spark-runtime-v11';
 
 const STATIC_ASSETS = [
   '/',
@@ -13,7 +13,9 @@ const STATIC_ASSETS = [
 ];
 
 function isBasicOkResponse(response) {
-  return response && response.ok && response.type === 'basic';
+  if (!response || !response.ok || response.type !== 'basic' || response.redirected) return false;
+  const cacheControl = response.headers.get('cache-control') || '';
+  return !/(?:^|,)\s*(?:private|no-store)\b/i.test(cacheControl);
 }
 
 function isImageResponse(response) {
@@ -146,7 +148,9 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith('/auth/')) return;
+  if (request.headers.has('Authorization') || url.search) return;
+  // Only application shell routes and declared static asset namespaces are cacheable.
+  // Authenticated data and API responses must never enter Cache Storage.
 
   const sensitiveSegments = [
     'login', 'mfa', 'recovery', 'reset', 'security', 'session', 'challenge', 'token',
@@ -159,10 +163,13 @@ self.addEventListener('fetch', (event) => {
   // Keep navigation network-first so a newly deployed index.html never points
   // at chunks from an older deployment. Cache remains the offline fallback.
   if (request.mode === 'navigate') {
+    if (url.pathname !== '/' && url.pathname !== '/index.html' &&
+        url.pathname !== '/admin' && !url.pathname.startsWith('/admin/')) return;
     event.respondWith(
       fetch(request, { cache: 'no-cache' })
         .then((response) => {
-          if (isBasicOkResponse(response)) {
+          if (isBasicOkResponse(response) &&
+              (response.headers.get('content-type') || '').toLowerCase().includes('text/html')) {
             const copy = response.clone();
             event.waitUntil(
               caches.open(STATIC_CACHE).then((cache) => cache.put('/index.html', copy))
@@ -182,13 +189,7 @@ self.addEventListener('fetch', (event) => {
   const isViteAsset = url.pathname.startsWith('/assets/');
   const isFontAsset = url.pathname.startsWith('/fonts/');
   const isManifest = url.pathname === '/manifest.json';
-  const isLogo = url.pathname === '/logo_spark.png';
-  const isKnownImage =
-    url.pathname.endsWith('.png') ||
-    url.pathname.endsWith('.jpg') ||
-    url.pathname.endsWith('.jpeg') ||
-    url.pathname.endsWith('.webp') ||
-    url.pathname.endsWith('.svg');
+  const isLogo = url.pathname === '/logo_spark.png' || url.pathname === '/logo-ui.webp';
 
   // Vite production assets contain a content hash in their filename. Once a
   // chunk is cached, asking the network whether that exact hash changed can
@@ -214,7 +215,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   const isStaticAsset =
-    isIconAsset || isFontAsset || isManifest || isLogo || isKnownImage;
+    isIconAsset || isFontAsset || isManifest || isLogo;
 
   // Mutable static filenames use stale-while-revalidate: paint cached content
   // immediately and refresh it in the background for the next visit.
@@ -243,5 +244,5 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Let the browser handle requests outside the declared cache routes.
+  // Everything outside the explicit static allowlist is network-only.
 });
