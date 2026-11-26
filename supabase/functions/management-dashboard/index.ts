@@ -1,4 +1,4 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import "jsr:@supabase/functions-js@2.111.0/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2.111.0";
 import { deniedResponse, requireFullAuthAccess } from "../_shared/requireFullAuthAccess.ts";
 
