@@ -830,5 +830,5 @@ test('contract: navigateAfterSave parameter is not present in ensureWorkingMinut
     'utf8',
   );
   assert.ok(!source.includes('navigateAfterSave'), 'navigateAfterSave must be removed');
-  assert.ok(source.includes('saveCurrentValues: boolean;'), 'saveCurrentValues param present');
+  assert.match(source, /ensureWorkingMinute\s*=\s*async\s*\(options:\s*\{\s*saveCurrentValues:\s*boolean\s*;?\s*\}\s*\)/, 'saveCurrentValues boolean parameter present in ensureWorkingMinute');
 });
