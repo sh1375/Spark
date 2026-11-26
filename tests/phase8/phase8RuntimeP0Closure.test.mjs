@@ -37,11 +37,11 @@ test('auth health check requires security admin, aal2, recent step-up, and audit
 });
 
 test('bulk phone sync uses the database audit taxonomy and logs write failures server-side', () => {
-  assert.match(bulkPhoneSync, /event_category:\\s*"access"/);
-  assert.doesNotMatch(bulkPhoneSync, /event_category:\\s*"security_admin"/);
-  assert.match(bulkPhoneSync, /console\\.error\\("bulk-sync-profile-phones audit write failed"/);
-  assert.match(bulkPhoneSync, /code:\\s*auditError\\.code/);
-  assert.match(bulkPhoneSync, /message:\\s*auditError\\.message/);
-  assert.match(bulkPhoneSync, /details:\\s*auditError\\.details/);
-  assert.match(bulkPhoneSync, /error:\\s*"AUDIT_WRITE_FAILED"/);
+  assert.match(bulkPhoneSync, /event_category:\s*"access"/);
+  assert.doesNotMatch(bulkPhoneSync, /event_category:\s*"security_admin"/);
+  assert.match(bulkPhoneSync, /console\.error\("bulk-sync-profile-phones audit write failed"/);
+  assert.match(bulkPhoneSync, /code:\s*auditError\.code/);
+  assert.match(bulkPhoneSync, /message:\s*auditError\.message/);
+  assert.match(bulkPhoneSync, /details:\s*auditError\.details/);
+  assert.match(bulkPhoneSync, /error:\s*"AUDIT_WRITE_FAILED"/);
 });
