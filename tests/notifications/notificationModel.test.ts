@@ -469,3 +469,11 @@ test('preserves consecutive grouping instead of globally merging labels', () => 
     'امروز'
   );
 });
+
+test('navigation rejects inherited or unknown page identifiers', () => {
+  for (const key of ['constructor', 'toString', '__proto__', 'unknown']) {
+    const notification = makeNotification({ action_url: key, template_event_type: null, type: key as AppNotification['type'] });
+    assert.equal(resolveNotificationToastPage(notification), undefined);
+    assert.equal(resolveNotificationClickPage(notification), undefined);
+  }
+});

@@ -84,13 +84,19 @@ export const NOTIFICATION_PAGE_MAP:
     'minutes-detail',
 };
 
+function lookupPage(key: string): PageId | undefined {
+  return Object.hasOwn(NOTIFICATION_PAGE_MAP, key)
+    ? NOTIFICATION_PAGE_MAP[key]
+    : undefined;
+}
+
 function resolveActionUrlPage(
   actionUrl: string | null | undefined
 ): PageId | undefined {
   const raw = actionUrl?.trim();
   if (!raw) return undefined;
 
-  const directPage = NOTIFICATION_PAGE_MAP[raw];
+  const directPage = lookupPage(raw);
   if (directPage) return directPage;
 
   const normalized = raw
@@ -98,7 +104,7 @@ function resolveActionUrlPage(
     .replace(/^\//, '')
     .split('?')[0];
 
-  return NOTIFICATION_PAGE_MAP[normalized];
+  return lookupPage(normalized);
 }
 
 function resolveEventPage(
@@ -108,7 +114,7 @@ function resolveEventPage(
     notification.template_event_type ||
     notification.type;
 
-  return NOTIFICATION_PAGE_MAP[eventKey];
+  return lookupPage(eventKey);
 }
 
 export function resolveNotificationClickPage(
@@ -127,10 +133,5 @@ export function resolveNotificationToastPage(
   notification:
     AppNotification
 ): PageId | undefined {
-  return (
-    resolveActionUrlPage(
-      notification.action_url
-    ) ||
-    resolveEventPage(notification)
-  );
+  return resolveActionUrlPage(notification.action_url);
 }
