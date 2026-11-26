@@ -44,6 +44,7 @@ function participant(overrides: Partial<DraftInternalParticipant> = {}): DraftIn
     orgUnitNameSnapshot: '',
     invitationStatus: 'invited',
     attendanceStatus: null,
+    isSignatory: false,
     delegate: '',
     notes: '',
     ...overrides,
@@ -164,11 +165,11 @@ test('invitation: status derived from inbox mapping, not free-form', () => {
 });
 
 // 8. Secretary/chair selection (preserved in eligible approvers)
-test('approvals: secretary and chair included as system approvers when internal participants', () => {
+test('approvals: secretary and chair included when selected as internal signatories', () => {
   const participants = [
-    participant({ id: 'p-1', userId: 'secretary-user', nameSnapshot: 'دبیر' }),
-    participant({ id: 'p-2', userId: 'chair-user', nameSnapshot: 'رئیس' }),
-    participant({ id: 'p-3', userId: 'member-user', nameSnapshot: 'عضو' }),
+    participant({ id: 'p-1', userId: 'secretary-user', isSignatory: true, nameSnapshot: 'دبیر' }),
+    participant({ id: 'p-2', userId: 'chair-user', isSignatory: true, nameSnapshot: 'رئیس' }),
+    participant({ id: 'p-3', userId: 'member-user', isSignatory: true, nameSnapshot: 'عضو' }),
   ];
   const eligible = resolveEligibleSystemApprovers(participants);
   const userIds = eligible.map(e => e.userId);
@@ -177,12 +178,13 @@ test('approvals: secretary and chair included as system approvers when internal 
   assert.ok(userIds.includes('member-user'));
 });
 
-// 9. System approvers = all valid internal participants
-test('approvals: system mode includes ALL internal participants with valid user_id', () => {
+// 9. System approvers = selected internal signatories with accounts
+test('approvals: system mode includes selected internal signatories with valid user_id', () => {
   const participants = [
-    participant({ id: 'p-1', userId: 'user-a' }),
-    participant({ id: 'p-2', userId: 'user-b' }),
-    participant({ id: 'p-3', userId: '' }),
+    participant({ id: 'p-1', userId: 'user-a', isSignatory: true }),
+    participant({ id: 'p-2', userId: 'user-b', isSignatory: true }),
+    participant({ id: 'p-3', userId: '', isSignatory: true }),
+    participant({ id: 'p-4', userId: 'user-c', isSignatory: false }),
   ];
   const eligible = resolveEligibleSystemApprovers(participants);
   assert.equal(eligible.length, 2);
@@ -208,17 +210,17 @@ test('approvals: shouldCreateApproverRows only for system mode', () => {
 });
 
 // 10. More than 6 and more than 12 signers (no frontend cap on system approvers)
-test('approvals: 7 internal participants → all 7 eligible (no cap at 6)', () => {
+test('approvals: 7 selected internal signatories → all 7 eligible (no cap at 6)', () => {
   const participants = Array.from({ length: 7 }, (_, i) =>
-    participant({ id: `p-${i}`, userId: `user-${i}` }),
+    participant({ id: `p-${i}`, userId: `user-${i}`, isSignatory: true }),
   );
   const eligible = resolveEligibleSystemApprovers(participants);
   assert.equal(eligible.length, 7);
 });
 
-test('approvals: 13 internal participants → all 13 eligible (no cap at 12)', () => {
+test('approvals: 13 selected internal signatories → all 13 eligible (no cap at 12)', () => {
   const participants = Array.from({ length: 13 }, (_, i) =>
-    participant({ id: `p-${i}`, userId: `user-${i}` }),
+    participant({ id: `p-${i}`, userId: `user-${i}`, isSignatory: true }),
   );
   const eligible = resolveEligibleSystemApprovers(participants);
   assert.equal(eligible.length, 13);
