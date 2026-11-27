@@ -25,7 +25,7 @@ export function ChannelHeader(props: {
       {isMobile && (
         <button
           onClick={onBack}
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 md:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="chat-icon-button flex h-9 w-8 flex-shrink-0 items-center justify-center sm:h-8 rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 lg:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           title="بازگشت"
         >
           <ArrowRight className="h-4 w-4" />
@@ -35,7 +35,7 @@ export function ChannelHeader(props: {
       <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border ${
         isGroup
           ? 'border-cyan-100 bg-cyan-50 text-cyan-600 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300'
-          : 'border-indigo-100 bg-indigo-50 text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300'
+          : 'max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-indigo-100 bg-indigo-50 text-indigo-600 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300'
       }`}>
         {isGroup ? <Users className="h-4 w-4" /> : <Hash className="h-4 w-4" />}
       </div>
@@ -55,10 +55,11 @@ export function ChannelHeader(props: {
       <div className="flex flex-shrink-0 items-center gap-1">
         <button
           onClick={onToggleSearch}
-          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+          aria-pressed={showSearch}
+          className={`chat-icon-button flex h-9 w-8 items-center justify-center rounded-full border sm:h-8 sm:rounded-lg transition ${
             showSearch
               ? 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300'
-              : 'border-violet-100 bg-violet-50 text-violet-600 hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300'
+              : 'max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-violet-100 bg-violet-50 text-violet-600 hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300'
           }`}
           title="جستجو در پیام‌ها"
         >
@@ -68,7 +69,7 @@ export function ChannelHeader(props: {
         {isGroup && (
           <button
             onClick={onShowTopics}
-            className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
+            className="relative chat-icon-button flex h-9 w-8 items-center justify-center rounded-full border sm:h-8 sm:rounded-lg max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-emerald-100 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
             title="موضوعات و اقدامات گروه"
           >
             <GitFork className="h-3.5 w-3.5" />
@@ -82,7 +83,7 @@ export function ChannelHeader(props: {
 
         <button
           onClick={onShowMembers}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-indigo-100 bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300"
+          className="chat-icon-button flex h-9 w-8 items-center justify-center rounded-full border sm:h-8 sm:rounded-lg max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-indigo-100 bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-300"
           title="اعضا"
         >
           <Users className="h-3.5 w-3.5" />
@@ -91,8 +92,8 @@ export function ChannelHeader(props: {
         {isAdmin && (
           <button
             onClick={onShowSettings}
-            className="hidden h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 sm:flex dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
-            title="تنظیمات کانال"
+            className="chat-icon-button flex h-9 w-8 items-center justify-center rounded-full border max-sm:border-transparent sm:h-8 sm:rounded-lg border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
+            title={isGroup ? 'تنظیمات گروه' : 'تنظیمات کانال'}
           >
             <Settings className="h-3.5 w-3.5" />
           </button>

@@ -208,12 +208,13 @@ const TAG_COLORS = [
   { value: '#F97316', label: 'نارنجی' },
 ];
 
-export function TagModal({ messageId, currentTags, currentUserId, onClose, onChanged }: {
+export function TagModal({ messageId, currentTags, currentUserId, onClose, onChanged, assignmentTable = 'chat_message_tag_assignments' }: {
   messageId: string;
   currentTags: ChatTag[];
   currentUserId: string;
   onClose: () => void;
   onChanged: () => void;
+  assignmentTable?: 'chat_message_tag_assignments' | 'channel_message_tag_assignments';
 }) {
   const [allTags, setAllTags] = useState<ChatTag[]>([]);
   const [newTagName, setNewTagName] = useState('');
@@ -237,7 +238,7 @@ export function TagModal({ messageId, currentTags, currentUserId, onClose, onCha
     if (busy) return;
     setBusy(true);
     setErrorMessage('');
-    const assignments = supabase.from('chat_message_tag_assignments');
+    const assignments = supabase.from(assignmentTable);
     const { error } = assigned
       ? await assignments.delete().eq('message_id', messageId).eq('tag_id', tag.id).eq('user_id', currentUserId)
       : await assignments.insert({ message_id: messageId, tag_id: tag.id, user_id: currentUserId });
@@ -330,6 +331,20 @@ export function TagModal({ messageId, currentTags, currentUserId, onClose, onCha
             {errorMessage && <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">{errorMessage}</p>}
           </form>
         </div>
+      </div>
+    </ChatDialog>
+  );
+}
+
+export function ChatMessageMenu({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  return (
+    <ChatDialog label="گزینه‌های پیام" onClose={onClose}>
+      <div className="max-h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl bg-white py-1 shadow-xl dark:bg-gray-900">
+        <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-4 dark:border-slate-800 dark:bg-gray-900">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">گزینه‌های پیام</h3>
+          <button type="button" autoFocus onClick={onClose} aria-label="بستن گزینه‌های پیام" className="grid size-10 place-items-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="size-4" /></button>
+        </div>
+        {children}
       </div>
     </ChatDialog>
   );

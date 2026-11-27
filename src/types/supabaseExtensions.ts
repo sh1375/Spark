@@ -45,6 +45,27 @@ type ActionsV2TaskUpdate = TasksTable['Update'] & {
 export type Database = Omit<BaseDatabase, 'public'> & {
   public: Omit<PublicSchema, 'Tables' | 'Functions'> & {
     Tables: Omit<PublicSchema['Tables'], 'profiles' | 'user_preferences' | 'minutes_approval_comments' | 'tasks' | 'minutes'> & {
+      channel_message_tag_assignments: {
+        Row: { message_id: string; tag_id: string; user_id: string };
+        Insert: { message_id: string; tag_id: string; user_id: string };
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'channel_message_tag_assignments_tag_id_fkey';
+            columns: ['tag_id'];
+            isOneToOne: false;
+            referencedRelation: 'chat_tags';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'channel_message_tag_assignments_message_id_fkey';
+            columns: ['message_id'];
+            isOneToOne: false;
+            referencedRelation: 'channel_messages';
+            referencedColumns: ['id'];
+          }
+        ];
+      };
       minutes: {
         Row: PublicSchema['Tables']['minutes']['Row'] & { admin_finalization: Json; admin_published_at: string | null; admin_published_by_user_id: string | null };
         Insert: PublicSchema['Tables']['minutes']['Insert'];

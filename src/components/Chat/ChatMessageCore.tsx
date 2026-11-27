@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import moment from 'moment-jalaali';
 import {
   Star, EllipsisVertical as MoreVertical, CreditCard as Edit2, Trash2, Bell, Copy,
-  Play, Pause, Tag, Send, Check, Loader, Reply, X, Smile, ClipboardList, BellRing,
+  Play, Pause, Tag, Send, Reply, X, Smile, ClipboardList, BellRing,
   Forward, Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { EmojiPicker } from './EmojiPicker';
-import { ChatDialog } from './ChatDialog';
+import { MessageStatusButton, messageActionClass, messageToolbarClass } from './ChatControls';
 import type { MessageWithMeta, MessageStatus, UserProfile } from './types';
 import { FALLBACK_NAME } from '../../lib/useOrgUsers';
 import { UserAvatar } from './ChatConversationItem';
@@ -17,6 +17,7 @@ import { loadChatTheme, type ChatThemeSettings } from './chatTheme';
 import { useChatAttachmentUrl } from '../../lib/chatAttachments';
 import { renderMarkdownBody } from './ChatMessageMarkdown';
 import {
+  ChatMessageMenu,
   ChatMessageMenuItem,
   ChatViewersModal,
   MentionProfilePopup,
@@ -145,12 +146,6 @@ export function ChatMessage({
   };
 
   const status = message.status || 'pending';
-  const statusLabel = {
-    pending: 'در انتظار',
-    in_progress: 'در حال رسیدگی',
-    done: 'رسیدگی شده',
-  }[status];
-
   const theme = useChatTheme();
   const isDark = useDarkMode();
 
@@ -165,7 +160,6 @@ export function ChatMessage({
     : { backgroundColor: isDark ? '#4d5049' : theme.receivedBubbleColor };
   const cardBg = 'text-gray-900 dark:text-white';
   const borderClass = 'border-gray-200 dark:border-gray-700';
-  const actionButtonClass = 'chat-icon-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-7 sm:w-7';
   const iconClass = 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
 
   const typeBorderStyle: CSSProperties = {};
@@ -273,28 +267,20 @@ export function ChatMessage({
               </div>
 
               {!isDeleted && (
-                <div className={`flex items-center gap-0.5 px-2 pb-1 sm:gap-1 sm:pb-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                  <button
-                    onClick={cycleStatus}
-                    title={`تغییر وضعیت رسیدگی: ${statusLabel}`}
-                    className={`${actionButtonClass} ${iconClass}`}
-                  >
-                    {status === 'pending' && <span className="h-3.5 w-3.5 rounded-full border-2 border-slate-500 dark:border-slate-400" />}
-                    {status === 'in_progress' && <Loader className="h-4 w-4 text-amber-600 dark:text-amber-400 motion-safe:animate-spin" />}
-                    {status === 'done' && <Check className="h-4 w-4 text-teal-700 dark:text-teal-400" />}
-                  </button>
-                  <button onClick={onStar} title={message.isStarred ? 'برداشتن ستاره' : 'نشانه‌دار'} className={`${actionButtonClass} ${message.isStarred ? 'text-yellow-500' : iconClass}`}>
+                <div className={`${messageToolbarClass} ${isOwn ? 'flex-row-reverse' : ''}`}>
+                  <MessageStatusButton status={status} onClick={cycleStatus} className={iconClass} />
+                  <button onClick={onStar} title={message.isStarred ? 'برداشتن ستاره' : 'نشانه‌دار'} className={`${messageActionClass} ${message.isStarred ? 'text-yellow-500' : iconClass}`}>
                     <Star className={`w-4 h-4 ${message.isStarred ? 'fill-yellow-400' : ''}`} />
                   </button>
-                  <button onClick={() => setShowTagModal(true)} title="تگ‌های پیام" aria-haspopup="dialog" className={`${actionButtonClass} ${iconClass}`}><Tag className="w-4 h-4" /></button>
-                  <button onClick={() => setShowReactPicker(true)} title="واکنش به پیام" aria-haspopup="dialog" aria-expanded={showReactPicker} className={`${actionButtonClass} ${iconClass}`}><Smile className="w-4 h-4" /></button>
+                  <button onClick={() => setShowTagModal(true)} title="تگ‌های پیام" aria-haspopup="dialog" className={`${messageActionClass} ${iconClass}`}><Tag className="w-4 h-4" /></button>
+                  <button onClick={() => setShowReactPicker(true)} title="واکنش به پیام" aria-haspopup="dialog" aria-expanded={showReactPicker} className={`${messageActionClass} ${iconClass}`}><Smile className="w-4 h-4" /></button>
                   <div className="flex-1" />
                   {isOwn && (
-                    <button onClick={() => setShowViewersModal(true)} className={`${actionButtonClass} ${iconClass}`} title={seenByOther ? 'دیده شده — کلیک برای جزئیات' : 'دیده نشده'}>
+                    <button onClick={() => setShowViewersModal(true)} className={`${messageActionClass} ${iconClass}`} title={seenByOther ? 'دیده شده — کلیک برای جزئیات' : 'دیده نشده'}>
                       <Eye className={`w-3.5 h-3.5 ${seenByOther ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`} />
                     </button>
                   )}
-                  <button onClick={() => setShowMenu(value => !value)} aria-label="گزینه‌های پیام" aria-expanded={showMenu} className={`${actionButtonClass} ${iconClass}`}><MoreVertical className="w-4 h-4" /></button>
+                  <button onClick={() => setShowMenu(value => !value)} aria-label="گزینه‌های پیام" aria-expanded={showMenu} className={`${messageActionClass} ${iconClass}`}><MoreVertical className="w-4 h-4" /></button>
                 </div>
               )}
               {!isDeleted && tags.length > 0 && (
@@ -330,26 +316,20 @@ export function ChatMessage({
 
       {showReactPicker && !isDeleted && <EmojiPicker onSelect={emoji => { onReact(emoji); setShowReactPicker(false); }} onClose={() => setShowReactPicker(false)} />}
       {showMenu && (
-        <ChatDialog label="گزینه‌های پیام" onClose={() => setShowMenu(false)}>
-          <div className="max-h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl bg-white py-1 shadow-xl dark:bg-gray-900">
-            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-4 dark:border-slate-800 dark:bg-gray-900">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">گزینه‌های پیام</h3>
-              <button type="button" autoFocus onClick={() => setShowMenu(false)} aria-label="بستن گزینه‌های پیام" className="grid size-10 place-items-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="size-4" /></button>
-            </div>
-            {message.body && <div className="px-4 py-2 mb-1 border-b border-gray-100 dark:border-gray-800"><p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{message.body}</p></div>}
-            {onRegisterAsTask && <ChatMessageMenuItem icon={<ClipboardList className="w-4 h-4 text-teal-600 dark:text-teal-400" />} label="ثبت در اقدام" labelClass="text-teal-600 dark:text-teal-400 font-medium" onClick={() => { onRegisterAsTask(message.body || '', message.id); setShowMenu(false); }} />}
-            <ChatMessageMenuItem icon={<Bell className="w-4 h-4" />} label="تنظیم یادآوری" onClick={() => { setShowReminderModal(true); setShowMenu(false); }} />
-            <ChatMessageMenuItem icon={<Send className="w-4 h-4" />} label="ارسال اعلان پیگیری" onClick={() => { sendFollowUp(); setShowMenu(false); }} />
-            <ChatMessageMenuItem icon={<Reply className="w-4 h-4" />} label="پاسخ" onClick={() => { onReply(); setShowMenu(false); }} />
-            <ChatMessageMenuItem icon={<Forward className="w-4 h-4" />} label="ارسال به دیگران (Forward)" onClick={() => { setShowForwardModal(true); setShowMenu(false); }} />
-            {message.body && <ChatMessageMenuItem icon={<Copy className="w-4 h-4" />} label="کپی متن" onClick={() => { navigator.clipboard.writeText(message.body!); toast.success('کپی شد'); setShowMenu(false); }} />}
-            {isOwn && <ChatMessageMenuItem icon={<Edit2 className="w-4 h-4" />} label="ویرایش" onClick={() => { onEdit(); setShowMenu(false); }} />}
-            {hasMentions && <ChatMessageMenuItem icon={<span className="text-teal-500 text-xs font-bold">📅</span>} label="تنظیم جلسه با منشن‌ها" labelClass="text-teal-600 dark:text-teal-400 font-medium" onClick={() => { onScheduleMeeting(mentionIds, message.body || ''); setShowMenu(false); }} />}
-            <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-            <ChatMessageMenuItem icon={<Trash2 className="w-4 h-4 text-red-500" />} label="حذف برای من" labelClass="text-red-500" onClick={() => { onDeleteForMe(); setShowMenu(false); }} />
-            {isOwn && <ChatMessageMenuItem icon={<Trash2 className="w-4 h-4 text-red-600" />} label="حذف برای همه" labelClass="text-red-600" onClick={() => { onDeleteForAll(); setShowMenu(false); }} />}
-          </div>
-        </ChatDialog>
+        <ChatMessageMenu onClose={() => setShowMenu(false)}>
+          {message.body && <div className="px-4 py-2 mb-1 border-b border-gray-100 dark:border-gray-800"><p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{message.body}</p></div>}
+          {onRegisterAsTask && <ChatMessageMenuItem icon={<ClipboardList className="w-4 h-4 text-teal-600 dark:text-teal-400" />} label="ثبت در اقدام" labelClass="text-teal-600 dark:text-teal-400 font-medium" onClick={() => { onRegisterAsTask(message.body || '', message.id); setShowMenu(false); }} />}
+          <ChatMessageMenuItem icon={<Bell className="w-4 h-4" />} label="تنظیم یادآوری" onClick={() => { setShowReminderModal(true); setShowMenu(false); }} />
+          <ChatMessageMenuItem icon={<Send className="w-4 h-4" />} label="ارسال اعلان پیگیری" onClick={() => { sendFollowUp(); setShowMenu(false); }} />
+          <ChatMessageMenuItem icon={<Reply className="w-4 h-4" />} label="پاسخ" onClick={() => { onReply(); setShowMenu(false); }} />
+          <ChatMessageMenuItem icon={<Forward className="w-4 h-4" />} label="ارسال به دیگران (Forward)" onClick={() => { setShowForwardModal(true); setShowMenu(false); }} />
+          {message.body && <ChatMessageMenuItem icon={<Copy className="w-4 h-4" />} label="کپی متن" onClick={() => { navigator.clipboard.writeText(message.body!); toast.success('کپی شد'); setShowMenu(false); }} />}
+          {isOwn && <ChatMessageMenuItem icon={<Edit2 className="w-4 h-4" />} label="ویرایش" onClick={() => { onEdit(); setShowMenu(false); }} />}
+          {hasMentions && <ChatMessageMenuItem icon={<span className="text-teal-500 text-xs font-bold">📅</span>} label="تنظیم جلسه با منشن‌ها" labelClass="text-teal-600 dark:text-teal-400 font-medium" onClick={() => { onScheduleMeeting(mentionIds, message.body || ''); setShowMenu(false); }} />}
+          <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+          <ChatMessageMenuItem icon={<Trash2 className="w-4 h-4 text-red-500" />} label="حذف برای من" labelClass="text-red-500" onClick={() => { onDeleteForMe(); setShowMenu(false); }} />
+          {isOwn && <ChatMessageMenuItem icon={<Trash2 className="w-4 h-4 text-red-600" />} label="حذف برای همه" labelClass="text-red-600" onClick={() => { onDeleteForAll(); setShowMenu(false); }} />}
+        </ChatMessageMenu>
       )}
     </>
   );

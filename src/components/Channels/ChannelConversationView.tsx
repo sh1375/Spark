@@ -1,3 +1,4 @@
+import type { ChatTag } from '../Chat/types';
 import { useVisibleMessageReads } from '../../features/messaging/useVisibleMessageReads';
 import { useLiveData, LIVE_DATA } from '../../shared/realtime/useLiveData';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -54,6 +55,7 @@ interface Props {
   isMobile: boolean;
   scrollToMessageId?: string | null;
   onScrollHandled?: () => void;
+  onNavigateToCalendar?: (mentionedUserIds?: string[], bodyText?: string) => void;
   onNavigateToTasks?: (messageBody: string, messageId: string) => void;
   onOpenDirectChat?: (userId: string) => void;
 }
@@ -104,7 +106,7 @@ function buildMeta(
     });
 }
 
-export function ChannelConversationView({ channel, currentUserId, allProfiles, onBack, isMobile, scrollToMessageId, onScrollHandled, onNavigateToTasks, onOpenDirectChat }: Props) {
+export function ChannelConversationView({ channel, currentUserId, allProfiles, onBack, isMobile, scrollToMessageId, onScrollHandled, onNavigateToTasks, onNavigateToCalendar, onOpenDirectChat }: Props) {
   useLiveData(LIVE_DATA.channels, async () => { await Promise.all([fetchMessages(), fetchMembers(), fetchPinned(), fetchGroupTasks(), fetchMentionBar()]); });
   const theme = useChatTheme();
   const isDark = useDarkMode();
@@ -147,6 +149,22 @@ export function ChannelConversationView({ channel, currentUserId, allProfiles, o
   const isAdmin = myRole === 'admin';
 
   const starredMessages = messages.filter(m => m.isStarred);
+
+  const [tagsByMessage, setTagsByMessage] = useState<Record<string, ChatTag[]>>({});
+  const fetchTags = useCallback(async () => {
+    if (!currentUserId || channel.type !== 'group') return;
+    const { data, error } = await supabase.from('channel_message_tag_assignments')
+      .select('message_id, chat_tags(*), channel_messages!inner(channel_id)').eq('user_id', currentUserId)
+      .eq('channel_messages.channel_id', channel.id);
+    if (error) return;
+    const grouped: Record<string, ChatTag[]> = {};
+    for (const row of data || []) {
+      if (row.chat_tags) (grouped[row.message_id] ??= []).push(row.chat_tags);
+    }
+    setTagsByMessage(grouped);
+  }, [channel.id, channel.type, currentUserId]);
+
+  useEffect(() => { void fetchTags(); }, [fetchTags]);
 
   const fetchMessages = useCallback(async () => {
     const { data: msgs } = await supabase
@@ -496,6 +514,8 @@ export function ChannelConversationView({ channel, currentUserId, allProfiles, o
                       theme={theme}
                       isDark={isDark}
                       readLogData={readLogMap[msg.id]}
+                      tags={tagsByMessage[msg.id]}
+                      onTagsChanged={fetchTags}
                       onReply={m => { setReplyTarget(m); setEditTarget(null); }}
                       onReact={handleReact}
                       onPin={handlePin}
@@ -505,6 +525,7 @@ export function ChannelConversationView({ channel, currentUserId, allProfiles, o
                       onScrollToMessage={handleScrollToMessage}
                       onRegisterAsTask={handleRegisterTask}
                       onGroupTask={channel.type === 'group' ? handleGroupTask : undefined}
+                      onScheduleMeeting={onNavigateToCalendar}
                       onOpenDirectChat={onOpenDirectChat}
                     />
                   </div>

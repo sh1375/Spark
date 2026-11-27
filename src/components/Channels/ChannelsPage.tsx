@@ -19,13 +19,14 @@ interface Props {
   isAdmin: boolean;
   type?: ChannelType;
   onBackToChat?: () => void;
+  onNavigateToCalendar?: (mentionedUserIds?: string[], bodyText?: string) => void;
   onNavigateToTasks?: (messageBody: string, messageId: string) => void;
   onOpenDirectChat?: (userId: string) => void;
 }
 
 type SidebarPanel = 'settings' | 'actions' | null;
 
-export function ChannelsPage({ currentUserId, isAdmin, type = 'channel', onBackToChat, onNavigateToTasks, onOpenDirectChat }: Props) {
+export function ChannelsPage({ currentUserId, isAdmin, type = 'channel', onBackToChat, onNavigateToTasks, onNavigateToCalendar, onOpenDirectChat }: Props) {
   useLiveData([...LIVE_DATA.channels, ...LIVE_DATA.people], async () => { await Promise.all([fetchChannels(), fetchProfiles()]); });
   const { channels: unreadCounts } = useMessageUnreadCounts();
   const { hasPermission } = usePermissions();
@@ -174,7 +175,7 @@ export function ChannelsPage({ currentUserId, isAdmin, type = 'channel', onBackT
       className="flex h-full min-h-0 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-none"
       dir="rtl"
     >
-      <div className={`${showConversation ? 'hidden md:flex' : 'flex'} h-full w-full flex-shrink-0 flex-col border-l border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 md:w-[300px] xl:w-[330px]`}>
+      <div className={`${showConversation ? 'hidden lg:flex' : 'flex'} h-full w-full flex-shrink-0 flex-col border-l border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950 lg:w-[310px] xl:w-[340px]`}>
         {sidebarPanel === 'settings' ? (
           <Suspense fallback={null}>
             <ChatSettingsPage onClose={() => setSidebarPanel(null)} />
@@ -213,7 +214,7 @@ export function ChannelsPage({ currentUserId, isAdmin, type = 'channel', onBackT
         )}
       </div>
 
-      <div className={`min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950 ${!showConversation ? 'hidden md:flex' : 'flex'}`}>
+      <div className={`min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950 ${!showConversation ? 'hidden lg:flex' : 'flex'}`}>
         {selectedChannel ? (
           <Suspense fallback={<div className="flex flex-1 items-center justify-center text-sm text-slate-400">در حال آماده‌سازی گفتگو...</div>}>
             <ChannelConversationView
@@ -226,6 +227,7 @@ export function ChannelsPage({ currentUserId, isAdmin, type = 'channel', onBackT
             scrollToMessageId={scrollToMessageId}
             onScrollHandled={() => setScrollToMessageId(null)}
             onNavigateToTasks={onNavigateToTasks}
+            onNavigateToCalendar={onNavigateToCalendar}
             onOpenDirectChat={onOpenDirectChat}
             />
           </Suspense>
