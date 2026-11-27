@@ -56,7 +56,7 @@ test('all frontend logout calls declare scope; global logout is confined to revo
     const source = readFileSync(file, 'utf8');
     assert.doesNotMatch(source, /\.auth\.signOut\(\s*\)/, file);
     if (/\.auth\.signOut\(\{ scope: 'global' \}\)/.test(source)) {
-      assert.equal(file, 'src/features/auth/components/SessionManagementPanel.tsx');
+      assert.equal(file, join('src', 'features', 'auth', 'components', 'SessionManagementPanel.tsx'));
       const revokeAll = source.slice(source.indexOf('const revokeAll ='), source.indexOf('const visibleSessions'));
       assert.match(revokeAll, /mode: 'revoke_all'/);
       assert.match(revokeAll, /scope: 'global'/);
