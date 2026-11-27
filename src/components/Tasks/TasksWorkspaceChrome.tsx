@@ -15,24 +15,29 @@ export interface TaskAdvancedFilters {
 }
 export const DEFAULT_TASK_ADVANCED_FILTERS: TaskAdvancedFilters = { priority: 'all', due: 'all', assignee: 'all', managementProject: 'all' };
 
+const headerControl = 'spark-press-feedback inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/85 px-3 text-xs font-medium text-slate-700 hover:border-violet-300 hover:bg-violet-50 focus-visible:outline-2 focus-visible:outline-violet-500 disabled:opacity-45 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800';
+
 export function TasksWorkspaceHeader({ canCreate, onOpenPersonalProjects, onExport, onCreate, onRefresh, refreshing, lastUpdated, exportDisabled }: {
   canCreate: boolean; onOpenPersonalProjects: () => void; onExport: () => void; onCreate: () => void;
   onRefresh: () => void; refreshing: boolean; lastUpdated: Date | null; exportDisabled: boolean;
 }) {
   return (
-    <header className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-slate-900 via-slate-900 to-indigo-950 p-5 text-white shadow-sm sm:p-6">
-      <div className="pointer-events-none absolute -left-12 -top-24 h-64 w-64 rounded-full border-[40px] border-white/[0.035]" />
+    <header className="spark-action-header relative isolate overflow-hidden rounded-3xl border border-slate-200 bg-white px-4 py-5 text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-white sm:px-6">
       <div className="relative flex flex-col justify-between gap-5 xl:flex-row xl:items-center">
-        <div>
-          <div className="mb-2 flex items-center gap-2 text-[10px] font-medium text-violet-200"><span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/10"><FolderKanban className="h-3.5 w-3.5" /></span>برنامه‌ریزی و پیگیری کارها</div>
-          <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">مرکز اقدامات</h2>
-          <p className="mt-2 text-xs leading-6 text-slate-300">اولویت‌ها را مشخص کنید، سررسیدها را ببینید و پیشرفت کار را دنبال کنید.</p>
+        <div className="flex min-w-0 items-start gap-3 sm:items-center sm:gap-4">
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/25 dark:bg-violet-500/15 dark:text-violet-300 sm:size-13">
+            <FolderKanban aria-hidden="true" className="size-5 sm:size-6" />
+          </span>
+          <div>
+            <h2 className="text-xl font-bold sm:text-2xl">مرکز اقدامات</h2>
+            <p className="mt-1 text-xs leading-6 text-slate-600 dark:text-slate-300">اولویت‌ها، سررسیدها و پیشرفت کارها را دنبال کنید.</p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={onRefresh} disabled={refreshing} aria-label="تازه‌سازی اقدامات" title={lastUpdated ? `آخرین بروزرسانی: ${lastUpdated.toLocaleTimeString('fa-IR')}` : 'تازه‌سازی'} className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 text-slate-200 transition hover:bg-white/10 disabled:opacity-50"><RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} /></button>
-          <button type="button" onClick={onOpenPersonalProjects} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 px-3 text-xs text-slate-100 transition hover:bg-white/10"><FolderKanban className="h-4 w-4" />پروژه‌های من</button>
-          <button type="button" onClick={onExport} disabled={exportDisabled} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/15 px-3 text-xs text-slate-100 transition hover:bg-white/10 disabled:opacity-40"><ArrowDownToLine className="h-4 w-4" />اکسل نتایج</button>
-          {canCreate && <button type="button" onClick={onCreate} className="inline-flex h-10 items-center gap-2 rounded-xl bg-violet-500 px-4 text-xs font-bold text-white shadow-lg shadow-violet-950/20 transition hover:bg-violet-400"><Plus className="h-4 w-4" />اقدام جدید</button>}
+          {canCreate && <button type="button" onClick={onCreate} className="spark-press-feedback inline-flex min-h-10 items-center gap-2 rounded-xl bg-violet-700 px-3.5 text-xs font-bold text-white shadow-sm hover:bg-violet-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"><Plus className="size-4" />اقدام جدید</button>}
+          <button type="button" onClick={onOpenPersonalProjects} className={headerControl}><FolderKanban className="size-4" />پروژه‌های من</button>
+          <button type="button" onClick={onExport} disabled={exportDisabled} className={headerControl}><ArrowDownToLine className="size-4" />اکسل نتایج</button>
+          <button type="button" onClick={onRefresh} disabled={refreshing} aria-busy={refreshing} aria-label="تازه‌سازی اقدامات" title={lastUpdated ? `آخرین بروزرسانی: ${lastUpdated.toLocaleTimeString('fa-IR')}` : 'تازه‌سازی'} className={`${headerControl} w-10 px-0`}><RefreshCw className={`size-4 ${refreshing ? 'motion-safe:animate-spin' : ''}`} /></button>
         </div>
       </div>
     </header>
@@ -49,7 +54,7 @@ export function TaskMetricCards({ counters, onSelect }: { counters: ReturnType<t
     { key: 'completed', label: 'تکمیل‌شده', icon: CheckCircle2, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300' },
   ] as const;
   return <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-6">
-    {metrics.map(({ key, label, icon: Icon, tone }) => <button key={key} type="button" onClick={() => onSelect(key)} className="group rounded-2xl border border-slate-200/80 bg-white p-3.5 text-right shadow-sm transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md focus-visible:outline-violet-500 dark:border-slate-800 dark:bg-slate-900 sm:p-4">
+    {metrics.map(({ key, label, icon: Icon, tone }) => <button key={key} type="button" onClick={() => onSelect(key)} className="spark-action-metric group rounded-2xl border border-slate-200/80 bg-white p-3.5 text-right shadow-sm hover:border-violet-300 hover:shadow-md focus-visible:outline-violet-500 dark:border-slate-800 dark:bg-slate-900 sm:p-4">
       <div className="flex items-center justify-between"><span className={`flex h-8 w-8 items-center justify-center rounded-xl ${tone}`}><Icon className="h-4 w-4" /></span><ArrowUpLeft className="h-3.5 w-3.5 text-slate-300 transition group-hover:text-violet-500" /></div>
       <div className="mt-3 text-2xl font-bold tabular-nums text-slate-800 dark:text-white">{formatCount(counters[key])}</div>
       <div className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{label}</div>
@@ -63,10 +68,10 @@ export function TaskViewTabs({ taskTab, setTaskTab, createdByMeCount, viewMode, 
 }) {
   return <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
     <div className="flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 dark:bg-slate-800" role="group" aria-label="محدوده اقدامات">
-      {([{ key: 'assigned_to_me', label: 'کارتابل من' }, { key: 'created_by_me', label: `ایجادشده توسط من (${formatCount(createdByMeCount)})` }, { key: 'all', label: 'همه اقدامات' }] as const).map(tab => <button key={tab.key} type="button" aria-pressed={taskTab === tab.key} onClick={() => setTaskTab(tab.key)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium transition ${taskTab === tab.key ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-700 dark:text-violet-200' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{tab.label}</button>)}
+      {([{ key: 'assigned_to_me', label: 'کارتابل من' }, { key: 'created_by_me', label: `ایجادشده توسط من (${formatCount(createdByMeCount)})` }, { key: 'all', label: 'همه اقدامات' }] as const).map(tab => <button key={tab.key} type="button" aria-pressed={taskTab === tab.key} onClick={() => setTaskTab(tab.key)} className={`spark-press-feedback whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium ${taskTab === tab.key ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-700 dark:text-violet-200' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>{tab.label}</button>)}
     </div>
     <div className="inline-flex w-fit items-center gap-1 rounded-xl border border-slate-200 p-1 dark:border-slate-700" role="group" aria-label="نحوه نمایش">
-      {([{ key: 'cards', label: 'کارت', icon: LayoutGrid }, { key: 'list', label: 'لیست', icon: List }, { key: 'kanban', label: 'کانبان', icon: Columns3 }] as const).map(({ key, label, icon: Icon }) => <button key={key} type="button" title={label} aria-pressed={viewMode === key} onClick={() => setViewMode(key)} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] transition ${viewMode === key ? 'bg-violet-50 font-bold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Icon className="h-3.5 w-3.5" />{label}</button>)}
+      {([{ key: 'cards', label: 'کارت', icon: LayoutGrid }, { key: 'list', label: 'لیست', icon: List }, { key: 'kanban', label: 'کانبان', icon: Columns3 }] as const).map(({ key, label, icon: Icon }) => <button key={key} type="button" title={label} aria-pressed={viewMode === key} onClick={() => setViewMode(key)} className={`spark-press-feedback inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] ${viewMode === key ? 'bg-violet-50 font-bold text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}><Icon className="h-3.5 w-3.5" />{label}</button>)}
     </div>
   </div>;
 }
@@ -92,7 +97,7 @@ export function TaskFilters({ searchTerm, setSearchTerm, statusFilter, setStatus
       {([{ key: 'today', label: 'امروز' }, { key: 'overdue', label: 'عقب‌افتاده' }, { key: 'week', label: 'تا ۷ روز آینده' }, { key: 'no_due', label: 'بدون سررسید' }] as const).map(item => <button key={item.key} type="button" aria-pressed={advanced.due === item.key} onClick={() => onAdvancedChange({ due: advanced.due === item.key ? 'all' : item.key })} className={`rounded-lg border px-2.5 py-1.5 text-[10px] transition ${advanced.due === item.key ? 'border-violet-200 bg-violet-50 font-bold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-300' : 'border-slate-200 text-slate-500 hover:border-violet-300 dark:border-slate-700 dark:text-slate-400'}`}>{item.label}</button>)}
       {activeCount > 0 && <button type="button" onClick={onReset} className="mr-auto inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-medium text-rose-600 dark:text-rose-300"><X className="h-3 w-3" />پاک کردن فیلترها</button>}
     </div>
-    {expanded && <div id="task-advanced-filters" className="grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50 sm:grid-cols-2 xl:grid-cols-3">
+    {expanded && <div id="task-advanced-filters" className="spark-reveal-panel grid grid-cols-1 gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-950/50 sm:grid-cols-2 xl:grid-cols-3">
       <label className="space-y-1.5 text-[10px] text-slate-500 dark:text-slate-400"><span className="flex items-center gap-1"><ListFilter className="h-3 w-3" />وضعیت</span><select aria-label="وضعیت اقدامات" value={statusFilter} onChange={e => setStatusFilter(e.target.value as TaskStatusFilter)} className={control}><option value="all">همه وضعیت‌های فعال</option><option value="open">باز (تکمیل‌نشده)</option><option value="pending">در انتظار</option><option value="in_progress">در حال انجام</option><option value="completed">تکمیل‌شده</option><option value="archived">بایگانی</option></select></label>
       <label className="space-y-1.5 text-[10px] text-slate-500 dark:text-slate-400">اولویت<select aria-label="اولویت اقدامات" value={advanced.priority} onChange={e => onAdvancedChange({ priority: e.target.value as TaskPriorityFilter })} className={control}><option value="all">همه اولویت‌ها</option><option value="high">بالا</option><option value="medium">متوسط</option><option value="low">پایین</option></select></label>
       <label className="space-y-1.5 text-[10px] text-slate-500 dark:text-slate-400">اقدام‌کننده<select aria-label="اقدام‌کننده" value={advanced.assignee} onChange={e => onAdvancedChange({ assignee: e.target.value })} className={control}><option value="all">همه مسئول‌ها</option><option value="unassigned">بدون مسئول</option>{assignees.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>

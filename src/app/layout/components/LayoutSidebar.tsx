@@ -195,7 +195,8 @@ export function LayoutSidebar({
                   onNavigate(item.id);
                   if (mobileNavigation) onMobileMenuOpenChange(false);
                 }}
-                className={`w-full flex items-center gap-2.5 py-2.5 rounded-xl transition-all text-sm font-medium ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`spark-press-feedback w-full flex items-center gap-2.5 py-2.5 rounded-xl text-sm font-medium ${
                   showExpandedLabels ? 'px-2.5' : 'justify-center px-2'
                 } ${
                   isActive

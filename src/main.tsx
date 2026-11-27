@@ -8,6 +8,7 @@ import './responsive.css';
 import './meeting-mobile-fixes.css';
 import './spark-loader.css';
 import './corporate-theme.css';
+import './interaction-motion.css';
 // Load the shared auth foundation up front so the public login page has the
 // same cascade before the first login and after a logout. AuthenticatedApp also
 // references this stylesheet, but Vite de-duplicates the module; the important

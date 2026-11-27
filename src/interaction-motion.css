@@ -1,0 +1,49 @@
+.spark-action-header::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+  background:
+    radial-gradient(ellipse at 0% 0%, rgb(var(--spark-accent-400, 129 140 248) / 0.16), transparent 58%),
+    linear-gradient(115deg, transparent 42%, rgb(var(--spark-accent-300, 165 180 252) / 0.10), transparent 76%);
+}
+
+.dark .spark-action-header::before {
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spark-action-header::before {
+    animation: spark-accent-reveal 480ms ease-out both;
+  }
+
+  .spark-reveal-panel {
+    animation: spark-panel-reveal 180ms ease-out both;
+  }
+
+  .spark-press-feedback {
+    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, scale 160ms ease;
+  }
+
+  .spark-press-feedback:not(:disabled):active {
+    scale: 0.98;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .spark-action-metric {
+      transition: translate 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .spark-action-metric:hover {
+      translate: 0 -2px;
+    }
+  }
+}
+
+@keyframes spark-accent-reveal {
+  from { opacity: 0; }
+}
+
+@keyframes spark-panel-reveal {
+  from { opacity: 0.82; transform: translateY(3px); }
+}
