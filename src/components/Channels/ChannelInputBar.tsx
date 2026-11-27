@@ -1,3 +1,4 @@
+import { ComposerToolButton as ToolBtn, composerToolbarClass, composerSendClass } from '../Chat/ChatControls';
 import { useState, useRef, useEffect } from 'react';
 import { Send, Smile, Paperclip, Mic, AtSign, Code, Loader as Loader2, X, Reply, CircleAlert as AlertCircle, TriangleAlert as AlertTriangle, Lock, MessageCircle, Bold, Italic, Quote, List, Link, Image, Undo, Redo, CircleStop as StopCircle, MicOff, Strikethrough } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -505,18 +506,11 @@ export function ChannelInputBar({
           </div>
 
           {/* Bottom toolbar */}
-          <div className="flex items-center px-2 pb-2 pt-1 gap-1 flex-wrap">
-            {/* Emoji */}
-            <div className="relative">
-              <ToolBtn title="شکلک" active={showEmoji} onClick={() => setShowEmoji(v => !v)}>
-                <Smile className="w-[18px] h-[18px]" />
-              </ToolBtn>
-              {showEmoji && (
-                <div className="absolute bottom-full mb-2 right-0 z-[60]">
-                  <EmojiPicker onSelect={insertEmoji} onClose={() => setShowEmoji(false)} />
-                </div>
-              )}
-            </div>
+          <div className={composerToolbarClass}>
+            <ToolBtn title="شکلک" active={showEmoji} onClick={() => setShowEmoji(true)}>
+              <Smile className="size-[18px]" />
+            </ToolBtn>
+            {showEmoji && <EmojiPicker onSelect={insertEmoji} onClose={() => setShowEmoji(false)} />}
 
             {/* Mention */}
             <ToolBtn title="منشن عضو" onClick={() => {
@@ -560,17 +554,17 @@ export function ChannelInputBar({
                 <span className={messageType !== 'normal' ? currentType.color : ''}>{currentType.icon}</span>
               </ToolBtn>
               {showTypeMenu && (
-                <div className="absolute bottom-full mb-2 right-0 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1 z-[60]" dir="rtl">
+                <div className="absolute bottom-full mb-2 left-0 w-56 sm:left-auto sm:right-0 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1 z-[60]" dir="rtl">
                   {MESSAGE_TYPES.map(t => <MessageTypeOptionButton key={t.key} option={t} selected={messageType} onSelect={setMessageType} onClose={() => setShowTypeMenu(false)} />)}
                 </div>
               )}
             </div>
 
-            <div className="flex-1 hidden sm:block" />
+            <div className="flex-1" />
 
             {/* Send button */}
-            <button onClick={handleSend} disabled={!canSend}
-              className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 rounded-xl text-sm font-semibold transition-all shrink-1 ${canSend ? 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'}`}>
+            <button onClick={handleSend} disabled={!canSend} aria-label="ارسال پیام"
+              className={`${composerSendClass} ${canSend ? 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm' : 'bg-gray-100 dark:bg-gray-700 text-gray-400 cursor-not-allowed'}`}>
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
@@ -593,19 +587,6 @@ function SpeakingPersonIcon() {
       <path d="M17 9c.6.8 1 1.8 1 3s-.4 2.2-1 3" strokeWidth="1.8" />
       <path d="M20 7c1.2 1.5 2 3.3 2 5.5S21.2 16.5 20 18" strokeWidth="1.8" />
     </svg>
-  );
-}
-
-function ToolBtn({ children, title, onClick, active, activeColor }: {
-  children: React.ReactNode; title: string; onClick: () => void; active?: boolean; activeColor?: string;
-}) {
-  return (
-    <button onClick={onClick} title={title}
-      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors flex-shrink-0 touch-manipulation ${
-        active ? `bg-gray-100 dark:bg-gray-700 ${activeColor || 'text-teal-500'}` : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200'
-      }`}>
-      {children}
-    </button>
   );
 }
 

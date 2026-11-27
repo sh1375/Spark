@@ -6,7 +6,6 @@ import { MessageCircle, Plus, Loader as Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 import { ChatSidebar } from './ChatSidebar';
-import type { SidebarTab } from './ChatSidebar';
 import type { ConversationWithProfile, UserProfile } from './types';
 
 const ChatConversationView = lazy(() => import('./ChatConversationView').then((m) => ({ default: m.ChatConversationView })));
@@ -20,12 +19,12 @@ interface Props {
   currentUserId?: string | null;
   onNavigateToCalendar?: (mentionedUserIds?: string[], bodyText?: string) => void;
   onNavigateToTasks?: (messageBody: string, messageId: string) => void;
-  onOpenWorkGroups?: () => void;
+  showCalls?: boolean;
   initialOpenUserId?: string | null;
   onInitialOpenUserConsumed?: () => void;
 }
 
-export function ChatPage({ currentUserId: providedCurrentUserId = null, onNavigateToCalendar, onNavigateToTasks, onOpenWorkGroups, initialOpenUserId, onInitialOpenUserConsumed }: Props) {
+export function ChatPage({ currentUserId: providedCurrentUserId = null, onNavigateToCalendar, onNavigateToTasks, showCalls = false, initialOpenUserId, onInitialOpenUserConsumed }: Props) {
   const outgoingCall = useRef<AbortController | null>(null);
   useEffect(() => () => outgoingCall.current?.abort(), [providedCurrentUserId]);
   async function startCall(recipient: UserProfile, capability: 'audio' | 'video') {
@@ -65,7 +64,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
   const [showNewConv, setShowNewConv] = useState(false);
   const [showActions, setShowActions] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('chats');
   const [msgRefreshKey, setMsgRefreshKey] = useState(0);
 
   // Navigation from actions panel
@@ -265,7 +263,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
       pendingConvIdRef.current = convId as string;
       await fetchConversations(currentUserId);
       setShowSidebar(false);
-      setSidebarTab('chats');
       onInitialOpenUserConsumed?.();
     })();
   }, [initialOpenUserId, currentUserId, loadingConvs]);
@@ -282,7 +279,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
     pendingConvIdRef.current = convId as string;
     await fetchConversations(currentUserId);
     setShowSidebar(false);
-    setSidebarTab('chats');
   };
 
   // ── Optimistic pin toggle ─────────────────────────────────────────────────
@@ -303,13 +299,11 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
     pendingConvIdRef.current = convId as string;
     await fetchConversations(currentUserId);
     setShowSidebar(false);
-    setSidebarTab('chats');
   };
 
   // ── Navigation from actions panel ────────────────────────────────────────
   const handleNavigateToMessage = (convId: string, msgId: string) => {
     setShowActions(false);
-    setSidebarTab('chats');
     setNavToConvId(convId);
     setNavToMsgId(msgId);
     if (activeId !== convId) {
@@ -322,7 +316,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
     setActiveId(id);
     setShowSidebar(false);
     setShowSettings(false);
-    setSidebarTab('chats');
   };
 
   const activeConv = conversations.find(c => c.id === activeId) || null;
@@ -336,8 +329,19 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
   }
 
   return (
+    <>
+    <div hidden={!showCalls} role="tabpanel" id="chat-panel-calls" aria-labelledby="chat-tab-calls" className="h-full min-h-0 overflow-hidden rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+      {showCalls && (
+        <Suspense fallback={<div className="grid h-full place-items-center"><Loader2 className="size-5 animate-spin text-violet-500" /></div>}>
+          <CallHistoryPage currentUserId={currentUserId} onStartCall={(recipient, capability) => void startCall(recipient, capability)} />
+        </Suspense>
+      )}
+    </div>
     <div
-      className="flex h-full min-h-0 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-none"
+      role="tabpanel"
+      id="chat-panel-chats"
+      aria-labelledby="chat-tab-chats"
+      className={`${showCalls ? 'hidden' : 'flex'} h-full min-h-0 overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.06)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-none`}
       dir="rtl"
     >
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
@@ -358,17 +362,8 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
           <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-violet-500" /></div>}>
             <ChatSettingsPage onClose={() => setShowSettings(false)} />
           </Suspense>
-        ) : sidebarTab === 'calls' ? (
-          <Suspense fallback={<div className="flex h-full items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-violet-500" /></div>}>
-            <CallHistoryPage
-            currentUserId={currentUserId}
-            onStartCall={(recipient, capability) => void startCall(recipient, capability)}
-            onClose={() => { setSidebarTab('chats'); }}
-            />
-          </Suspense>
         ) : (
           <ChatSidebar
-            onOpenWorkGroups={onOpenWorkGroups}
             conversations={conversations.map(c => ({ ...c, unreadCount: unreadCounts.get(c.id) ?? 0 }))}
             activeId={activeId}
             currentUserId={currentUserId}
@@ -379,8 +374,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
             onOpenSavedMessages={handleOpenSavedMessages}
             onToggleActions={() => { setShowActions(v => !v); setShowSettings(false); }}
             showActions={showActions}
-            activeTab={sidebarTab}
-            onTabChange={tab => { setSidebarTab(tab); setShowSidebar(true); }}
             onOpenSettings={() => { setShowSettings(true); setShowActions(false); }}
             onMentionClick={(convId, msgId) => {
               setActiveId(convId);
@@ -396,8 +389,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
       {/* ── Main area ───────────────────────────────────────────────────── */}
       <div className={`${!showSidebar ? 'flex' : 'hidden lg:flex'} min-w-0 flex-1 flex-col overflow-hidden bg-slate-50/50 dark:bg-slate-950`}>
         {/* Conversation view */}
-        {sidebarTab === 'chats' && (
-          activeConv ? (
+        {activeConv ? (
             <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-violet-500" /></div>}>
               <ChatConversationView
               key={activeConv.id}
@@ -421,7 +413,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
                 pendingConvIdRef.current = convId as string;
                 await fetchConversations(currentUserId);
                 setShowSidebar(false);
-                setSidebarTab('chats');
               }}
               />
             </Suspense>
@@ -441,10 +432,9 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
                 <Plus className="h-4 w-4" /> گفتگوی جدید
               </button>
             </div>
-          )
         )}
 
-        {(sidebarTab === 'calls' || showActions || showSettings) && (
+        {(showActions || showSettings) && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-slate-50/70 text-slate-400 dark:bg-slate-950 dark:text-slate-500">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
               <MessageCircle className="h-6 w-6 opacity-50" />
@@ -465,5 +455,6 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
         </Suspense>
       )}
     </div>
+    </>
   );
 }

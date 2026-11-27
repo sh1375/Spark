@@ -1,7 +1,11 @@
+import type { ChatTag } from '../Chat/types';
 import React, { useState, useRef, useEffect, useMemo, useCallback, memo } from 'react';
 import moment from 'moment-jalaali';
-import { EllipsisVertical as MoreVertical, CreditCard as Edit2, Trash2, Bell, Copy, CircleAlert as AlertCircle, TriangleAlert as AlertTriangle, Lock, Play, Pause, Eye, Check, Reply, X, Smile, ClipboardList, BellRing, Pin, Download, FileText, CheckCheck, Star, Users, Clock, Loader, AtSign, MessageSquare } from 'lucide-react';
+import { EllipsisVertical as MoreVertical, CreditCard as Edit2, Trash2, Bell, Copy, CircleAlert as AlertCircle, TriangleAlert as AlertTriangle, Lock, Play, Pause, Eye, Reply, X, Smile, ClipboardList, BellRing, Pin, Download, FileText, CheckCheck, Star, Users, Clock, AtSign, MessageSquare, Forward, Tag } from 'lucide-react';
 import { EmojiPicker } from '../Chat/EmojiPicker';
+import { ChatMessageMenu, ChatMessageMenuItem as MI, TagModal } from '../Chat/ChatMessageOverlays';
+import { MessageStatusButton, messageActionClass, messageToolbarClass } from '../Chat/ChatControls';
+import { ForwardModal } from '../Chat/ForwardModal';
 import { supabase } from '../../lib/supabase';
 import { insertNotification } from '../../lib/notifications';
 import toast from 'react-hot-toast';
@@ -197,6 +201,8 @@ interface Props {
   theme: ChatThemeSettings;
   isDark: boolean;
   readLogData?: Array<{ user_id: string; seen_at: string }>;
+  tags?: ChatTag[];
+  onTagsChanged?: () => void;
   onReply: (msg: ChannelMessage) => void;
   onReact: (msgId: string, emoji: string) => void;
   onPin: (msgId: string, pinned: boolean) => void;
@@ -213,20 +219,20 @@ interface Props {
 
 function ChannelMessageItemInner({
   msg, currentUserId, myRole, allMembers, allProfiles, isChannelType, isPrivatelyPinned,
-  theme, isDark, readLogData,
+  theme, isDark, readLogData, tags, onTagsChanged,
   onReply, onReact, onPin, onDelete, onEdit, onStar,
   onScrollToMessage, onRegisterAsTask, onGroupTask, onScheduleMeeting, onMentionClick, onOpenDirectChat,
 }: Props) {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactPicker, setShowReactPicker] = useState(false);
-  const [emojiPickerStyle, setEmojiPickerStyle] = useState<React.CSSProperties>({});
+  const [showTags, setShowTags] = useState(false);
+  const [showForward, setShowForward] = useState(false);
   const [confidentialRevealed, setConfidentialRevealed] = useState(false);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [voiceProgress, setVoiceProgress] = useState(0);
   const [msgStatus, setMsgStatus] = useState<MessageStatus>(null);
   const [showReadReceipts, setShowReadReceipts] = useState(false);
   const [mentionPopupUser, setMentionPopupUser] = useState<ChannelProfile | null>(null);
-  const reactRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Cleanup audio on unmount to prevent memory leaks
@@ -241,15 +247,6 @@ function ChannelMessageItemInner({
     };
   }, []);
 
-  // Close emoji picker on outside click
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (reactRef.current && !reactRef.current.contains(e.target as Node)) setShowReactPicker(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
   // Memoize sorted profiles for mention parsing — avoid sorting on every render
   const sortedProfiles = useMemo(
     () =>
@@ -259,24 +256,6 @@ function ChannelMessageItemInner({
         .sort((a, b) => b.name.length - a.name.length),
     [allProfiles]
   );
-
-  const openEmojiPicker = useCallback(() => {
-    if (reactRef.current) {
-      const rect = reactRef.current.getBoundingClientRect();
-      const pickerW = Math.min(288, window.innerWidth - 16);
-      let left = rect.left;
-      if (left + pickerW > window.innerWidth - 8) left = window.innerWidth - pickerW - 8;
-      if (left < 8) left = 8;
-      const style: React.CSSProperties = { position: 'fixed', left, zIndex: 9999 };
-      if (rect.top >= 348) {
-        style.bottom = window.innerHeight - rect.top + 4;
-      } else {
-        style.top = rect.bottom + 4;
-      }
-      setEmojiPickerStyle(style);
-    }
-    setShowReactPicker(v => !v);
-  }, []);
 
   const isOwn = msg.sender_id === currentUserId;
   const isConfidential = msg.message_type === 'confidential';
@@ -374,29 +353,6 @@ function ChannelMessageItemInner({
     setMsgStatus(cycle[(cycle.indexOf(msgStatus) + 1) % cycle.length]);
   };
 
-  const StatusSquare = () => {
-    if (!msgStatus) return (
-      <button onClick={cycleStatus} title="وضعیت — کلیک برای تغییر"
-        className={`w-5 h-5 rounded border-2 flex-shrink-0 transition-colors ${isOwn ? 'border-teal-300 hover:border-teal-500' : 'border-gray-300 dark:border-gray-500 hover:border-gray-500'}`} />
-    );
-    if (msgStatus === 'pending') return (
-      <button onClick={cycleStatus} title="در انتظار — کلیک"
-        className="w-5 h-5 rounded border-2 border-amber-400 bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center flex-shrink-0 transition-all" />
-    );
-    if (msgStatus === 'in_progress') return (
-      <button onClick={cycleStatus} title="در حال رسیدگی — کلیک"
-        className="w-5 h-5 rounded border-2 border-amber-400 bg-amber-400 flex items-center justify-center flex-shrink-0">
-        <Loader className="w-3 h-3 text-white animate-spin" />
-      </button>
-    );
-    return (
-      <button onClick={cycleStatus} title="رسیدگی شده — کلیک"
-        className="w-5 h-5 rounded border-2 border-teal-500 bg-teal-500 flex items-center justify-center flex-shrink-0">
-        <Check className="w-3 h-3 text-white" strokeWidth={3} />
-      </button>
-    );
-  };
-
   const ReadTick = () => {
     if (!isOwn) return null;
     if (isChannelType) {
@@ -410,7 +366,7 @@ function ChannelMessageItemInner({
     return (
       <button
         onClick={() => setShowReadReceipts(true)}
-        className="flex-shrink-0 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+        className={`${messageActionClass} hover:bg-black/10 dark:hover:bg-white/10`}
         title={anySeenByOther ? 'دیده شده — کلیک برای جزئیات' : 'دیده نشده'}
       >
         <Eye className={`w-3.5 h-3.5 ${anySeenByOther ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`} />
@@ -543,59 +499,35 @@ function ChannelMessageItemInner({
                 )}
               </div>
 
-              {/* Bottom action bar */}
-              {isChannelType ? (
-                <div className={`flex items-center gap-0 sm:gap-0.5 px-1.5 sm:px-2.5 pb-2 pt-1 border-t border-gray-100 dark:border-gray-600 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                  <div ref={reactRef}>
-                    <ActionBtn onClick={openEmojiPicker} title="واکنش">
-                      <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </ActionBtn>
-                    {showReactPicker && (
-                      <div style={emojiPickerStyle}>
-                        <EmojiPicker onSelect={emoji => { onReact(msg.id, emoji); setShowReactPicker(false); }} onClose={() => setShowReactPicker(false)} />
-                      </div>
-                    )}
-                  </div>
-                  <ActionBtn onClick={() => onStar(msg.id, !msg.isStarred)} title={msg.isStarred ? 'برداشتن نشانه' : 'نشانه‌دار کردن'} active={msg.isStarred} activeColor="text-yellow-500">
-                    <Star className={`w-4 h-4 sm:w-5 sm:h-5 ${msg.isStarred ? 'fill-yellow-400' : ''}`} />
+              <div className={`${messageToolbarClass} ${isOwn ? 'flex-row-reverse' : ''}`}>
+                {!isChannelType && <MessageStatusButton status={msgStatus} onClick={cycleStatus} className="hover:bg-black/10 dark:hover:bg-white/10" />}
+                <ActionBtn onClick={() => onStar(msg.id, !msg.isStarred)} title={msg.isStarred ? 'برداشتن نشانه' : 'نشانه‌دار کردن'} active={msg.isStarred} activeColor="text-yellow-500">
+                  <Star className={`size-4 ${msg.isStarred ? 'fill-yellow-400' : ''}`} />
+                </ActionBtn>
+                {!isChannelType && (
+                  <ActionBtn onClick={() => setShowTags(true)} title="تگ‌های پیام"><Tag className="size-4" /></ActionBtn>
+                )}
+                <ActionBtn onClick={() => setShowReactPicker(true)} title="واکنش به پیام">
+                  <Smile className="size-4" />
+                </ActionBtn>
+                {msg.is_edited && <span className="mx-1 hidden text-[10px] text-gray-500 sm:inline">ویرایش شده</span>}
+                <div className="flex-1" />
+                <ReadTick />
+                {!isChannelType && (
+                  <ActionBtn onClick={() => setShowMenu(true)} title="گزینه‌های پیام">
+                    <MoreVertical className="size-4" />
                   </ActionBtn>
-                  {msg.is_edited && <span className="text-[10px] text-gray-400 dark:text-gray-500 mx-0.5 sm:mx-1 hidden sm:inline">ویرایش شده</span>}
-                  <div className="flex-1" />
-                  <ReadTick />
-                </div>
-              ) : (
-                <div className={`flex items-center gap-0 sm:gap-0.5 px-1.5 sm:px-2.5 pb-2 pt-1 border-t border-gray-100 dark:border-gray-600 ${isOwn ? 'flex-row-reverse' : ''}`}>
-                  <StatusSquare />
-                  <div ref={reactRef}>
-                    <ActionBtn onClick={openEmojiPicker} title="واکنش">
-                      <Smile className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </ActionBtn>
-                    {showReactPicker && (
-                      <div style={emojiPickerStyle}>
-                        <EmojiPicker onSelect={emoji => { onReact(msg.id, emoji); setShowReactPicker(false); }} onClose={() => setShowReactPicker(false)} />
-                      </div>
-                    )}
-                  </div>
-                  <ActionBtn onClick={() => onStar(msg.id, !msg.isStarred)} title={msg.isStarred ? 'برداشتن نشانه' : 'نشانه‌دار کردن'} active={msg.isStarred} activeColor="text-yellow-500">
-                    <Star className={`w-4 h-4 sm:w-5 sm:h-5 ${msg.isStarred ? 'fill-yellow-400' : ''}`} />
-                  </ActionBtn>
-                  {(() => {
-                    const isPinned = myRole === 'admin' ? msg.is_pinned : !!isPrivatelyPinned;
-                    return (
-                      <ActionBtn onClick={() => onPin(msg.id, !isPinned)} title={isPinned ? 'برداشتن پین' : 'پین کردن'} active={isPinned} activeColor={myRole === 'admin' ? 'text-amber-500' : 'text-blue-400'}>
-                        <Pin className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </ActionBtn>
-                    );
-                  })()}
-                  <ActionBtn onClick={() => onReply(msg)} title="پاسخ">
-                    <Reply className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </ActionBtn>
-                  {msg.is_edited && <span className="text-[10px] text-gray-400 dark:text-gray-500 mx-0.5 sm:mx-1 hidden sm:inline">ویرایش شده</span>}
-                  <div className="flex-1" />
-                  <ReadTick />
-                  <ActionBtn onClick={() => setShowMenu(v => !v)} title="بیشتر">
-                    <MoreVertical className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </ActionBtn>
+                )}
+              </div>
+              {!isChannelType && !!tags?.length && (
+                <div className="flex flex-wrap gap-1 px-3 pb-2">
+                  {tags.map(tag => (
+                    <button type="button" key={tag.id} onClick={() => setShowTags(true)} title="مدیریت تگ‌های پیام"
+                      className="chat-icon-button inline-flex max-w-full items-center gap-1 rounded-full bg-slate-900/5 px-2 text-xs [overflow-wrap:anywhere] dark:bg-white/10">
+                      <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+                      {tag.name}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -615,72 +547,76 @@ function ChannelMessageItemInner({
         </div>
       </div>
 
-      {/* Three-dot action menu — groups only */}
+      {showTags && <TagModal messageId={msg.id} currentTags={tags ?? []} currentUserId={currentUserId}
+        assignmentTable="channel_message_tag_assignments" onClose={() => setShowTags(false)}
+        onChanged={() => { setShowTags(false); onTagsChanged?.(); }} />}
+      {showReactPicker && <EmojiPicker onSelect={emoji => { onReact(msg.id, emoji); setShowReactPicker(false); }} onClose={() => setShowReactPicker(false)} />}
+      {showForward && (
+        <ForwardModal body={msg.body} fileUrl={msg.file_url} fileName={msg.file_name} fileType={msg.file_type}
+          currentUserId={currentUserId} allUsers={allProfiles} senderName={msg.senderProfile?.full_name || null} onClose={() => setShowForward(false)} />
+      )}
       {showMenu && !isChannelType && (
-        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]"
-          onClick={() => setShowMenu(false)} dir="rtl">
-          <div className="w-full sm:w-72 bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2 overflow-hidden max-h-[80vh] overflow-y-auto"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex justify-center mb-1 sm:hidden">
-              <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+        <ChatMessageMenu onClose={() => setShowMenu(false)}>
+          {msg.body && (
+            <div className="px-4 py-2 mb-1 border-b border-gray-100 dark:border-gray-800">
+              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{msg.body}</p>
             </div>
+          )}
+
+          {onRegisterAsTask && (
+            <MI icon={<ClipboardList className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
+              label="ایجاد اقدام" labelClass="text-teal-600 dark:text-teal-400 font-medium"
+              onClick={() => { onRegisterAsTask(msg.body || '', msg.id); setShowMenu(false); }} />
+          )}
+
+          {hasMentions && onGroupTask && (
+            <MI icon={<Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+              label={`ایجاد اقدام گروهی (${mentionedUsers.length} نفر)`}
+              labelClass="text-blue-600 dark:text-blue-400 font-medium"
+              onClick={() => { onGroupTask(msg, mentionedUsers); setShowMenu(false); }} />
+          )}
+
+          {hasMentions && onScheduleMeeting && (
+            <MI icon={<span className="text-teal-500 text-sm">📅</span>}
+              label="تنظیم جلسه با منشن‌ها"
+              labelClass="text-teal-600 dark:text-teal-400 font-medium"
+              onClick={() => { onScheduleMeeting(mentionedUsers.map(u => u.user_id), msg.body || ''); setShowMenu(false); }} />
+          )}
+
+          <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
+            <MI icon={<Bell className="w-4 h-4" />} label="ارسال اعلان پیگیری"
+              onClick={() => { sendFollowUp(); setShowMenu(false); }} />
+            <MI icon={<Reply className="w-4 h-4" />} label="پاسخ"
+              onClick={() => { onReply(msg); setShowMenu(false); }} />
+            {!isConfidential && (msg.body || msg.file_url) && (
+              <MI icon={<Forward className="size-4" />} label="ارسال به دیگران"
+                onClick={() => { setShowMenu(false); setShowForward(true); }} />
+            )}
             {msg.body && (
-              <div className="px-4 py-2 mb-1 border-b border-gray-100 dark:border-gray-800">
-                <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{msg.body}</p>
-              </div>
+              <MI icon={<Copy className="w-4 h-4" />} label="کپی متن"
+                onClick={() => { navigator.clipboard.writeText(msg.body!); toast.success('کپی شد'); setShowMenu(false); }} />
             )}
-
-            {onRegisterAsTask && (
-              <MI icon={<ClipboardList className="w-4 h-4 text-teal-600 dark:text-teal-400" />}
-                label="ایجاد اقدام" labelClass="text-teal-600 dark:text-teal-400 font-medium"
-                onClick={() => { onRegisterAsTask(msg.body || '', msg.id); setShowMenu(false); }} />
+            {isOwn && msg.body && (
+              <MI icon={<Edit2 className="w-4 h-4" />} label="ویرایش"
+                onClick={() => { onEdit(msg); setShowMenu(false); }} />
             )}
-
-            {hasMentions && onGroupTask && (
-              <MI icon={<Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                label={`ایجاد اقدام گروهی (${mentionedUsers.length} نفر)`}
-                labelClass="text-blue-600 dark:text-blue-400 font-medium"
-                onClick={() => { onGroupTask(msg, mentionedUsers); setShowMenu(false); }} />
+            {(() => {
+              const isPinned = myRole === 'admin' ? msg.is_pinned : !!isPrivatelyPinned;
+              return (
+                <MI icon={<Pin className="w-4 h-4" />} label={isPinned ? 'برداشتن پین' : 'پین کردن'}
+                  onClick={() => { onPin(msg.id, !isPinned); setShowMenu(false); }} />
+              );
+            })()}
+            <MI icon={<Star className={`w-4 h-4 ${msg.isStarred ? 'fill-yellow-400 text-yellow-500' : ''}`} />}
+              label={msg.isStarred ? 'برداشتن نشانه' : 'نشانه‌دار کردن'}
+              onClick={() => { onStar(msg.id, !msg.isStarred); setShowMenu(false); }} />
+            <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
+            {isOwn && (
+              <MI icon={<Trash2 className="w-4 h-4 text-red-500" />} label="حذف برای همه" labelClass="text-red-500"
+                onClick={() => { onDelete(msg.id); setShowMenu(false); }} />
             )}
-
-            {hasMentions && onScheduleMeeting && (
-              <MI icon={<span className="text-teal-500 text-sm">📅</span>}
-                label="تنظیم جلسه با منشن‌ها"
-                labelClass="text-teal-600 dark:text-teal-400 font-medium"
-                onClick={() => { onScheduleMeeting(mentionedUsers.map(u => u.user_id), msg.body || ''); setShowMenu(false); }} />
-            )}
-
-            <div className="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
-              <MI icon={<Bell className="w-4 h-4" />} label="ارسال اعلان پیگیری"
-                onClick={() => { sendFollowUp(); setShowMenu(false); }} />
-              <MI icon={<Reply className="w-4 h-4" />} label="پاسخ"
-                onClick={() => { onReply(msg); setShowMenu(false); }} />
-              {msg.body && (
-                <MI icon={<Copy className="w-4 h-4" />} label="کپی متن"
-                  onClick={() => { navigator.clipboard.writeText(msg.body!); toast.success('کپی شد'); setShowMenu(false); }} />
-              )}
-              {isOwn && msg.body && (
-                <MI icon={<Edit2 className="w-4 h-4" />} label="ویرایش"
-                  onClick={() => { onEdit(msg); setShowMenu(false); }} />
-              )}
-              {(() => {
-                const isPinned = myRole === 'admin' ? msg.is_pinned : !!isPrivatelyPinned;
-                return (
-                  <MI icon={<Pin className="w-4 h-4" />} label={isPinned ? 'برداشتن پین' : 'پین کردن'}
-                    onClick={() => { onPin(msg.id, !isPinned); setShowMenu(false); }} />
-                );
-              })()}
-              <MI icon={<Star className={`w-4 h-4 ${msg.isStarred ? 'fill-yellow-400 text-yellow-500' : ''}`} />}
-                label={msg.isStarred ? 'برداشتن نشانه' : 'نشانه‌دار کردن'}
-                onClick={() => { onStar(msg.id, !msg.isStarred); setShowMenu(false); }} />
-              <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
-              {isOwn && (
-                <MI icon={<Trash2 className="w-4 h-4 text-red-500" />} label="حذف برای همه" labelClass="text-red-500"
-                  onClick={() => { onDelete(msg.id); setShowMenu(false); }} />
-              )}
-            </div>
           </div>
-        </div>
+        </ChatMessageMenu>
       )}
 
       {/* Read receipts modal — purely presentational */}
@@ -736,21 +672,12 @@ function ActionBtn({ children, title, onClick, active, activeColor }: {
 }) {
   return (
     <button onClick={onClick} title={title}
-      className={`w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
+      className={`${messageActionClass} ${
         active
           ? `bg-gray-100 dark:bg-gray-600 ${activeColor || 'text-teal-500'}`
-          : 'text-gray-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-600 hover:text-gray-700 dark:hover:text-gray-200'
+          : 'text-slate-600 hover:bg-black/10 dark:text-slate-300 dark:hover:bg-white/10'
       }`}>
       {children}
-    </button>
-  );
-}
-
-function MI({ icon, label, labelClass, onClick }: { icon: React.ReactNode; label: string; labelClass?: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-right">
-      <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">{icon}</span>
-      <span className={labelClass || 'text-gray-700 dark:text-gray-300'}>{label}</span>
     </button>
   );
 }
@@ -802,7 +729,7 @@ function ChannelMentionPopup({ user, currentUserId, onClose, onOpenDirectChat }:
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[500] flex items-center justify-center p-4" onClick={onClose} dir="rtl">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">پروفایل کاربر</h3>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400">

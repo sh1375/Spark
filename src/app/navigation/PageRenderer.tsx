@@ -1,3 +1,4 @@
+import { ChatWorkspace } from '../../components/Chat/ChatWorkspace';
 import { lazy } from 'react';
 import type { ReactNode } from 'react';
 import type { PageId } from '../navigation/useNavigation';
@@ -140,36 +141,41 @@ export function renderContent(props: PageRendererProps): ReactNode {
           }
         }}
       />;
-    case 'chat':
-      if (canOpenWorkGroups && (!canOpenDirectChat || (openWorkGroups && !chatInitUserId))) {
-        return <ChannelsPage key="groups" type="group" currentUserId={currentUserId} isAdmin={isAdmin}
-          onBackToChat={canOpenDirectChat ? () => setOpenWorkGroups(false) : undefined}
-          onNavigateToTasks={(body, id) => {
-            setTaskPrefillDescription(body);
-            setTaskPrefillMessageId(id);
-            navigate('tasks');
-          }}
+    case 'chat': {
+      const openTask = (body: string, id: string) => {
+        setTaskPrefillDescription(body);
+        setTaskPrefillMessageId(id);
+        navigate('tasks');
+      };
+      const openCalendar = (ids?: string[], bodyText?: string) => {
+        if (ids?.length) setChatMentionParticipants(ids);
+        if (bodyText) setChatMeetingNotes(bodyText);
+        navigate('calendar');
+      };
+      return <ChatWorkspace
+        key={currentUserId}
+        canChat={canOpenDirectChat}
+        openGroups={openWorkGroups}
+        onOpenGroups={setOpenWorkGroups}
+        directUserId={chatInitUserId}
+        groups={canOpenWorkGroups ? <ChannelsPage type="group" currentUserId={currentUserId} isAdmin={isAdmin}
+          onNavigateToTasks={openTask}
+          onNavigateToCalendar={openCalendar}
           onOpenDirectChat={canOpenDirectChat ? (userId) => {
             setOpenWorkGroups(false);
             setChatInitUserId(userId);
-          } : undefined} />;
-      }
-      return <ChatPage
-        currentUserId={currentUserId}
-        onNavigateToCalendar={(ids, bodyText) => {
-          if (ids && ids.length > 0) setChatMentionParticipants(ids);
-          if (bodyText) setChatMeetingNotes(bodyText);
-          navigate('calendar');
-        }}
-        onNavigateToTasks={(messageBody, messageId) => {
-          setTaskPrefillDescription(messageBody);
-          setTaskPrefillMessageId(messageId);
-          navigate('tasks');
-        }}
-        onOpenWorkGroups={canOpenWorkGroups ? () => setOpenWorkGroups(true) : undefined}
-        initialOpenUserId={chatInitUserId}
-        onInitialOpenUserConsumed={() => { setOpenWorkGroups(false); setChatInitUserId(null); }}
+          } : undefined}
+        /> : undefined}
+        renderChat={(showCalls, onOpenMessages) => <ChatPage
+          showCalls={showCalls}
+          currentUserId={currentUserId}
+          onNavigateToCalendar={openCalendar}
+          onNavigateToTasks={openTask}
+          initialOpenUserId={chatInitUserId}
+          onInitialOpenUserConsumed={() => { onOpenMessages(); setChatInitUserId(null); }}
+        />}
       />;
+    }
     case 'create-meeting':
       return modernPage(<CreateMeetingPage
         currentUserId={currentUserId}

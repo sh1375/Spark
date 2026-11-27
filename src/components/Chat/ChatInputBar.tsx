@@ -1,3 +1,4 @@
+import { ComposerToolButton as ToolBtn, composerToolbarClass, composerSendClass } from './ChatControls';
 import { useState, useRef, useEffect } from 'react';
 import { Send, Smile, Paperclip, Mic, AtSign, Code, Loader as Loader2, X, Reply, CircleAlert as AlertCircle, TriangleAlert as AlertTriangle, Lock, MessageCircle, Bold, Italic, Quote, List, Link, Image, Undo, Redo, CircleStop as StopCircle, MicOff, Strikethrough } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -732,7 +733,7 @@ export function ChatInputBar({
           </div>
 
           {/* Bottom toolbar */}
-          <div className="flex items-center flex-wrap px-1 pb-1 pt-0.5 gap-0.5 sm:px-2 sm:pb-2 sm:pt-1 sm:gap-1">
+          <div className={composerToolbarClass}>
             <ToolBtn title="شکلک" active={showEmoji} onClick={() => setShowEmoji(true)}>
               <Smile className="w-[18px] h-[18px]" />
             </ToolBtn>
@@ -818,7 +819,7 @@ export function ChatInputBar({
               onClick={handleSend}
               disabled={!canSend}
               aria-label="ارسال پیام"
-              className={`chat-icon-button flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-all sm:h-auto sm:w-auto sm:rounded-xl sm:px-4 sm:py-2 ${
+              className={`${composerSendClass} ${
                 canSend ? 'bg-teal-500 text-white' : 'bg-gray-100 text-gray-400'
               }`}
             >
@@ -845,31 +846,6 @@ function SpeakingPersonIcon() {
       <path d="M17 9c.6.8 1 1.8 1 3s-.4 2.2-1 3" strokeWidth="1.8" />
       <path d="M20 7c1.2 1.5 2 3.3 2 5.5S21.2 16.5 20 18" strokeWidth="1.8" />
     </svg>
-  );
-}
-
-function ToolBtn({
-  children, title, onClick, active, activeColor,
-}: {
-  children: React.ReactNode;
-  title: string;
-  onClick: () => void;
-  active?: boolean;
-  activeColor?: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      // touch-manipulation removes the 300ms click delay on Android without needing onTouchEnd
-      className={`chat-icon-button w-8 h-9 sm:w-9 flex items-center justify-center rounded-full sm:rounded-lg transition-colors flex-shrink-0 touch-manipulation ${
-        active
-          ? `bg-gray-100 dark:bg-gray-700 ${activeColor || 'text-teal-500'}`
-          : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200'
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 
