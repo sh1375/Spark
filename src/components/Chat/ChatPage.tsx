@@ -345,7 +345,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
       dir="rtl"
     >
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-      <div className={`${showSidebar ? 'flex' : 'hidden lg:flex'} w-full flex-shrink-0 flex-col border-l border-slate-200/80 bg-white/95 dark:border-slate-800 dark:bg-slate-950 lg:w-[310px] xl:w-[340px]`}>
+      <div className={`chat-workspace-sidebar ${showSidebar ? 'flex' : 'hidden lg:flex'} w-full flex-shrink-0 flex-col border-l border-slate-200/80 bg-white/95 dark:border-slate-800 dark:bg-slate-950 lg:w-[310px] xl:w-[340px]`}>
         {loadingConvs ? (
           <div className="flex h-full items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
