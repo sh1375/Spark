@@ -203,7 +203,7 @@ export function ForwardModal({ body, fileUrl, fileName, fileType, currentUserId,
       dir="rtl"
     >
       <div
-        className="w-full sm:w-96 bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden"
+        className="w-full sm:w-96 max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
