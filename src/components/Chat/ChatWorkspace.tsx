@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import './chat-workspace.css';
 import { UnreadBadge } from '../../features/messaging/UnreadBadge';
 import { useMessageUnreadCounts } from '../../features/messaging/messageUnreadCounts';
 
@@ -34,9 +35,9 @@ export function ChatWorkspace({ canChat, openGroups, onOpenGroups, directUserId,
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-1.5" dir="rtl">
+    <div className="chat-workspace flex h-full min-h-0 flex-col gap-1.5" dir="rtl">
       {availableTabs.length > 1 && (
-        <div role="tablist" aria-label="بخش‌های چت سازمانی" className="mx-1 flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900 sm:mx-0">
+        <div role="tablist" aria-label="بخش‌های چت سازمانی" className="chat-workspace-tabs mx-1 flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900 sm:mx-0">
           {availableTabs.map(({ id, label, glyph }, index) => (
             <button
               key={id}
@@ -57,7 +58,7 @@ export function ChatWorkspace({ canChat, openGroups, onOpenGroups, directUserId,
                 select(next);
                 document.getElementById(`chat-tab-${next}`)?.focus();
               }}
-              className={`spark-press-feedback chat-icon-button flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-1 text-xs font-semibold transition-colors ${active === id ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-800 dark:text-violet-300' : 'text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-slate-800/70'}`}
+              className={`chat-workspace-tab spark-press-feedback chat-icon-button flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-1 text-xs font-semibold transition-colors ${active === id ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-800 dark:text-violet-300' : 'text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-slate-800/70'}`}
             >
               <span aria-hidden="true" className={`spark-font-icon text-sm ${id === 'chats' ? 'spark-font-icon--chat-messages' : ''}`}>{glyph}</span> {label} <UnreadBadge count={badges[id]} />
             </button>
