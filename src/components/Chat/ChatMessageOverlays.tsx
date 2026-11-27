@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
 import { FALLBACK_NAME } from '../../lib/useOrgUsers';
 import type { ChatTag, UserProfile } from './types';
+import { ChatDialog } from './ChatDialog';
 
 export function MentionProfilePopup({ user, currentUserId, onClose, onOpenDirectChat }: {
   user: UserProfile;
@@ -52,7 +53,7 @@ export function MentionProfilePopup({ user, currentUserId, onClose, onOpenDirect
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[500] flex items-center justify-center p-4" onClick={onClose} dir="rtl">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={event => event.stopPropagation()}>
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain" onClick={event => event.stopPropagation()}>
         <div className="flex justify-between items-center px-5 pt-4 pb-2 border-b border-gray-100 dark:border-gray-800">
           <h3 className="text-sm font-bold text-gray-700 dark:text-gray-300">پروفایل کاربر</h3>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
@@ -139,7 +140,7 @@ export function ReminderModal({ messageId, messageBody, currentUserId, onClose, 
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-amber-500" />
@@ -196,6 +197,17 @@ export function ReminderModal({ messageId, messageBody, currentUserId, onClose, 
   );
 }
 
+const TAG_COLORS = [
+  { value: '#10B981', label: 'سبز' },
+  { value: '#3B82F6', label: 'آبی' },
+  { value: '#F59E0B', label: 'کهربایی' },
+  { value: '#EF4444', label: 'قرمز' },
+  { value: '#8B5CF6', label: 'بنفش' },
+  { value: '#EC4899', label: 'صورتی' },
+  { value: '#14B8A6', label: 'فیروزه‌ای' },
+  { value: '#F97316', label: 'نارنجی' },
+];
+
 export function TagModal({ messageId, currentTags, currentUserId, onClose, onChanged }: {
   messageId: string;
   currentTags: ChatTag[];
@@ -206,84 +218,120 @@ export function TagModal({ messageId, currentTags, currentUserId, onClose, onCha
   const [allTags, setAllTags] = useState<ChatTag[]>([]);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#10B981');
-  const [loading, setLoading] = useState(false);
-  const tagColors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+  const [busy, setBusy] = useState(false);
+  const [loadingTags, setLoadingTags] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    supabase.from('chat_tags').select('*').eq('user_id', currentUserId).then(({ data }) => setAllTags(data || []));
+    let cancelled = false;
+    supabase.from('chat_tags').select('*').eq('user_id', currentUserId).then(({ data, error }) => {
+      if (cancelled) return;
+      setAllTags(data || []);
+      setLoadingTags(false);
+      if (error) setErrorMessage('دریافت تگ‌ها ممکن نشد.');
+    });
+    return () => { cancelled = true; };
   }, [currentUserId]);
 
-  const isAssigned = (tagId: string) => currentTags.some(tag => tag.id === tagId);
-
-  const toggleTag = async (tag: ChatTag) => {
-    if (isAssigned(tag.id)) {
-      await supabase.from('chat_message_tag_assignments').delete().eq('message_id', messageId).eq('tag_id', tag.id).eq('user_id', currentUserId);
-    } else {
-      await supabase.from('chat_message_tag_assignments').insert({ message_id: messageId, tag_id: tag.id, user_id: currentUserId });
+  const toggleTag = async (tag: ChatTag, assigned: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    setErrorMessage('');
+    const assignments = supabase.from('chat_message_tag_assignments');
+    const { error } = assigned
+      ? await assignments.delete().eq('message_id', messageId).eq('tag_id', tag.id).eq('user_id', currentUserId)
+      : await assignments.insert({ message_id: messageId, tag_id: tag.id, user_id: currentUserId });
+    setBusy(false);
+    if (error) {
+      setErrorMessage('تغییر تگ پیام انجام نشد.');
+      return;
     }
     onChanged();
   };
 
   const addTag = async () => {
-    if (!newTagName.trim()) return;
-    setLoading(true);
-    const { data, error } = await supabase.from('chat_tags').insert({ user_id: currentUserId, name: newTagName.trim(), color: newTagColor }).select().maybeSingle();
-    setLoading(false);
+    const name = newTagName.trim();
+    if (!name || busy || loadingTags) return;
+    setBusy(true);
+    setErrorMessage('');
+    const { data, error } = await supabase.from('chat_tags').insert({ user_id: currentUserId, name, color: newTagColor }).select().maybeSingle();
+    setBusy(false);
     if (error) {
-      toast.error('خطا');
+      setErrorMessage('افزودن تگ انجام نشد.');
       return;
     }
     if (data) setAllTags(tags => [...tags, data]);
     setNewTagName('');
   };
 
+  const close = () => { if (!busy) onClose(); };
+
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800">
-          <div className="flex items-center gap-2"><Tag className="w-4 h-4 text-blue-500" /><h3 className="font-bold text-gray-900 dark:text-white">تگ‌های پیام</h3></div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+    <ChatDialog label="تگ‌های پیام" onClose={close}>
+      <div className="flex max-h-full w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-4 py-1.5 dark:border-slate-800">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-white">
+            <Tag className="size-4 text-teal-600 dark:text-teal-400" /> تگ‌های پیام
+          </h3>
+          <button type="button" autoFocus onClick={close} disabled={busy} aria-label="بستن تگ‌های پیام" className="grid size-10 place-items-center rounded-full text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800">
+            <X className="size-4" />
+          </button>
         </div>
-        <div className="p-5 space-y-4">
-          <div className="flex flex-wrap gap-2 min-h-[40px]">
-            {allTags.length === 0 && <p className="text-sm text-gray-400">تگی ایجاد نشده</p>}
-            {allTags.map(tag => (
-              <button
-                key={tag.id}
-                onClick={() => toggleTag(tag)}
-                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-sm font-medium transition-all border-2 ${isAssigned(tag.id) ? 'text-white border-transparent' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800'}`}
-                style={isAssigned(tag.id) ? { backgroundColor: tag.color } : {}}
-              >
-                {isAssigned(tag.id) && <Check className="w-3 h-3" />}{tag.name}
-              </button>
-            ))}
-          </div>
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">افزودن تگ جدید</p>
-            <div className="flex gap-1.5 mb-2">
-              {tagColors.map(color => (
+        <div className="min-h-0 overflow-y-auto overscroll-contain p-4">
+          <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto overscroll-contain">
+            {loadingTags && <p className="text-sm text-slate-500 dark:text-slate-400">در حال دریافت تگ‌ها…</p>}
+            {!loadingTags && allTags.length === 0 && !errorMessage && <p className="text-sm text-slate-500 dark:text-slate-400">هنوز تگی ایجاد نشده است.</p>}
+            {allTags.map(tag => {
+              const assigned = currentTags.some(current => current.id === tag.id);
+              return (
                 <button
-                  key={color}
-                  onClick={() => setNewTagColor(color)}
-                  className={`w-6 h-6 rounded-full transition-transform ${newTagColor === color ? 'scale-125 ring-2 ring-offset-1 ring-gray-300' : ''}`}
-                  style={{ backgroundColor: color }}
-                />
+                  key={tag.id}
+                  type="button"
+                  onClick={() => toggleTag(tag, assigned)}
+                  disabled={busy}
+                  aria-pressed={assigned}
+                  className={`inline-flex min-h-9 max-w-full items-center gap-1.5 rounded-full border px-3 py-1 text-sm [overflow-wrap:anywhere] disabled:opacity-60 ${assigned ? 'border-teal-300 bg-teal-50 text-teal-900 dark:border-teal-700 dark:bg-teal-950 dark:text-teal-200' : 'border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800'}`}
+                >
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: tag.color }} />
+                  <span className="min-w-0">{tag.name}</span>
+                  {assigned && <Check className="size-3.5 shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+          <form className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800" onSubmit={event => { event.preventDefault(); void addTag(); }}>
+            <label htmlFor="chat-new-tag" className="text-xs font-semibold text-slate-700 dark:text-slate-300">افزودن تگ جدید</label>
+            <div role="group" aria-label="رنگ تگ" className="my-2 grid grid-cols-8 gap-0.5">
+              {TAG_COLORS.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setNewTagColor(value)}
+                  aria-label={label}
+                  aria-pressed={newTagColor === value}
+                  className="grid h-9 place-items-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  <span className={`grid size-6 place-items-center rounded-full ${newTagColor === value ? 'outline outline-2 outline-offset-2 outline-slate-500 dark:outline-slate-300' : ''}`} style={{ backgroundColor: value }}>
+                    {newTagColor === value && <Check className="size-3.5 text-slate-950" />}
+                  </span>
+                </button>
               ))}
             </div>
             <div className="flex gap-2">
               <input
+                id="chat-new-tag"
                 value={newTagName}
                 onChange={event => setNewTagName(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && addTag()}
-                placeholder="نام تگ..."
-                className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:border-blue-400"
+                placeholder="نام تگ"
+                className="h-10 min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-base text-slate-900 focus:border-teal-500 focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white sm:text-sm"
               />
-              <button onClick={addTag} disabled={loading} className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-medium disabled:opacity-50">افزودن</button>
+              <button type="submit" disabled={busy || loadingTags || !newTagName.trim()} className="shrink-0 rounded-xl bg-teal-700 px-3 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-50">افزودن</button>
             </div>
-          </div>
+            {errorMessage && <p role="alert" className="mt-2 text-xs text-red-600 dark:text-red-400">{errorMessage}</p>}
+          </form>
         </div>
       </div>
-    </div>
+    </ChatDialog>
   );
 }
 
@@ -294,7 +342,7 @@ export function ChatMessageMenuItem({ icon, label, labelClass, onClick }: {
   onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-right">
+    <button onClick={onClick} className="flex min-h-11 w-full items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-right">
       <span className="text-gray-400 dark:text-gray-500 flex-shrink-0">{icon}</span>
       <span className={labelClass || 'text-gray-700 dark:text-gray-300'}>{label}</span>
     </button>
@@ -348,7 +396,7 @@ export function ChatViewersModal({ messageId, conversationId, messageCreatedAt, 
 
   return (
     <div className="fixed inset-0 bg-black/40 z-[400] flex items-end sm:items-center justify-center p-4" dir="rtl" onClick={onClose}>
-      <div className="w-full sm:w-80 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden" onClick={event => event.stopPropagation()}>
+      <div className="w-full sm:w-80 max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain bg-white dark:bg-gray-900 rounded-2xl shadow-2xl" onClick={event => event.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 dark:border-gray-800">
           <div className="flex items-center gap-2">
             <CheckCheck className="w-4 h-4 text-teal-500" />

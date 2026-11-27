@@ -733,17 +733,10 @@ export function ChatInputBar({
 
           {/* Bottom toolbar */}
           <div className="flex items-center flex-wrap px-1 pb-1 pt-0.5 gap-0.5 sm:px-2 sm:pb-2 sm:pt-1 sm:gap-1">
-            {/* Emoji — opens upward outside the box */}
-            <div className="relative">
-              <ToolBtn title="شکلک" active={showEmoji} onClick={() => setShowEmoji(v => !v)}>
-                <Smile className="w-[18px] h-[18px]" />
-              </ToolBtn>
-              {showEmoji && (
-                <div className="absolute bottom-full mb-2 right-0 z-[60]">
-                  <EmojiPicker onSelect={insertEmoji} onClose={() => setShowEmoji(false)} />
-                </div>
-              )}
-            </div>
+            <ToolBtn title="شکلک" active={showEmoji} onClick={() => setShowEmoji(true)}>
+              <Smile className="w-[18px] h-[18px]" />
+            </ToolBtn>
+            {showEmoji && <EmojiPicker onSelect={insertEmoji} onClose={() => setShowEmoji(false)} />}
 
             {/* Mention */}
             <ToolBtn title="منشن کاربر" onClick={() => {

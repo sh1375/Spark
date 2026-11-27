@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { EmojiPicker } from './EmojiPicker';
+import { ChatDialog } from './ChatDialog';
 import type { MessageWithMeta, MessageStatus, UserProfile } from './types';
 import { FALLBACK_NAME } from '../../lib/useOrgUsers';
 import { UserAvatar } from './ChatConversationItem';
@@ -87,7 +88,6 @@ export function ChatMessage({
 }: Props) {
   const [showMenu, setShowMenu] = useState(false);
   const [showReactPicker, setShowReactPicker] = useState(false);
-  const [emojiPickerStyle, setEmojiPickerStyle] = useState<CSSProperties>({});
   const [confidentialRevealed, setConfidentialRevealed] = useState(false);
   const [isPlayingVoice, setIsPlayingVoice] = useState(false);
   const [voiceProgress, setVoiceProgress] = useState(0);
@@ -96,38 +96,13 @@ export function ChatMessage({
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [showViewersModal, setShowViewersModal] = useState(false);
   const [mentionPopupUser, setMentionPopupUser] = useState<UserProfile | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const reactRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const openEmojiPicker = () => {
-    if (reactRef.current) {
-      const rect = reactRef.current.getBoundingClientRect();
-      const pickerW = Math.min(288, window.innerWidth - 16);
-      let left = rect.left;
-      if (left + pickerW > window.innerWidth - 8) left = window.innerWidth - pickerW - 8;
-      if (left < 8) left = 8;
-      const style: CSSProperties = { position: 'fixed', left, zIndex: 9999 };
-      if (rect.top >= 348) style.bottom = window.innerHeight - rect.top + 4;
-      else style.top = rect.bottom + 4;
-      setEmojiPickerStyle(style);
-    }
-    setShowReactPicker(value => !value);
-  };
 
   const fileUrl = useChatAttachmentUrl(message.file_url);
   const voiceUrl = useChatAttachmentUrl(message.voice_url);
   const isConfidential = message.message_type === 'confidential';
   const shouldBlur = isConfidential && !isOwn && !confidentialRevealed;
   const seenByOther = isOwn && (message.read_by?.some(id => id !== currentUserId) ?? false);
-
-  useEffect(() => {
-    const handler = (event: MouseEvent) => {
-      if (reactRef.current && !reactRef.current.contains(event.target as Node)) setShowReactPicker(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
 
   const toggleVoice = () => {
     if (!voiceUrl) return;
@@ -311,24 +286,15 @@ export function ChatMessage({
                   <button onClick={onStar} title={message.isStarred ? 'برداشتن ستاره' : 'نشانه‌دار'} className={`${actionButtonClass} ${message.isStarred ? 'text-yellow-500' : iconClass}`}>
                     <Star className={`w-4 h-4 ${message.isStarred ? 'fill-yellow-400' : ''}`} />
                   </button>
-                  <button onClick={() => setShowTagModal(true)} title="تگ" className={`${actionButtonClass} ${iconClass}`}><Tag className="w-4 h-4" /></button>
-                  <div ref={reactRef}>
-                    <button onClick={openEmojiPicker} title="ایموجی" className={`${actionButtonClass} ${iconClass}`}><Smile className="w-4 h-4" /></button>
-                    {showReactPicker && (
-                      <div style={emojiPickerStyle}>
-                        <EmojiPicker onSelect={emoji => { onReact(emoji); setShowReactPicker(false); }} onClose={() => setShowReactPicker(false)} />
-                      </div>
-                    )}
-                  </div>
+                  <button onClick={() => setShowTagModal(true)} title="تگ‌های پیام" aria-haspopup="dialog" className={`${actionButtonClass} ${iconClass}`}><Tag className="w-4 h-4" /></button>
+                  <button onClick={() => setShowReactPicker(true)} title="واکنش به پیام" aria-haspopup="dialog" aria-expanded={showReactPicker} className={`${actionButtonClass} ${iconClass}`}><Smile className="w-4 h-4" /></button>
                   <div className="flex-1" />
                   {isOwn && (
                     <button onClick={() => setShowViewersModal(true)} className={`${actionButtonClass} ${iconClass}`} title={seenByOther ? 'دیده شده — کلیک برای جزئیات' : 'دیده نشده'}>
                       <Eye className={`w-3.5 h-3.5 ${seenByOther ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`} />
                     </button>
                   )}
-                  <div className="relative" ref={menuRef}>
-                    <button onClick={() => setShowMenu(value => !value)} aria-label="گزینه‌های پیام" aria-expanded={showMenu} className={`${actionButtonClass} ${iconClass}`}><MoreVertical className="w-4 h-4" /></button>
-                  </div>
+                  <button onClick={() => setShowMenu(value => !value)} aria-label="گزینه‌های پیام" aria-expanded={showMenu} className={`${actionButtonClass} ${iconClass}`}><MoreVertical className="w-4 h-4" /></button>
                 </div>
               )}
               {!isDeleted && tags.length > 0 && (
@@ -362,10 +328,14 @@ export function ChatMessage({
       {showForwardModal && <ForwardModal body={message.body} fileUrl={message.file_url} fileName={message.file_name} fileType={message.file_type} currentUserId={currentUserId} allUsers={allUsers} senderName={message.senderProfile?.full_name || null} onClose={() => setShowForwardModal(false)} />}
       {showViewersModal && <ChatViewersModal messageId={message.id} conversationId={message.conversation_id} messageCreatedAt={message.created_at} currentUserId={currentUserId} allUsers={allUsers} readBy={message.read_by || []} onClose={() => setShowViewersModal(false)} />}
 
+      {showReactPicker && !isDeleted && <EmojiPicker onSelect={emoji => { onReact(emoji); setShowReactPicker(false); }} onClose={() => setShowReactPicker(false)} />}
       {showMenu && (
-        <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-[2px]" onClick={() => setShowMenu(false)} dir="rtl">
-          <div className="w-full sm:w-64 bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2 mb-0 sm:mb-0 overflow-hidden" onClick={event => event.stopPropagation()}>
-            <div className="flex justify-center mb-1 sm:hidden"><div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" /></div>
+        <ChatDialog label="گزینه‌های پیام" onClose={() => setShowMenu(false)}>
+          <div className="max-h-full w-full max-w-sm overflow-y-auto overscroll-contain rounded-2xl bg-white py-1 shadow-xl dark:bg-gray-900">
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-100 bg-white px-4 dark:border-slate-800 dark:bg-gray-900">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">گزینه‌های پیام</h3>
+              <button type="button" autoFocus onClick={() => setShowMenu(false)} aria-label="بستن گزینه‌های پیام" className="grid size-10 place-items-center rounded-full text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="size-4" /></button>
+            </div>
             {message.body && <div className="px-4 py-2 mb-1 border-b border-gray-100 dark:border-gray-800"><p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2">{message.body}</p></div>}
             {onRegisterAsTask && <ChatMessageMenuItem icon={<ClipboardList className="w-4 h-4 text-teal-600 dark:text-teal-400" />} label="ثبت در اقدام" labelClass="text-teal-600 dark:text-teal-400 font-medium" onClick={() => { onRegisterAsTask(message.body || '', message.id); setShowMenu(false); }} />}
             <ChatMessageMenuItem icon={<Bell className="w-4 h-4" />} label="تنظیم یادآوری" onClick={() => { setShowReminderModal(true); setShowMenu(false); }} />
@@ -379,7 +349,7 @@ export function ChatMessage({
             <ChatMessageMenuItem icon={<Trash2 className="w-4 h-4 text-red-500" />} label="حذف برای من" labelClass="text-red-500" onClick={() => { onDeleteForMe(); setShowMenu(false); }} />
             {isOwn && <ChatMessageMenuItem icon={<Trash2 className="w-4 h-4 text-red-600" />} label="حذف برای همه" labelClass="text-red-600" onClick={() => { onDeleteForAll(); setShowMenu(false); }} />}
           </div>
-        </div>
+        </ChatDialog>
       )}
     </>
   );
