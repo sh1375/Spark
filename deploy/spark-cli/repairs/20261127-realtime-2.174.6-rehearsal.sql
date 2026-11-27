@@ -1233,7 +1233,7 @@ INSERT INTO spark_rt_expected VALUES
  ('constraint',5,'77f82bf50f21c92d3e963760f45dfa0b'),
  ('enum',18,'fa97f20e579a2d76c16a3ffbc6309866'),
  ('function',19,'31f24e1c8b5e5b565997989d1730e978'),
- ('index',6,'38cec98bc7215424eba0089bc7f525be'),
+ ('index',6,'38cec98bc7215424abe0089bc7f525be'),
  ('table',3,'21e2c7c8ee4b6f405fbaa985bd0f485a'),
  ('trigger',1,'c611e268f39f173e563b07fdcf5ee8a5');
 DO $verify$
