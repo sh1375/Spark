@@ -2,6 +2,7 @@ import './lib/browserCryptoCompat';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import { detectMobileNavigation } from './app/layout/hooks/useMobileNavigation';
 import { LoadErrorBoundary } from './components/ui/LoadErrorBoundary';
 import './index.css';
 import './responsive.css';
@@ -31,6 +32,13 @@ try {
   // Storage can be unavailable in hardened/private browser contexts. In that
   // case the application safely falls back to the light loader until mounted.
 }
+
+const syncNavigationTypography = () => {
+  document.documentElement.dataset.sparkNavigation = detectMobileNavigation() ? 'mobile' : 'web';
+};
+syncNavigationTypography();
+window.addEventListener('resize', syncNavigationTypography);
+window.addEventListener('orientationchange', syncNavigationTypography);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

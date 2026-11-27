@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'spark-static-v12';
-const RUNTIME_CACHE = 'spark-runtime-v12';
+const STATIC_CACHE = 'spark-static-v13';
+const RUNTIME_CACHE = 'spark-runtime-v13';
 
 const STATIC_ASSETS = [
   '/',
@@ -8,10 +8,13 @@ const STATIC_ASSETS = [
   '/logo_spark.png',
   '/logo-ui.webp',
   '/icons/icon-512x512.png',
-  '/fonts/IRANSans-Web.woff2',
-  '/fonts/IRANSans-Web-Medium.woff2',
-  '/fonts/Awesome-Web.woff2',
-  '/fonts/Mobmenu.woff2',
+  '/fonts/mobile/IRANSans-Web.woff2',
+  '/fonts/mobile/IRANSans-Web-Medium.woff2',
+  '/fonts/mobile/Awesome-Web.woff2',
+  '/fonts/mobile/Mobmenu.woff2',
+  '/fonts/web/IranYekan-Web-Regular-FaNum.woff',
+  '/fonts/web/Iran-Yekan-Web-Bold-FaNum.woff',
+  '/fonts/web/Fa-Solid-900.woff2',
 ];
 
 function isBasicOkResponse(response) {

@@ -3,7 +3,7 @@
 
 @font-face {
   font-family: 'IRANSans Web';
-  src: url('/fonts/IRANSans-Web.woff2') format('woff2');
+  src: url('/fonts/mobile/IRANSans-Web.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -11,7 +11,7 @@
 
 @font-face {
   font-family: 'IRANSans Web';
-  src: url('/fonts/IRANSans-Web-Medium.woff2') format('woff2');
+  src: url('/fonts/mobile/IRANSans-Web-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -19,7 +19,7 @@
 
 @font-face {
   font-family: 'Spark Awesome';
-  src: url('/fonts/Awesome-Web.woff2') format('woff2');
+  src: url('/fonts/mobile/Awesome-Web.woff2') format('woff2');
   font-style: normal;
   font-weight: 400;
   font-display: block;
@@ -27,7 +27,34 @@
 
 @font-face {
   font-family: 'Spark Mobile Menu';
-  src: url('/fonts/Mobmenu.woff2') format('woff2');
+  src: url('/fonts/mobile/Mobmenu.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'IRANYekan Web';
+  src: url('/fonts/web/IranYekan-Web-Regular-FaNum.woff') format('woff');
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  /* Keep literal ASCII digits in identifiers and mixed-language text. */
+  unicode-range: U+0000-002F, U+003A-10FFFF;
+}
+
+@font-face {
+  font-family: 'IRANYekan Web';
+  src: url('/fonts/web/Iran-Yekan-Web-Bold-FaNum.woff') format('woff');
+  font-style: normal;
+  font-weight: 600 900;
+  font-display: swap;
+  unicode-range: U+0000-002F, U+003A-10FFFF;
+}
+
+@font-face {
+  font-family: 'Spark Web Icons';
+  src: url('/fonts/web/Fa-Solid-900.woff2') format('woff2');
   font-style: normal;
   font-weight: 400;
   font-display: block;
@@ -43,12 +70,16 @@
   block-size: 1em;
   flex-shrink: 0;
   place-items: center;
-  font-family: 'Spark Awesome';
+  font-family: var(--spark-font-icons);
   font-style: normal;
   font-weight: 400;
   line-height: 1;
   font-synthesis: none;
   direction: ltr;
+}
+
+.spark-font-icon--chat-messages::before {
+  content: var(--spark-chat-message-glyph);
 }
 
 .spark-font-icon--mobile-menu {
@@ -57,6 +88,8 @@
 
 :root {
   --spark-font-ui: 'IRANSans Web', system-ui, sans-serif;
+  --spark-font-icons: 'Spark Awesome';
+  --spark-chat-message-glyph: '\f0e5';
   font-family: var(--spark-font-ui);
   /* Safe-area insets for PWA notch/status-bar support */
   --sat: env(safe-area-inset-top, 0px);
@@ -64,6 +97,12 @@
   --sab: env(safe-area-inset-bottom, 0px);
   --sal: env(safe-area-inset-left, 0px);
   --spark-control-adornment-space: 2.75rem;
+}
+
+:root[data-spark-navigation='web'] {
+  --spark-font-ui: 'IRANYekan Web', system-ui, sans-serif;
+  --spark-font-icons: 'Spark Web Icons';
+  --spark-chat-message-glyph: '\f075';
 }
 
 /* Ensure body fills full screen including safe areas */

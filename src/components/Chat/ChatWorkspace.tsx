@@ -3,7 +3,7 @@ import { UnreadBadge } from '../../features/messaging/UnreadBadge';
 import { useMessageUnreadCounts } from '../../features/messaging/messageUnreadCounts';
 
 const tabs = [
-  { id: 'chats', label: 'پیام‌ها', glyph: '\uf0e5' },
+  { id: 'chats', label: 'پیام‌ها', glyph: '' },
   { id: 'groups', label: 'گروه‌ها', glyph: '\uf0c0' },
   { id: 'calls', label: 'تماس‌ها', glyph: '\uf095' },
 ] as const;
@@ -59,7 +59,7 @@ export function ChatWorkspace({ canChat, openGroups, onOpenGroups, directUserId,
               }}
               className={`chat-icon-button flex min-h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl px-1 text-xs font-semibold transition-colors ${active === id ? 'bg-white text-violet-700 shadow-sm dark:bg-slate-800 dark:text-violet-300' : 'text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-slate-800/70'}`}
             >
-              <span aria-hidden="true" className="spark-font-icon text-sm">{glyph}</span> {label} <UnreadBadge count={badges[id]} />
+              <span aria-hidden="true" className={`spark-font-icon text-sm ${id === 'chats' ? 'spark-font-icon--chat-messages' : ''}`}>{glyph}</span> {label} <UnreadBadge count={badges[id]} />
             </button>
           ))}
         </div>
