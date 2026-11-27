@@ -36,7 +36,7 @@ export function ConversationHeader(props: {
     <div className="flex min-w-0 flex-shrink-0 items-center gap-2 border-b border-slate-200/80 bg-white/95 px-2.5 py-2 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-950/95 sm:px-3">
       <button
         onClick={onBack}
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 lg:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        className="chat-icon-button flex h-9 w-8 flex-shrink-0 items-center max-sm:border-transparent sm:h-8 justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 lg:hidden dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
         title="بازگشت"
       >
         <ChevronRight className="h-4 w-4" />
@@ -66,11 +66,11 @@ export function ConversationHeader(props: {
         )}
       </div>
 
-      <div className="flex flex-shrink-0 items-center gap-1">
+      <div className="flex flex-shrink-0 items-center gap-0.5 sm:gap-1">
         {isSavedMessages && <ClearSavedHistoryButton key={conversation.id} conversationId={conversation.id} onCleared={onClearSavedHistory} />}
         <button
           onClick={onOpenStarred}
-          className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-amber-100 bg-amber-50 text-amber-600 transition hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
+          className="chat-icon-button relative flex h-9 w-8 items-center justify-center rounded-full sm:h-8 sm:rounded-lg border max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-amber-100 bg-amber-50 text-amber-600 transition hover:bg-amber-100 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
           title="پیام‌های نشانه‌دار"
         >
           <Star className={`h-3.5 w-3.5 ${localStarredCount > 0 ? 'fill-amber-400' : ''}`} />
@@ -83,7 +83,7 @@ export function ConversationHeader(props: {
 
         <button
           onClick={onOpenReminders}
-          className="relative flex h-8 w-8 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
+          className="chat-icon-button relative flex h-9 w-8 items-center justify-center rounded-full sm:h-8 sm:rounded-lg border max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-rose-100 bg-rose-50 text-rose-600 transition hover:bg-rose-100 dark:border-rose-500/20 dark:bg-rose-500/10 dark:text-rose-300"
           title="یادآوری‌ها"
         >
           <Bell className="h-3.5 w-3.5" />
@@ -96,7 +96,8 @@ export function ConversationHeader(props: {
 
         <button
           onClick={onToggleSearch}
-          className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${showSearch ? 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300' : 'border-violet-100 bg-violet-50 text-violet-600 hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300'}`}
+          aria-pressed={showSearch}
+          className={`chat-icon-button flex h-9 w-8 items-center justify-center rounded-full sm:h-8 sm:rounded-lg border transition ${showSearch ? 'border-violet-200 bg-violet-100 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300' : 'max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-violet-100 bg-violet-50 text-violet-600 hover:bg-violet-100 dark:border-violet-500/20 dark:bg-violet-500/10 dark:text-violet-300'}`}
           title="جستجو در پیام‌ها"
         >
           <Search className="h-3.5 w-3.5" />
@@ -105,7 +106,7 @@ export function ConversationHeader(props: {
         {!isSavedMessages && (
           <button
             onClick={() => onStartCall?.('audio')}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
+            className="chat-icon-button flex h-9 w-8 items-center justify-center rounded-full sm:h-8 sm:rounded-lg border max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-emerald-100 bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
             title="تماس صوتی"
           >
             <Phone className="h-3.5 w-3.5" />
@@ -115,7 +116,7 @@ export function ConversationHeader(props: {
         {!isSavedMessages && (
           <button
             onClick={() => onStartCall?.('video')}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-100 bg-cyan-50 text-cyan-600 transition hover:bg-cyan-100 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300"
+            className="chat-icon-button flex h-9 w-8 items-center justify-center rounded-full sm:h-8 sm:rounded-lg border max-sm:border-transparent max-sm:bg-transparent max-sm:dark:bg-transparent border-cyan-100 bg-cyan-50 text-cyan-600 transition hover:bg-cyan-100 dark:border-cyan-500/20 dark:bg-cyan-500/10 dark:text-cyan-300"
             title="تماس تصویری"
           >
             <Video className="h-3.5 w-3.5" />

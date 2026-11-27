@@ -61,16 +61,17 @@ export function MessageList(props: {
         const jy = jDate.jYear();
         const jm = jDate.jMonth() + 1;
         const jd = jDate.jDate();
+        const dateLabel = formatDate(group.date);
         return (
           <div key={group.date}>
             <div className="my-2 flex items-center justify-center px-3">
               <div className="h-px max-w-24 flex-1 bg-slate-200/70 dark:bg-slate-800" />
               <button
                 onClick={() => setJumpPickerDate({ jy, jm, jd })}
-                className="mx-2 flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 py-1 text-[9px] text-slate-500 shadow-sm transition hover:bg-white dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-400 dark:hover:bg-slate-800"
+                className="chat-icon-button mx-2 flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/95 px-2.5 py-1 text-[9px] text-slate-500 shadow-sm transition hover:bg-white dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-400 dark:hover:bg-slate-800"
               >
                 <CalendarDays className="h-3 w-3 flex-shrink-0 text-indigo-400" />
-                {formatDate(group.date)} · {group.date}
+                {dateLabel}{dateLabel !== group.date && ` · ${group.date}`}
               </button>
               <div className="h-px max-w-24 flex-1 bg-slate-200/70 dark:bg-slate-800" />
             </div>

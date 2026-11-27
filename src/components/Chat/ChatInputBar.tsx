@@ -732,7 +732,7 @@ export function ChatInputBar({
           </div>
 
           {/* Bottom toolbar */}
-          <div className="flex items-center px-2 pb-2 pt-1 gap-1">
+          <div className="flex items-center flex-wrap px-1 pb-1 pt-0.5 gap-0.5 sm:px-2 sm:pb-2 sm:pt-1 sm:gap-1">
             {/* Emoji — opens upward outside the box */}
             <div className="relative">
               <ToolBtn title="شکلک" active={showEmoji} onClick={() => setShowEmoji(v => !v)}>
@@ -806,7 +806,7 @@ export function ChatInputBar({
               </ToolBtn>
               {showTypeMenu && (
                 <div
-                  className="absolute bottom-full mb-2 right-0 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1 z-[60]"
+                  className="absolute bottom-full mb-2 left-0 w-56 sm:left-auto sm:right-0 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-1 z-[60]"
                   dir="rtl"
                 >
                   {MESSAGE_TYPES.filter(t => {
@@ -824,7 +824,8 @@ export function ChatInputBar({
             <button
               onClick={handleSend}
               disabled={!canSend}
-              className={`flex items-center gap-1.5 px-3 py-2 sm:px-4 rounded-xl text-sm font-semibold transition-all shrink-1 ${
+              aria-label="ارسال پیام"
+              className={`chat-icon-button flex h-9 w-9 shrink-0 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-all sm:h-auto sm:w-auto sm:rounded-xl sm:px-4 sm:py-2 ${
                 canSend ? 'bg-teal-500 text-white' : 'bg-gray-100 text-gray-400'
               }`}
             >
@@ -868,7 +869,7 @@ function ToolBtn({
       onClick={onClick}
       title={title}
       // touch-manipulation removes the 300ms click delay on Android without needing onTouchEnd
-      className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors flex-shrink-0 touch-manipulation ${
+      className={`chat-icon-button w-8 h-9 sm:w-9 flex items-center justify-center rounded-full sm:rounded-lg transition-colors flex-shrink-0 touch-manipulation ${
         active
           ? `bg-gray-100 dark:bg-gray-700 ${activeColor || 'text-teal-500'}`
           : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200'

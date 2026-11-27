@@ -190,8 +190,13 @@ details > summary {
   }
 
   /* A 44px control is touch-friendly without visually inflating content. */
-  .app-responsive-content :is(input, select, textarea, button):not([type='checkbox']):not([type='radio']):not([type='range']) {
+  .app-responsive-content :is(input, select, textarea, button):not([type='checkbox']):not([type='radio']):not([type='range']):not(.chat-icon-button) {
     min-height: 44px;
+  }
+
+  /* Chat toolbars use compact icon buttons to fit narrow screens. */
+  .app-responsive-content button.chat-icon-button {
+    min-height: 36px;
   }
 
   .app-responsive-content input[type='checkbox'],
