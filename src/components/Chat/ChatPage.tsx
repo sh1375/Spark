@@ -330,7 +330,7 @@ export function ChatPage({ currentUserId: providedCurrentUserId = null, onNaviga
 
   return (
     <>
-    <div hidden={!showCalls} role="tabpanel" id="chat-panel-calls" aria-labelledby="chat-tab-calls" className="chat-workspace-calls h-full min-h-0 overflow-hidden rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <div hidden={!showCalls} role="tabpanel" id="chat-panel-calls" aria-labelledby="chat-tab-calls" className="h-full min-h-0 overflow-hidden rounded-[24px] border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
       {showCalls && (
         <Suspense fallback={<div className="grid h-full min-h-28 place-items-center"><Loader2 className="size-5 animate-spin text-violet-500" /></div>}>
           <CallHistoryPage currentUserId={currentUserId} onStartCall={(recipient, capability) => void startCall(recipient, capability)} />
