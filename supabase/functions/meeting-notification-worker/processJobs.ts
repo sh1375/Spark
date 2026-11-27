@@ -12,8 +12,12 @@ export async function processMeetingNotificationJobs(client: any, jobs: any[], s
         const policy = await dependencies.loadPolicy(client, 'meeting', job.event_type);
         const decision = dependencies.evaluatePolicy(policy, new Date(), new Date(job.created_at));
         if (!decision.sendNow && decision.nextAllowedAt) {
-          const postponed = await client.rpc('postpone_meeting_notification_job', { p_id: job.id, p_lease: job.lease, p_available_at: decision.nextAllowedAt.toISOString() });
-          return { status: 'deferred', recorded: !postponed.error };
+          try {
+            const postponed = await client.rpc('postpone_meeting_notification_job', { p_id: job.id, p_lease: job.lease, p_available_at: decision.nextAllowedAt.toISOString() });
+            return { status: 'deferred', recorded: !postponed.error };
+          } catch {
+            return { status: 'deferred', recorded: false };
+          }
         }
         const retry = Number(job.context.delivery_retry || 0);
         const eventKey = retry > 0 ? `${job.event_key}:retry:${retry}` : job.event_key;
@@ -36,7 +40,11 @@ export async function processMeetingNotificationJobs(client: any, jobs: any[], s
         else { status = 'failed'; reason = response.data?.errorCode ?? response.data?.error ?? 'SMS_FAILED'; }
       }
     } catch { reason = 'DELIVERY_OUTCOME_UNKNOWN'; }
-    const completed = await client.rpc('finish_meeting_notification_job', { p_id: job.id, p_lease: job.lease, p_status: status, p_error: reason });
-    return { status, recorded: !completed.error };
+    try {
+      const completed = await client.rpc('finish_meeting_notification_job', { p_id: job.id, p_lease: job.lease, p_status: status, p_error: reason });
+      return { status, recorded: !completed.error };
+    } catch {
+      return { status, recorded: false };
+    }
   }));
 }

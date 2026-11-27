@@ -1,5 +1,6 @@
 import { ChatWorkspace } from '../../components/Chat/ChatWorkspace';
 import { lazy } from 'react';
+import toast from 'react-hot-toast';
 import type { ReactNode } from 'react';
 import type { PageId } from '../navigation/useNavigation';
 import { PAGE_PERMISSION_KEY, checkPermission, AccessDenied, canOpenPortalConfig } from '../../features/permissions';
@@ -121,6 +122,8 @@ export function renderContent(props: PageRendererProps): ReactNode {
         sparkCalendarMeetingPrefill={sparkCalendarMeetingPrefill}
         onSparkCalendarMeetingPrefillConsumed={() => setSparkCalendarMeetingPrefill(null)}
         onRegisterMinutes={(meetingId, existingMinuteId) => {
+          const previousUrl = window.location.href;
+          const previousState = window.history.state;
           try {
             const url = new URL(window.location.href);
             if (existingMinuteId) {
@@ -135,6 +138,10 @@ export function renderContent(props: PageRendererProps): ReactNode {
               navigate('minutes-new');
             }
           } catch (err) {
+            try {
+              window.history.replaceState(previousState, '', previousUrl);
+            } catch { /* URL recovery may be unavailable; still notify the user. */ }
+            toast.error('باز کردن صورت‌جلسه ناموفق بود. دوباره تلاش کنید.');
             if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
               console.error('[PageRenderer] onRegisterMinutes navigation failed:', err);
             }

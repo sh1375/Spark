@@ -72,7 +72,8 @@ Deno.serve(async (req: Request) => {
   let deletedObjects = 0;
   if (paths.length > 0) {
     const { error: rmErr } = await adminClient.storage.from("minutes-attachments").remove(paths);
-    if (!rmErr) deletedObjects = paths.length;
+    if (rmErr) return json({ error: "delete_objects_failed", deleted_records: 0 }, 500);
+    deletedObjects = paths.length;
   }
 
   // 3. Delete DB records

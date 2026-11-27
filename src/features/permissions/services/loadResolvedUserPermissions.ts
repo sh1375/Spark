@@ -4,6 +4,7 @@ import { supabase } from '../../../lib/supabase';
  * Loads and resolves effective permissions for a non-admin user.
  * Returns `null` for full access (when a group grants `all`),
  * otherwise a merged record of granted permission keys.
+ * Rejects if a required query fails.
  *
  * Precedence (later sources override earlier):
  *   1. Legacy user-group permissions
@@ -30,9 +31,12 @@ export async function loadResolvedUserPermissions(
       .maybeSingle(),
   ]);
 
+  const membershipError = membershipsResult.error ?? primaryMemberResult.error;
+  if (membershipError) throw membershipError;
+
   const memberships = membershipsResult.data || [];
   const primaryMember = primaryMemberResult.data;
-  const groupIds = memberships.map((m: { group_id: string }) => m.group_id);
+  const groupIds = [...new Set(memberships.map((m: { group_id: string }) => m.group_id))];
   const positionId = primaryMember?.position_id || null;
   const posLevel = (primaryMember as unknown as { org_positions?: { level?: number } } | null)?.org_positions?.level;
 
@@ -40,14 +44,20 @@ export async function loadResolvedUserPermissions(
   const [groupsResult, levelPermsResult, posPermsResult] = await Promise.all([
     groupIds.length > 0
       ? supabase.from('user_groups').select('permissions').in('id', groupIds)
-      : Promise.resolve({ data: [] as Array<{ permissions: unknown }> }),
+      : Promise.resolve({ data: [] as Array<{ permissions: unknown }>, error: null }),
     posLevel
       ? supabase.from('org_level_permissions').select('permission_key, granted').eq('level', posLevel)
-      : Promise.resolve({ data: [] as Array<{ permission_key: string; granted: boolean }> }),
+      : Promise.resolve({ data: [] as Array<{ permission_key: string; granted: boolean }>, error: null }),
     positionId
       ? supabase.from('org_position_permissions').select('permission_key, granted').eq('position_id', positionId)
-      : Promise.resolve({ data: [] as Array<{ permission_key: string; granted: boolean }> }),
+      : Promise.resolve({ data: [] as Array<{ permission_key: string; granted: boolean }>, error: null }),
   ]);
+
+  const permissionError = groupsResult.error ?? levelPermsResult.error ?? posPermsResult.error;
+  if (permissionError) throw permissionError;
+  if ((groupsResult.data?.length ?? 0) !== groupIds.length) {
+    throw new Error("Incomplete group permission lookup");
+  }
 
   const merged: Record<string, boolean> = {};
 

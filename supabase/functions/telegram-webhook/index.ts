@@ -54,7 +54,6 @@ Deno.serve(async (req: Request) => {
       details: {
         update_type: update.message ? "message" : update.callback_query ? "callback_query" : "other",
         chat_id: chatId,
-        text: text?.substring(0, 200),
       },
     });
   } catch {

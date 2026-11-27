@@ -106,8 +106,8 @@ export async function uploadMinuteAttachment(
     p_attachment_id: attachmentId,
   });
   if (finErr) {
-    // Finalize failed; best-effort remove the uploaded object to avoid orphan.
-    try { await supabase.storage.from(ATTACHMENT_BUCKET).remove([storagePath]); } catch { /* ignore */ }
+    // An RPC error may mean the response was lost after finalization committed.
+    // Never remove a possibly-ready object here; leave pending cleanup to the server.
     throw new Error(translateRpcError(finErr.message));
   }
 

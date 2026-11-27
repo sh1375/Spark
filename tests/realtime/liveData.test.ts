@@ -86,9 +86,9 @@ test('live calendar options retain hidden calendars, include new ones and remove
   assert.equal(mergeLiveSelection(new Set(), new Set(['a','b']), new Set(['a','b'])).size, 0);
 });
 
-test('expanded shared sources route call clearing, presence, conference roles, forwarding and runtime changes independently', async () => {
+test('supported shared sources route call clearing, presence, conference archives, forwarding and runtime changes independently', async () => {
   const f=fixture();
-  const tables=['chat_call_history_hidden','user_presence','conference_private_messages','conference_role_assignments','conference_recording_consents','system_config','contacts_email','chat_message_read_log','pending_approvals','banned_users'];
+  const tables=['chat_call_history_hidden','user_presence','conference_archives','system_config','contacts_email','chat_message_read_log'];
   const counts=tables.map(()=>0);
   const stops=tables.map((table,index)=>f.watchLiveData([table],async()=>{counts[index]++;}));
   await pause();assert.deepEqual(counts,tables.map(()=>1));
@@ -98,4 +98,23 @@ test('expanded shared sources route call clearing, presence, conference roles, f
     assert.ok(counts.every((count,i)=>count===(i<=index?2:1)),'unrelated readers must not refetch');
   }
   stops.forEach(stop=>stop());assert.equal(f.stats.channels,1);assert.equal(f.stats.removed,1);
+});
+
+// Native conference readers were intentionally retired in bec3795.
+// Legacy events must not invalidate supported readers or re-enable retired scopes.
+test('retired native conference events are ignored while archives remain supported', async () => {
+  const f = fixture();
+  const retired = ['conference_private_messages','conference_role_assignments','conference_recording_consents','pending_approvals','banned_users'];
+  const counts = retired.map(() => 0);
+  const stops = retired.map((table, index) => f.watchLiveData([table], async () => { counts[index]++; }));
+  let archives = 0;
+  const stopArchive = f.watchLiveData(['conference_archives'], async () => { archives++; });
+  await pause();
+  assert.deepEqual(counts, retired.map(() => 1)); assert.equal(archives, 1);
+  for (const table of retired) { f.emit(table); await pause(); }
+  assert.deepEqual(counts, retired.map(() => 1)); assert.equal(archives, 1);
+  f.emit('conference_archives'); await pause();
+  assert.equal(archives, 2); assert.deepEqual(counts, retired.map(() => 1));
+  stopArchive(); stops.forEach(stop => stop());
+  assert.equal(f.stats.channels, 1); assert.equal(f.stats.removed, 1);
 });

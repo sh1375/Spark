@@ -148,8 +148,14 @@ Deno.serve(async (req: Request) => {
         .maybeSingle();
 
       if (verifyProfileError || !verifyProfile || verifyProfile.registration_source !== "admin_created") {
-        console.error("[admin-users/create] lifecycle profile verification failed", verifyProfileError?.message ?? "profile missing or source mismatch");
-        return json({ error: "پروفایل کاربر به‌صورت صحیح ایجاد نشد" }, 500);
+        const code = verifyProfileError
+          ? "PROFILE_VERIFICATION_READ_FAILED"
+          : !verifyProfile
+          ? "PROFILE_NOT_FOUND"
+          : "PROFILE_SOURCE_MISMATCH";
+        // Preserve the Auth identity for reconciliation. Profile state can change after this read.
+        console.error("[admin-users/create] lifecycle profile verification failed", code, userId);
+        return json({ error: "پروفایل کاربر به‌صورت صحیح ایجاد نشد", code, user_id: userId }, 500);
       }
 
       if (profile?.hire_date) {

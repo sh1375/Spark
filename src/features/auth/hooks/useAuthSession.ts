@@ -101,6 +101,7 @@ export function useAuthSession(): AuthSessionState {
         } else {
           try { localStorage.removeItem('meeting-manager-auth'); } catch { /* ignore */ }
           await supabase.auth.signOut({ scope: 'local' });
+          if (gen !== generationRef.current) return;
           resetSessionState('login');
           setAccessLevel('BLOCKED');
           setReasonCode('SESSION_INVALID');

@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
     );
 
     if (consumeErr) {
-      console.error("[bale-webhook] consume RPC error:", consumeErr.message);
+      console.error("[bale-webhook] consume RPC error");
       await sendMessage(botToken, chatId, "خطای داخلی. لطفاً دوباره تلاش کنید.");
       return ok();
     }
@@ -87,7 +87,7 @@ Deno.serve(async (req: Request) => {
     await sendMessage(botToken, chatId, "✅ اتصال شما با موفقیت انجام شد. از این پس اعلان‌های جلسه را اینجا دریافت می‌کنید.");
     return ok();
   } catch (err) {
-    console.error("[bale-webhook] unexpected error:", err instanceof Error ? err.message : String(err));
+    console.error("[bale-webhook] unexpected error");
     return ok();
   }
 });
@@ -100,10 +100,9 @@ async function sendMessage(token: string, chatId: number | string, text: string)
       body: JSON.stringify({ chat_id: chatId, text }),
     });
     if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      console.warn("[bale-webhook] sendMessage HTTP %s: %s", res.status, body.slice(0, 200));
+      console.warn("[bale-webhook] sendMessage HTTP %s", res.status);
     }
   } catch (e) {
-    console.warn("[bale-webhook] sendMessage network error:", e);
+    console.warn("[bale-webhook] sendMessage network error");
   }
 }

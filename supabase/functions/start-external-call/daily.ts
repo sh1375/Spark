@@ -49,9 +49,11 @@ export async function joinDailyConference(apiKey: string, roomName: string, user
   let response = await request(path);
   if (response.status === 404) {
     if (!owner) return null;
-    response = await request('rooms', { name: roomName, privacy: 'private', properties: { exp: expiry, eject_at_room_exp: true } });
-    // A concurrent request or a retry can find the same room already created.
-    if (!response.ok) response = await request(path);
+    const created = await request('rooms', {
+      name: roomName, privacy: 'private', properties: { exp: expiry, eject_at_room_exp: true },
+    }).catch(() => null);
+    // A concurrent create or a lost response can leave the room available.
+    response = created?.ok ? created : await request(path);
   }
   if (!response.ok) throw new Error('DAILY_ROOM_UNAVAILABLE');
   return await link(roomName, await response.json(), userId, expiry, false, owner);
