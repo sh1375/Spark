@@ -90,7 +90,7 @@ Deno.serve(async (req: Request) => {
       await service.rpc("complete_pwa_push_outbox_service", {
         p_id: row.id,
         p_success: false,
-        p_error: subscriptionsError.message,
+        p_error: "SUBSCRIPTIONS_READ_FAILED",
       });
       failedRows++;
       continue;
@@ -127,7 +127,7 @@ Deno.serve(async (req: Request) => {
             keys: { p256dh: subscription.p256dh, auth: subscription.auth_key },
           },
           safePayload,
-          { TTL: 60 * 60 * 24 },
+          { TTL: 60 * 60 * 24, timeout: 10_000 },
         );
 
         successCount++;
@@ -139,14 +139,7 @@ Deno.serve(async (req: Request) => {
         const statusCode = typeof error === "object" && error !== null && "statusCode" in error
           ? Number((error as { statusCode?: unknown }).statusCode)
           : 0;
-        const message = error instanceof Error ? error.message : String(error);
-        const providerBody = typeof error === "object" && error !== null && "body" in error
-          ? String((error as { body?: unknown }).body ?? "").trim()
-          : "";
-        const diagnostic = providerBody
-          ? `${message} | provider_body=${providerBody}`
-          : message;
-        errors.push(`${statusCode || "ERR"}:${diagnostic}`);
+        errors.push(statusCode ? "PUSH_HTTP_" + statusCode : "PUSH_DELIVERY_FAILED");
 
         if (statusCode === 404 || statusCode === 410) {
           await service

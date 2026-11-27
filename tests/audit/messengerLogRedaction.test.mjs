@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {transform} from 'esbuild';
+import {webcrypto,createHash} from 'node:crypto';
+const secret='fixture-webhook-secret';
+const proof=createHash('sha256').update('spark:bale:webhook:v1:'+secret).digest('hex');
 
 const marker = 'synthetic-secret-do-not-log-42';
 async function load(name, client, fakeFetch, logs) {
@@ -10,23 +13,23 @@ async function load(name, client, fakeFetch, logs) {
   const {code}=await transform(src,{loader:'ts'});
   let handler;
   vm.runInNewContext(code,{
-    Request,Response,
+    Request,Response,URL,TextEncoder,crypto:webcrypto,
     Deno:{serve(fn){handler=fn;},env:{get(k){return {SUPABASE_URL:'https://db.example.invalid',SUPABASE_SERVICE_ROLE_KEY:'fixture-service-role',BALE_BOT_TOKEN:'fixture-bot'}[k];}}},
-    createClient(){return client;},fetch:fakeFetch,
+    createClient(){return name==="bale-webhook" ? {...client,from(){const q={select(){return q;},eq(){return q;},async maybeSingle(){return {data:{is_active:true,webhook_secret:secret,bot_token:"fixture-bot"},error:null};}};return q;}} : client;},fetch:fakeFetch,
     console:Object.fromEntries(['log','warn','error'].map(k=>[k,(...args)=>logs.push(args.map(String).join(' '))]))
   },{timeout:1000});
   assert.equal(typeof handler,'function');
   return handler;
 }
 function request(text) {
- return new Request('https://example.invalid/webhook',{method:'POST',body:JSON.stringify({message:{chat:{id:123,type:"private"},text}})});
+ return new Request('https://example.invalid/webhook?proof='+proof,{method:'POST',headers:{'x-telegram-bot-api-secret-token':secret},body:JSON.stringify({message:{chat:{id:123,type:"private"},text}})});
 }
 test('Telegram audit does not persist link nonce or arbitrary message text; token validation still receives the nonce',async()=>{
  const audit=[], lookups=[], logs=[];
  const client={async rpc(name,args){assert.equal(name,"consume_telegram_link_token_service");lookups.push(args.p_token);return {data:{ok:false},error:null};},from(table){
   if(table==='audit_logs')return {async insert(row){audit.push(row);return {error:null};}};
   const q={select(){return q;},eq(key,value){if(table==='telegram_link_tokens'&&key==='token')lookups.push(value);return q;},gt(){return q;},
-   async maybeSingle(){return table==='social_channel_configs'?{data:{is_active:true,bot_token:'fixture-bot'}}:{data:null,error:null};}};
+   async maybeSingle(){return table==='social_channel_configs'?{data:{is_active:true,bot_token:'fixture-bot',webhook_secret:secret}}:{data:null,error:null};}};
   return q;
  }};
  let sends=0;

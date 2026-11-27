@@ -14,6 +14,13 @@ function json(body: unknown, status = 200) {
   });
 }
 
+function matchesProof(expected: string, supplied: string | null): boolean {
+  if (!expected || supplied === null || supplied.length !== expected.length) return false;
+  let difference = 0;
+  for (let i = 0; i < expected.length; i++) difference |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
+  return difference === 0;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -23,24 +30,26 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
-  const expectedSecret = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
-  if (expectedSecret && req.headers.get("x-telegram-bot-api-secret-token") !== expectedSecret) {
-    return json({ error: "Unauthorized webhook" }, 401);
-  }
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  const { data: channelConfig } = await supabase
+  const { data: channelConfig, error: configError } = await supabase
     .from("social_channel_configs")
-    .select("bot_token, is_active")
+    .select("bot_token, is_active, webhook_secret")
     .eq("channel", "telegram")
     .maybeSingle();
 
+  if (configError) return json({ error: "Webhook configuration unavailable" }, 503);
   if (!channelConfig?.is_active) {
     return json({ ok: false, error: "Telegram bot is not active" }, 403);
   }
 
+  const expectedSecret = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || channelConfig.webhook_secret || "").trim();
+  if (!expectedSecret) return json({ error: "Webhook secret not configured" }, 503);
+  if (!matchesProof(expectedSecret, req.headers.get("x-telegram-bot-api-secret-token"))) {
+    return json({ error: "Unauthorized webhook" }, 401);
+  }
   let update: Record<string, any>;
   try {
     update = await req.json();

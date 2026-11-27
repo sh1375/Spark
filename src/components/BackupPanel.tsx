@@ -37,9 +37,8 @@ function RestorePanel() {
   const [name, setName] = useState('');
   const [errorText, setErrorText] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [strategy, setStrategy] = useState<'upsert' | 'replace'>('upsert');
+  const strategy = 'upsert' as const;
   const [running, setRunning] = useState(false);
-  const [confirmed, setConfirmed] = useState(false);
   const [status, setStatus] = useState<Record<string, Status>>({});
   const [report, setReport] = useState<Record<string, RestoreReportEntry> | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -47,7 +46,7 @@ function RestorePanel() {
   const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setName(file.name); setErrorText(''); setData(null); setMeta(null); setReport(null); setConfirmed(false);
+    setName(file.name); setErrorText(''); setData(null); setMeta(null); setReport(null);
     try {
       const parsed: DataMap = {};
       if (file.name.toLowerCase().endsWith('.json')) {
@@ -107,7 +106,7 @@ function RestorePanel() {
     } catch (err) {
       toast.error(`خطا در بازیابی: ${err instanceof Error ? err.message : 'نامشخص'}`);
       setStatus(Object.fromEntries([...selected].map(k => [k, 'error' as Status])));
-    } finally { setRunning(false); setConfirmed(false); }
+    } finally { setRunning(false); }
   };
 
   const toggle = (key: string) => setSelected(prev => { const next = new Set(prev); next.has(key) ? next.delete(key) : next.add(key); return next; });
@@ -119,17 +118,16 @@ function RestorePanel() {
     <input ref={fileRef} type="file" accept=".json,.xlsx,.xls" className="hidden" onChange={onFile} />
     {errorText && <div className="p-3 rounded-xl bg-red-50 text-red-700 text-xs flex gap-2"><AlertTriangle className="w-4 h-4 flex-shrink-0" />{errorText}</div>}
     {data && <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <button onClick={() => setStrategy('upsert')} className={`p-3 rounded-xl border text-right ${strategy === 'upsert' ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' : 'border-gray-200 dark:border-gray-600'}`}><b className="text-sm">ادغام (Upsert)</b><p className="text-xs text-gray-500 mt-1">به‌روزرسانی موجودها و افزودن داده جدید</p></button>
-        <button onClick={() => setStrategy('replace')} className={`p-3 rounded-xl border text-right ${strategy === 'replace' ? 'border-red-400 bg-red-50 dark:bg-red-900/20' : 'border-gray-200 dark:border-gray-600'}`}><b className="text-sm">جایگزینی کامل</b><p className="text-xs text-gray-500 mt-1">حذف داده فعلی جداول انتخاب‌شده و بازنویسی</p></button>
+      <div className="p-3 rounded-xl border text-right">
+        <b className="text-sm">ادغام (Upsert)</b>
+        <p className="text-xs text-gray-500 mt-1">بازیابی کامل با حذف داده‌ها فقط از مسیر بازیابی تراکنشی سرور انجام شود. فایل JSON یا XLSX تصویر لحظه‌ای یکپارچه از دیتابیس نیست.</p>
       </div>
       <div className="bg-white dark:bg-gray-800 rounded-2xl border p-4 min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3"><span className="text-sm">{selected.size} جدول انتخاب شده</span><div className="flex gap-2"><button onClick={() => setSelected(new Set(Object.keys(data)))} className="text-xs px-3 py-1.5 bg-emerald-50 rounded-lg">همه</button><button onClick={() => setSelected(new Set())} className="text-xs px-3 py-1.5 bg-gray-100 rounded-lg">هیچ‌کدام</button></div></div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-80 overflow-y-auto">{Object.entries(data).map(([key, rows]) => <RestoreTableRow key={key} tableKey={key} rowCount={rows.length} selected={selected.has(key)} onToggle={() => toggle(key)} status={status[key] || 'idle'} />)}</div>
       </div>
       {report && <RestoreReport report={report} expandedTable={expanded} setExpandedTable={setExpanded} />}
-      {strategy === 'replace' && <label className="flex items-start gap-2 p-3 bg-red-50 text-red-700 rounded-xl text-xs"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-0.5" />حذف داده فعلی جداول انتخاب‌شده را تأیید می‌کنم.</label>}
-      <button onClick={run} disabled={running || !selected.size || (strategy === 'replace' && !confirmed)} className="w-full py-3 bg-emerald-500 disabled:opacity-50 text-white rounded-2xl flex justify-center items-center gap-2">{running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}بازیابی ({selected.size} جدول)</button>
+      <button onClick={run} disabled={running || !selected.size} className="w-full py-3 bg-emerald-500 disabled:opacity-50 text-white rounded-2xl flex justify-center items-center gap-2">{running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}بازیابی ({selected.size} جدول)</button>
     </>}
   </div>;
 }

@@ -346,6 +346,7 @@ async function cleanupCreatedSession(
 async function authorizeGateway(
   admin: ReturnType<typeof adminClient>,
   params: GatewayParams,
+  deviceSummary: string,
 ): Promise<GatewayRpcResult> {
   const rpcArgs = {
     p_session_id: params.sessionId,
@@ -356,7 +357,7 @@ async function authorizeGateway(
     p_ip_hash: params.ipHash,
   };
 
-  const { data, error } = await admin.rpc("authorize_phone_otp_gateway_session_v1", rpcArgs);
+  const { data, error } = await admin.rpc("authorize_phone_otp_gateway_session_v2", { ...rpcArgs, p_device_summary: deviceSummary });
 
   if (error) throw new Error("GATEWAY_UNAVAILABLE");
 
@@ -390,7 +391,7 @@ async function reconcileGateway(
     p_ip_hash: params.ipHash,
   };
 
-  const { data, error } = await admin.rpc("reconcile_phone_otp_gateway_session_v1", rpcArgs);
+  const { data, error } = await admin.rpc("reconcile_phone_otp_gateway_session_v2", rpcArgs);
 
   if (error) throw new Error("GATEWAY_UNAVAILABLE");
 
@@ -657,7 +658,7 @@ Deno.serve(async (req: Request) => {
   try {
     gatewayOutcome = await finalizeGateway(
       {
-        authorizeGateway: (p: GatewayParams) => authorizeGateway(admin, p),
+        authorizeGateway: (p: GatewayParams) => authorizeGateway(admin, p, req.headers.get("user-agent")?.slice(0, 200) ?? "unknown"),
         reconcileGateway: (p: GatewayParams) => reconcileGateway(admin, p),
         cleanupCreatedSession: (at: string, cid: string, clid: string) =>
           cleanupCreatedSession(admin, at, cid, clid),
@@ -677,32 +678,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "LOGIN_UNAVAILABLE" }, 503, allowedOrigin);
   }
 
-  const { data: sessionSettings, error: sessionSettingsError } = await admin
-    .from("auth_security_settings")
-    .select("session_management_enabled, session_idle_timeout_minutes, session_absolute_lifetime_minutes")
-    .eq("id", 1)
-    .maybeSingle();
-  if (sessionSettingsError) {
-    await cleanupCreatedSession(admin, session.accessToken, challengeIdRaw, claimId);
-    return jsonResponse({ error: "LOGIN_UNAVAILABLE" }, 503, allowedOrigin);
-  }
-  if (sessionSettings?.session_management_enabled === true) {
-    const { data: registration, error: registrationError } = await admin.rpc(
-      "register_session_security_state_v2",
-      {
-        p_session_id: jwtClaims.sessionId,
-        p_user_id: claim.userId,
-        p_idle_timeout_minutes: sessionSettings.session_idle_timeout_minutes ?? 480,
-        p_absolute_lifetime_minutes: sessionSettings.session_absolute_lifetime_minutes ?? 1440,
-        p_device_summary: req.headers.get("user-agent")?.slice(0, 200) ?? "unknown",
-        p_ip_hash: ipHash,
-      },
-    );
-    if (registrationError || !registration?.ok) {
-      await cleanupCreatedSession(admin, session.accessToken, challengeIdRaw, claimId);
-      return jsonResponse({ error: "LOGIN_UNAVAILABLE" }, 503, allowedOrigin);
-    }
-  }
+  // Session-security registration is part of the gateway transaction.
 
   await recordLoginConnection(admin, req, jwtClaims.sessionId, claim.userId);
 

@@ -249,7 +249,7 @@ async function restoreTable(
           errors.push({
             row: i + j + 2,
             id: String(row.id ?? row.user_id ?? row.token ?? row.event_key ?? ""),
-            reason: rowError.message?.slice(0, 220) || "خطای بازیابی",
+            reason: "خطای بازیابی",
             code: rowError.code,
           });
         }
@@ -287,12 +287,15 @@ Deno.serve(async (req: Request) => {
       tables[name] = rows as Record<string, unknown>[];
     }
 
+    // A browser export is not a transaction-consistent database snapshot.
+    // Never perform irreversible multi-table deletes over independent HTTP requests.
+    if (payload.strategy === "replace") {
+      return json({ ok: false, error: "TRANSACTIONAL_RESTORE_REQUIRED", rejected_tables: rejectedTables, results: {} });
+    }
     const orderIndex = new Map(RESTORE_ORDER.map((name, index) => [name, index]));
     const sorted = Object.keys(tables).sort((a, b) =>
       (orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER));
     const results: Record<string, TableResult> = {};
-
-    // Read all required reference identities before any destructive operation.
     const userIds = await loadIds(client, "profiles", "user_id");
     const incomplete = () => rejectedTables.length > 0 || Object.keys(tables).length === 0 ||
       Object.keys(tables).some(table => {
@@ -301,37 +304,11 @@ Deno.serve(async (req: Request) => {
           result.failed > 0 || result.skipped > 0 || result.total !== tables[table].length ||
           result.inserted + result.updated !== result.total;
       });
-    if (payload.strategy === "replace" && (rejectedTables.length || !sorted.length ||
-      sorted.some(table => sanitizeRows(table, tables[table], userIds).skipped.length > 0))) {
-      return json({ ok: false, error: "RESTORE_PREFLIGHT_FAILED", rejected_tables: rejectedTables, results });
-    }
-    const deletedTables = new Set<string>();
-    if (payload.strategy === "replace") {
-      for (const table of [...sorted].reverse()) {
-        const pk = TABLE_PK[table] ?? "id";
-        const { error } = await Promise.resolve((client as any).from(table).delete().not(pk, "is", null)).catch(() => ({ error: { message: "DELETE_OUTCOME_UNKNOWN" } }));
-        if (error) {
-          results[table] = {
-            success: false, total: tables[table].length, inserted: 0, updated: 0, skipped: 0, failed: 0,
-            errors: [], deleteError: error.message,
-          };
-          // Stop before deleting any more tables after a failed or ambiguous delete.
-          break;
-        }
-        deletedTables.add(table);
-      }
-    }
-
-    {
-      for (const table of sorted) {
-        // Restore every table already cleared, even after a later delete failed.
-        if (payload.strategy === "replace" && !deletedTables.has(table)) continue;
-        try { results[table] = await restoreTable(client, table, tables[table], userIds); }
-        catch {
-          results[table] = { success: false, total: tables[table].length, inserted: 0, updated: 0, skipped: 0,
-            failed: tables[table].length, errors: [{ row: 0, id: "", reason: "RESTORE_OUTCOME_UNKNOWN" }] };
-          // Continue recovery of other tables already cleared.
-        }
+    for (const table of sorted) {
+      try { results[table] = await restoreTable(client, table, tables[table], userIds); }
+      catch {
+        results[table] = { success: false, total: tables[table].length, inserted: 0, updated: 0, skipped: 0,
+          failed: tables[table].length, errors: [{ row: 0, id: "", reason: "RESTORE_OUTCOME_UNKNOWN" }] };
       }
     }
 
@@ -344,6 +321,6 @@ Deno.serve(async (req: Request) => {
       results,
     });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "RESTORE_FAILED" }, 500);
+    return json({ error: "RESTORE_FAILED" }, 500);
   }
 });

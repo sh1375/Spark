@@ -77,7 +77,8 @@ describe('Phase 5E-D2 — Verify Phone OTP Edge Function V2', () => {
   });
 
   it('body byte limit is 2048', () => {
-    assert.ok(/MAX_BODY_BYTES\s*=\s*2048/.test(funcSrc), 'must set MAX_BODY_BYTES to 2048');
+    assert.ok(/PHONE_OTP_MAX_BODY_BYTES\s*=\s*2048/.test(readFileSync(join(functionsDir, '_shared', 'phoneOtpLoginV2.ts'), 'utf8')), 'must set shared MAX_BODY_BYTES to 2048');
+    assert.ok(/PHONE_OTP_MAX_BODY_BYTES as MAX_BODY_BYTES/.test(funcSrc), 'must import shared limit');
   });
 
   it('only accepts POST', () => {
@@ -102,7 +103,8 @@ describe('Phase 5E-D2 — Verify Phone OTP Edge Function V2', () => {
   });
 
   it('phone raw length is 1..32', () => {
-    assert.ok(/MAX_RAW_PHONE_LEN\s*=\s*32/.test(funcSrc), 'must set max raw phone len to 32');
+    assert.ok(/PHONE_OTP_MAX_RAW_PHONE_LEN\s*=\s*32/.test(readFileSync(join(functionsDir, '_shared', 'phoneOtpLoginV2.ts'), 'utf8')), 'must set shared max raw phone len to 32');
+    assert.ok(/PHONE_OTP_MAX_RAW_PHONE_LEN as MAX_RAW_PHONE_LEN/.test(funcSrc), 'must import shared limit');
     assert.ok(/phoneRaw\.length\s*===\s*0\s*\|\|\s*phoneRaw\.length\s*>\s*MAX_RAW_PHONE_LEN/.test(funcSrc),
       'must validate phone length 1..32');
   });
@@ -291,8 +293,8 @@ describe('Phase 5E-D2 — Verify Phone OTP Edge Function V2', () => {
     assert.ok(!/validatedSessionId/.test(funcSrc), 'must not have validatedSessionId variable');
   });
 
-  it('gateway RPC is authorize_phone_otp_gateway_session_v1 with six parameters', () => {
-    assert.ok(/authorize_phone_otp_gateway_session_v1/.test(funcSrc), 'must call gateway RPC');
+  it('gateway RPC is authorize_phone_otp_gateway_session_v2 with session registration in the same transaction', () => {
+    assert.ok(/authorize_phone_otp_gateway_session_v2/.test(funcSrc), 'must call gateway RPC');
     assert.ok(/p_session_id/.test(funcSrc), 'must pass p_session_id');
     assert.ok(/p_user_id/.test(funcSrc), 'must pass p_user_id');
     assert.ok(/p_challenge_id/.test(funcSrc), 'must pass p_challenge_id');
@@ -329,7 +331,7 @@ describe('Phase 5E-D2 — Verify Phone OTP Edge Function V2', () => {
 
   it('gateway throw triggers reconciliation via helper', () => {
     assert.ok(/reconcileGateway/.test(funcSrc), 'must wire reconcileGateway to helper');
-    assert.ok(/reconcile_phone_otp_gateway_session_v1/.test(funcSrc), 'must call reconciliation RPC');
+    assert.ok(/reconcile_phone_otp_gateway_session_v2/.test(funcSrc), 'must call reconciliation RPC');
   });
 
   it('reconciliation success leads to token response', () => {

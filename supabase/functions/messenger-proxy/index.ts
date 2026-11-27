@@ -97,6 +97,9 @@ function validateWebhookUrl(channel: Channel, params: any) {
 
   const allowedPath = ALLOWED_WEBHOOK_PATHS[channel];
 
+  if (webhookUrl.username || webhookUrl.password || webhookUrl.search || webhookUrl.hash) {
+    return { ok: false as const, status: 400, description: "Webhook URL must be a clean endpoint" };
+  }
   if (webhookUrl.protocol !== 'https:') {
     return {
       ok: false as const,
@@ -129,6 +132,11 @@ function validateWebhookUrl(channel: Channel, params: any) {
   };
 }
 
+async function baleWebhookProof(secret: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("spark:bale:webhook:v1:" + secret));
+  return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', {
@@ -156,7 +164,8 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    const { channel, method, params } = payload ?? {};
+    const { channel, method } = payload ?? {};
+    let params = payload?.params;
 
     if (!isValidChannel(channel)) {
       return json({
@@ -230,7 +239,7 @@ Deno.serve(async (req) => {
 
     const { data: cfg, error: cfgErr } = await admin
       .from('social_channel_configs')
-      .select('bot_token, ext_supabase_url, ext_supabase_service_key')
+      .select('bot_token, ext_supabase_url, ext_supabase_service_key, webhook_secret')
       .eq('channel', channel)
       .maybeSingle();
 
@@ -256,6 +265,16 @@ Deno.serve(async (req) => {
           ok: false,
           description: validation.description,
         }, validation.status);
+      }
+      const secret = (channel === "telegram" ? Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || cfg?.webhook_secret : cfg?.webhook_secret)?.trim();
+      if (!secret) return json({ ok: false, description: "WEBHOOK_SECRET_REQUIRED" }, 400);
+      // Bale documents only the URL parameter, not Telegram's secret-token header.
+      if (channel === "bale") {
+        const target = new URL(params.url);
+        target.searchParams.set("proof", await baleWebhookProof(secret));
+        params = { url: target.toString() };
+      } else {
+        params = { ...params, secret_token: secret };
       }
     }
 
@@ -373,7 +392,7 @@ Deno.serve(async (req) => {
       console.error('messenger upstream fetch error:', {
         channel,
         method,
-        error: safeErrorMessage(e),
+        error: "UPSTREAM_FETCH_FAILED",
       });
 
       return json({
@@ -395,6 +414,24 @@ Deno.serve(async (req) => {
       };
     }
 
+    if (method === "setWebhook" || method === "getWebhookInfo") {
+      const value = upstreamData as { ok?: boolean; result?: unknown } | null;
+      if (!upstream.ok || value?.ok !== true) {
+        return json({ ok: false, description: "WEBHOOK_PROVIDER_FAILED", upstream_status: upstream.status }, 502);
+      }
+      if (method === "setWebhook") return json({ ok: true, result: value.result === true }, 200);
+      const result = value.result;
+      if (result && typeof result === "object" && !Array.isArray(result)) {
+        const info = result as Record<string, unknown>;
+        let safeUrl = "";
+        if (typeof info.url === "string" && info.url) {
+          try { const url = new URL(info.url); safeUrl = url.origin + url.pathname; } catch { /* omit invalid URL */ }
+        }
+        return json({ ok: true, result: { url: safeUrl, pending_update_count: info.pending_update_count,
+          last_error_date: info.last_error_date, has_custom_certificate: info.has_custom_certificate } });
+      }
+      return json({ ok: false, description: "WEBHOOK_INFO_INVALID" }, 502);
+    }
     if (!upstream.ok) {
       return json({
         ok: false,
@@ -406,7 +443,7 @@ Deno.serve(async (req) => {
 
     return json(upstreamData, 200);
   } catch (e) {
-    console.error('messenger-proxy error:', safeErrorMessage(e));
+    console.error('messenger-proxy error');
 
     return json({
       ok: false,

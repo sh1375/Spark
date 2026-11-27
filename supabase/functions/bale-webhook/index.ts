@@ -3,6 +3,18 @@ import { createClient } from "jsr:@supabase/supabase-js@2.111.0";
 
 const ok = () => new Response("OK", { status: 200 });
 
+function matchesProof(expected: string, supplied: string | null): boolean {
+  if (!expected || supplied === null || supplied.length !== expected.length) return false;
+  let difference = 0;
+  for (let i = 0; i < expected.length; i++) difference |= expected.charCodeAt(i) ^ supplied.charCodeAt(i);
+  return difference === 0;
+}
+
+async function baleWebhookProof(secret: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("spark:bale:webhook:v1:" + secret));
+  return Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, "0")).join("");
+}
+
 Deno.serve(async (req: Request) => {
   try {
     if (req.method === "OPTIONS") return new Response(null, { status: 200 });
@@ -18,7 +30,7 @@ Deno.serve(async (req: Request) => {
     const msg = update.message ?? update.edited_message;
     const chatId: number | undefined = msg?.chat?.id;
     const text: string = (msg?.text ?? "").trim();
-    if (!chatId || !text.startsWith("/start")) return ok();
+    if (!chatId || !/^\/start(?:@\w+)?(?:[\s=]|$)/i.test(text)) return ok();
 
     const startMatch = text.match(/^\/start(?:@\w+)?(?:[\s=]+(\S+))?/i);
     const linkToken: string | null = startMatch?.[1] ?? null;
@@ -34,20 +46,23 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    // Self-hosted installs may configure the bot through the admin panel only,
-    // as the other Bale senders do. Read credentials server-side, never from updates.
-    if (!botToken) {
-      const { data: config, error: configError } = await supabase
-        .from("social_channel_configs")
-        .select("bot_token, is_active")
-        .eq("channel", "bale")
-        .maybeSingle();
-      if (configError) {
-        console.error("[bale-webhook] Bale channel configuration unavailable");
-        return ok();
-      }
-      if (config?.is_active === true) botToken = (config.bot_token ?? "").trim();
+    const { data: config, error: configError } = await supabase
+      .from("social_channel_configs")
+      .select("bot_token, is_active, webhook_secret")
+      .eq("channel", "bale")
+      .maybeSingle();
+    if (configError) {
+      console.error("[bale-webhook] Bale channel configuration unavailable");
+      return new Response("Unavailable", { status: 503 });
     }
+    if (!config?.is_active) return new Response("Inactive", { status: 403 });
+    const secret = (config.webhook_secret ?? "").trim();
+    if (!secret) return new Response("Unavailable", { status: 503 });
+    const proofs = new URL(req.url).searchParams.getAll("proof");
+    if (proofs.length !== 1 || !matchesProof(await baleWebhookProof(secret), proofs[0])) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    if (!botToken) botToken = (config.bot_token ?? "").trim();
     if (!botToken) {
       console.error("[bale-webhook] BALE_BOT_TOKEN not configured and no active channel token available");
       return ok();

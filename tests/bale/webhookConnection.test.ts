@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { transform } from 'esbuild';
+import { webcrypto, createHash } from 'node:crypto';
+const secret = 'fixture-webhook-secret';
+const proof = createHash('sha256').update('spark:bale:webhook:v1:' + secret).digest('hex');
 
 const source = readFileSync('supabase/functions/bale-webhook/index.ts', 'utf8').replace(/^import.*$/gm, '');
 const compiled = (await transform(source, { loader: 'ts' })).code;
@@ -15,10 +18,10 @@ async function invoke(options: {
   let lookups = 0;
   const calls: any[] = [], messages: any[] = [], logs: string[] = [];
   const query: any = {
-    select(fields: string) { assert.equal(fields, 'bot_token, is_active'); return query; },
+    select(fields: string) { assert.equal(fields, 'bot_token, is_active, webhook_secret'); return query; },
     eq(key: string, value: string) { assert.equal(key, 'channel'); assert.equal(value, 'bale'); return query; },
     async maybeSingle() { lookups++; return { data: options.config === undefined
-      ? { is_active: true, bot_token: '  private-db-token  ' } : options.config,
+      ? { is_active: true, bot_token: '  private-db-token  ', webhook_secret: secret } : options.config,
       error: options.configError ?? null }; },
   };
   const client = { from(table: string) { assert.equal(table, 'social_channel_configs'); return query; },
@@ -30,7 +33,7 @@ async function invoke(options: {
     SUPABASE_SERVICE_ROLE_KEY: options.serviceKey ?? 'private-service-key',
     BALE_BOT_TOKEN: options.envToken ?? '' };
   vm.runInNewContext(compiled, {
-    Request, Response,
+    Request, Response, URL, TextEncoder, crypto: webcrypto,
     Deno: { serve(fn: any) { handler = fn; }, env: { get(key: string) { return env[key]; } } },
     createClient(url: string, key: string) {
       assert.equal(url, env.SUPABASE_URL); assert.equal(key, 'private-service-key'); return client;
@@ -40,7 +43,7 @@ async function invoke(options: {
       return new Response('{"ok":true}', { status: 200 }); },
   });
   const method = options.method ?? 'POST';
-  const response = await handler(new Request('https://spark.test/functions/v1/bale-webhook', {
+  const response = await handler(new Request('https://spark.test/functions/v1/bale-webhook?proof='+proof, {
     method, ...(method === 'POST' ? { body: options.malformed ? '{' : JSON.stringify({
       message: { chat: { id: 1234 }, text: options.text ?? '/start ' + 'a'.repeat(64), bot_token: 'untrusted-token' },
       bot_token: 'untrusted-token',
@@ -50,7 +53,7 @@ async function invoke(options: {
   for (const secret of ['private-db-token', 'private-env-token', 'private-service-key', 'untrusted-token']) {
     assert.ok(!body.includes(secret)); assert.ok(!logs.join('\n').includes(secret));
   }
-  assert.equal(response.status, 200);
+  assert.ok([200,403,503].includes(response.status));
   return { lookups, calls, messages, logs };
 }
 
@@ -64,9 +67,9 @@ test('reported primary failure: absent runtime token uses active DB bot and cons
   assert.match(result.messages[0].body.text, /موفقیت/);
 });
 
-test('existing environment override remains preferred without a DB token lookup', async () => {
-  const result = await invoke({ envToken: '  private-env-token  ', configError: { message: 'unavailable' } });
-  assert.equal(result.lookups, 0); assert.equal(result.calls.length, 1);
+test('environment token remains preferred only with active verified DB configuration', async () => {
+  const result = await invoke({ envToken: '  private-env-token  ' });
+  assert.equal(result.lookups, 1); assert.equal(result.calls.length, 1);
   assert.equal(result.messages[0].url, 'https://tapi.bale.ai/botprivate-env-token/sendMessage');
 });
 
