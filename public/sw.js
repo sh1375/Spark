@@ -1,5 +1,5 @@
-const STATIC_CACHE = 'spark-static-v13';
-const RUNTIME_CACHE = 'spark-runtime-v13';
+const STATIC_CACHE = 'spark-static-v14';
+const RUNTIME_CACHE = 'spark-runtime-v14';
 
 const STATIC_ASSETS = [
   '/',
@@ -12,8 +12,9 @@ const STATIC_ASSETS = [
   '/fonts/mobile/IRANSans-Web-Medium.woff2',
   '/fonts/mobile/Awesome-Web.woff2',
   '/fonts/mobile/Mobmenu.woff2',
-  '/fonts/web/IranYekan-Web-Regular-FaNum.woff',
-  '/fonts/web/Iran-Yekan-Web-Bold-FaNum.woff',
+  '/fonts/web/IranYekanX-Medium.woff2',
+  '/fonts/web/IranYekanX-Bold.woff2',
+  '/fonts/web/IranYekanX-Black.woff2',
   '/fonts/web/Fa-Solid-900.woff2',
 ];
 
