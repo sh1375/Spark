@@ -2,7 +2,6 @@ import { UnreadBadge, unreadLabel } from '../../../features/messaging/UnreadBadg
 import { useMessageUnreadCounts } from '../../../features/messaging/messageUnreadCounts';
 import { PRIMARY_NAVIGATION_ITEMS } from '../navigationMenu';
 import {
-  Menu,
   Settings,
   Download,
 } from 'lucide-react';
@@ -102,7 +101,7 @@ export function LayoutTopBar({
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {mobileNavigation && (
             <button type="button" onClick={onOpenMobileMenu} className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700" aria-label={unread > 0 ? `باز کردن منوی اصلی، ${unreadLabel(unread)}` : "باز کردن منوی اصلی"} aria-haspopup="dialog">
-              <Menu className="h-5 w-5" />
+              <span aria-hidden="true" className="spark-font-icon spark-font-icon--mobile-menu text-lg">{'\uf0c9'}</span>
               <UnreadBadge count={unread} className="absolute end-0 top-0" />
             </button>
           )}

@@ -36,7 +36,7 @@ export const MeetingShareCard = forwardRef<HTMLDivElement, MeetingShareCardProps
 
     return (
       <div style={{ position: 'fixed', top: '-9999px', left: '-9999px', zIndex: -1 }}>
-        <div ref={ref} style={{ width: 380, backgroundColor: '#ffffff', fontFamily: 'Vazirmatn, system-ui, sans-serif', direction: 'rtl', borderRadius: 20, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 14px 40px rgba(15,23,42,0.12)' }}>
+        <div ref={ref} style={{ width: 380, backgroundColor: '#ffffff', fontFamily: 'var(--spark-font-ui)', direction: 'rtl', borderRadius: 20, overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 14px 40px rgba(15,23,42,0.12)' }}>
           <div style={{ height: 5, background: 'linear-gradient(90deg, #8b5cf6 0%, #6366f1 25%, #06b6d4 50%, #10b981 75%, #f59e0b 100%)' }} />
 
           <div style={{ padding: '18px 20px 14px', backgroundColor: '#ffffff' }}>
