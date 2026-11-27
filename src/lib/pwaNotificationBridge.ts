@@ -92,21 +92,41 @@ async function ensurePushSubscription(userId: string): Promise<boolean> {
         ? 'کلید ارسال Push روی سرور تنظیم نشده است؛ اعلان هنگام بازبودن برنامه فعال است.'
         : 'ثبت اعلان پس‌زمینه ناموفق بود؛ اعلان هنگام بازبودن برنامه فعال است.');
       const key = serverKey(data.publicKey);
-      let subscription = await worker.pushManager.getSubscription();
+      let subscription = await withTimeout(worker.pushManager.getSubscription());
       if (!current()) return false;
       if (subscription?.options.applicationServerKey) {
         const old = new Uint8Array(subscription.options.applicationServerKey);
-        if (old.length !== key.length || old.some((value, index) => value !== key[index])) { await subscription.unsubscribe(); subscription = null; }
+        if (old.length !== key.length || old.some((value, index) => value !== key[index])) { await withTimeout(subscription.unsubscribe()); subscription = null; }
       }
-      subscription ??= await worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource });
+      subscription ??= await withTimeout(worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource }));
       if (!current()) return false;
-      const serialized = subscription.toJSON();
-      if (!serialized.keys?.p256dh || !serialized.keys.auth) throw new Error('اشتراک اعلان مرورگر ناقص است.');
-      const { error: saveError } = await withTimeout(pushClient.rpc('upsert_my_pwa_push_subscription', {
-        p_endpoint: subscription.endpoint, p_p256dh: serialized.keys.p256dh,
-        p_auth_key: serialized.keys.auth, p_user_agent: navigator.userAgent,
-      }));
+      const save = async (candidate: PushSubscription) => {
+        const serialized = candidate.toJSON();
+        if (!serialized.keys?.p256dh || !serialized.keys.auth) throw new Error('Invalid push subscription keys');
+        return withTimeout(pushClient.rpc('upsert_my_pwa_push_subscription', {
+          p_endpoint: candidate.endpoint, p_p256dh: serialized.keys.p256dh,
+          p_auth_key: serialized.keys.auth, p_user_agent: navigator.userAgent,
+        }));
+      };
+      let { error: saveError } = await save(subscription);
       if (!current()) return false;
+      // An endpoint owned by another account must never be reassigned. Rotate only
+      // on the explicit server conflict and never on a generic authorization error.
+      const conflict = saveError as { code?: string; message?: string } | null;
+      if (conflict?.code === '42501' && conflict.message === 'PWA_PUSH_ENDPOINT_OWNERSHIP_CONFLICT') {
+        const previousEndpoint = subscription.endpoint;
+        const latest = await withTimeout(worker.pushManager.getSubscription());
+        if (!current()) return false;
+        if (latest && latest.endpoint === previousEndpoint) await withTimeout(latest.unsubscribe());
+        if (!current()) return false;
+        subscription = await withTimeout(worker.pushManager.getSubscription());
+        if (!current()) return false;
+        subscription ??= await withTimeout(worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource }));
+        if (!current()) return false;
+        if (subscription.endpoint === previousEndpoint) throw new Error('Push endpoint rotation did not complete');
+        ({ error: saveError } = await save(subscription));
+        if (!current()) return false;
+      }
       if (saveError) throw saveError;
       pushReady = true; emit('ready'); return true;
     } catch (error) {

@@ -23,6 +23,10 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Method not allowed" }, 405);
   }
 
+  const expectedSecret = (Deno.env.get("TELEGRAM_WEBHOOK_SECRET") ?? "").trim();
+  if (expectedSecret && req.headers.get("x-telegram-bot-api-secret-token") !== expectedSecret) {
+    return json({ error: "Unauthorized webhook" }, 401);
+  }
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -44,9 +48,9 @@ Deno.serve(async (req: Request) => {
     return json({ ok: false, error: "Invalid JSON body" }, 400);
   }
 
-  const message = update?.message ?? update?.callback_query?.message;
-  const chatId = message?.chat?.id ?? update?.callback_query?.from?.id;
-  const text = (message?.text ?? "").trim();
+  const message = update?.message;
+  const chatId = message?.chat?.id;
+  const text = typeof message?.text === "string" ? message.text.trim() : "";
 
   try {
     await supabase.from("audit_logs").insert({
@@ -60,25 +64,15 @@ Deno.serve(async (req: Request) => {
     // Non-critical
   }
 
-  if (text?.startsWith("/start")) {
+  if (message?.chat?.type === "private" && /^\/start(?:@\w+)?(?:\s|$)/i.test(text)) {
     const linkToken = text.split(" ")[1]?.trim();
 
     if (linkToken && chatId) {
-      // ── Secure token lookup ──────────────────────────────────────────────────
-      // Tokens are cryptographically random 32-hex-char strings stored in
-      // telegram_link_tokens. We never accept raw user UUIDs as linking tokens.
-      const now = new Date().toISOString();
-
-      const { data: tokenRow, error: tokenErr } = await supabase
-        .from("telegram_link_tokens")
-        .select("id, user_id")
-        .eq("token", linkToken)
-        .eq("used", false)
-        .gt("expires_at", now)
-        .maybeSingle();
-
-      if (tokenErr || !tokenRow) {
-        // Token invalid, expired, already used, or not found — refuse to link
+      // One database transaction claims the nonce and links the active profile.
+      const { data: consumed, error: consumeErr } = await supabase.rpc(
+        "consume_telegram_link_token_service", { p_token: linkToken, p_chat_id: String(chatId) },
+      );
+      if (consumeErr || consumed?.ok !== true) {
         await sendTelegramMessage(
           channelConfig.bot_token,
           chatId,
@@ -87,25 +81,7 @@ Deno.serve(async (req: Request) => {
         return json({ ok: true });
       }
 
-      // Fetch the user's display name for the confirmation message
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("user_id", tokenRow.user_id)
-        .maybeSingle();
-
-      // Mark the token as used (single-use)
-      await supabase
-        .from("telegram_link_tokens")
-        .update({ used: true })
-        .eq("id", tokenRow.id);
-
-      // Link Telegram chat ID to the user
-      await supabase
-        .from("profiles")
-        .update({ telegram_chat_id: String(chatId) })
-        .eq("user_id", tokenRow.user_id);
-
+      const profile = consumed;
       await sendTelegramMessage(
         channelConfig.bot_token,
         chatId,

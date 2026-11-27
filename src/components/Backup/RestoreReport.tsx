@@ -38,6 +38,7 @@ export function RestoreReport(props: {
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" />ناموفق</span>
         </div>
       </div>
+      <p className="text-xs text-gray-500">تعداد درج و به‌روزرسانی برآوردی است؛ گزارش جایگزین بررسی صحت داده‌ها نیست.</p>
       {Object.entries(report).map(([key, r]) => (
         <div key={key} className="rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
           <button

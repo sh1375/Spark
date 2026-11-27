@@ -85,15 +85,25 @@ function RestorePanel() {
       const tables: DataMap = {};
       selected.forEach(k => { tables[k] = data[k] ?? []; });
       const { data: result, error } = await supabase.functions.invoke('restore-backup', { body: { tables, strategy } });
-      if (error || result?.ok !== true) throw new Error(result?.error || error?.message || 'RESTORE_FAILED');
+      if (error || !result || typeof result.results !== 'object' || !result.results || Array.isArray(result.results)) {
+        throw new Error(result?.error || error?.message || 'RESTORE_FAILED');
+      }
       const r = (result.results ?? {}) as Record<string, RestoreReportEntry>;
       setReport(r);
-      setStatus(Object.fromEntries([...selected].map(k => [k, r[k]?.success ? 'done' : 'error'])) as Record<string, Status>);
-      const failed = Object.values(r).reduce((n, x) => n + Number(x?.failed ?? 0), 0);
-      const skipped = Object.values(r).reduce((n, x) => n + Number(x?.skipped ?? 0), 0);
-      if (failed) toast.error(`بازیابی پایان یافت؛ ${failed.toLocaleString('fa-IR')} ردیف ناموفق`);
-      else if (skipped) toast.success(`بازیابی انجام شد؛ ${skipped.toLocaleString('fa-IR')} ردیف ناسازگار رد شد`);
-      else toast.success('بازیابی با موفقیت انجام شد');
+      const complete = (k: string) => {
+        const entry = r[k];
+        return Boolean(entry && entry.success === true && !entry.deleteError &&
+          entry.failed === 0 && entry.skipped === 0 && entry.total === tables[k].length &&
+          (entry.inserted ?? 0) + (entry.updated ?? 0) === entry.total);
+      };
+      setStatus(Object.fromEntries([...selected].map(k => [k, complete(k) ? 'done' : 'error'])) as Record<string, Status>);
+      const rejected = Array.isArray(result.rejected_tables) ? result.rejected_tables.length : 0;
+      const incomplete = [...selected].filter(k => !complete(k)).length;
+      if (result.ok !== true || rejected || incomplete) {
+        toast.error('بازیابی ناقص است. گزارش جداول را بررسی کنید.');
+      } else {
+        toast.success('بازیابی با موفقیت انجام شد');
+      }
     } catch (err) {
       toast.error(`خطا در بازیابی: ${err instanceof Error ? err.message : 'نامشخص'}`);
       setStatus(Object.fromEntries([...selected].map(k => [k, 'error' as Status])));
@@ -145,6 +155,11 @@ export function BackupPanel() {
       setProgress({ done: ++done, total: selected.size });
     }
     try {
+      // Never export a partial result using the normal full-backup filename.
+      if (failures) {
+        toast.error('پشتیبان ناقص است؛ هیچ فایل پشتیبانی ذخیره نشد.');
+        return;
+      }
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const counts = Object.fromEntries(Object.entries(result).map(([k, v]) => [k, v.length]));
       const total = Object.values(counts).reduce((a, b) => a + b, 0);

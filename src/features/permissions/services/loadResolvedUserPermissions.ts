@@ -2,21 +2,19 @@ import { supabase } from '../../../lib/supabase';
 
 /**
  * Loads and resolves effective permissions for a non-admin user.
- * Returns `null` for full access (when a group grants `all`),
- * otherwise a merged record of granted permission keys.
+ * Returns the visible exact-key grants using the database precedence.
+ * Browser-visible rows are not proof of complete authorization.
  * Rejects if a required query fails.
  *
- * Precedence (later sources override earlier):
- *   1. Legacy user-group permissions
- *   2. Organization-level permissions (by primary position level)
- *   3. Position-level overrides
+ * Precedence: explicit position override, otherwise group OR level grant.
+ * The key all is an ordinary exact key, not a wildcard.
  *
  * Network work is intentionally performed in two parallel phases instead of
  * a serial chain, while preserving the exact permission precedence above.
  */
 export async function loadResolvedUserPermissions(
   userId: string,
-): Promise<Record<string, boolean> | null> {
+): Promise<Record<string, boolean>> {
   // Phase 1: membership sources are independent and can be resolved together.
   const [membershipsResult, primaryMemberResult] = await Promise.all([
     supabase
@@ -45,7 +43,7 @@ export async function loadResolvedUserPermissions(
     groupIds.length > 0
       ? supabase.from('user_groups').select('permissions').in('id', groupIds)
       : Promise.resolve({ data: [] as Array<{ permissions: unknown }>, error: null }),
-    posLevel
+    posLevel != null
       ? supabase.from('org_level_permissions').select('permission_key, granted').eq('level', posLevel)
       : Promise.resolve({ data: [] as Array<{ permission_key: string; granted: boolean }>, error: null }),
     positionId
@@ -63,7 +61,6 @@ export async function loadResolvedUserPermissions(
 
   for (const g of (groupsResult.data || [])) {
     const permissions = (g.permissions || {}) as Record<string, boolean>;
-    if (permissions.all) return null;
     Object.entries(permissions).forEach(([key, granted]) => {
       if (granted) merged[key] = true;
     });
@@ -71,7 +68,6 @@ export async function loadResolvedUserPermissions(
 
   for (const permission of (levelPermsResult.data || [])) {
     if (permission.granted) merged[permission.permission_key] = true;
-    else delete merged[permission.permission_key];
   }
 
   for (const permission of (posPermsResult.data || [])) {

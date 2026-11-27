@@ -177,9 +177,9 @@ type TableResult = {
 
 async function loadIds(client: ReturnType<typeof adminClient>, table: string, col = "id"): Promise<Set<string>> {
   const ids = new Set<string>();
-  const pageSize = 5000;
+  const pageSize = 500;
   for (let page = 0; ; page++) {
-    const { data, error } = await (client as any).from(table).select(col).range(page * pageSize, (page + 1) * pageSize - 1);
+    const { data, error } = await (client as any).from(table).select(col).order(col, { ascending: true }).range(page * pageSize, (page + 1) * pageSize - 1);
     if (error) throw error;
     for (const row of data ?? []) if (row[col] != null) ids.add(String(row[col]));
     if (!data || data.length < pageSize) break;
@@ -276,14 +276,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload = await req.json() as { tables?: Record<string, unknown[]>; strategy?: "upsert" | "replace" };
-    if (!payload.tables || typeof payload.tables !== "object") return json({ error: "INVALID_PAYLOAD" }, 400);
+    if (!payload.tables || typeof payload.tables !== "object" || Array.isArray(payload.tables)) return json({ error: "INVALID_PAYLOAD" }, 400);
     if (payload.strategy !== "upsert" && payload.strategy !== "replace") return json({ error: "INVALID_STRATEGY" }, 400);
 
     const tables: Record<string, Record<string, unknown>[]> = {};
     const rejectedTables: string[] = [];
     for (const [name, rows] of Object.entries(payload.tables)) {
       if (!ALLOWED_TABLES.has(name)) { rejectedTables.push(name); continue; }
-      if (!Array.isArray(rows)) return json({ error: "INVALID_TABLE_ROWS", table: name }, 400);
+      if (!Array.isArray(rows) || rows.some(row => !row || typeof row !== "object" || Array.isArray(row))) return json({ error: "INVALID_TABLE_ROWS", table: name }, 400);
       tables[name] = rows as Record<string, unknown>[];
     }
 
@@ -292,27 +292,53 @@ Deno.serve(async (req: Request) => {
       (orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER));
     const results: Record<string, TableResult> = {};
 
+    // Read all required reference identities before any destructive operation.
+    const userIds = await loadIds(client, "profiles", "user_id");
+    const incomplete = () => rejectedTables.length > 0 || Object.keys(tables).length === 0 ||
+      Object.keys(tables).some(table => {
+        const result = results[table];
+        return !result || result.success !== true || !!result.deleteError ||
+          result.failed > 0 || result.skipped > 0 || result.total !== tables[table].length ||
+          result.inserted + result.updated !== result.total;
+      });
+    if (payload.strategy === "replace" && (rejectedTables.length || !sorted.length ||
+      sorted.some(table => sanitizeRows(table, tables[table], userIds).skipped.length > 0))) {
+      return json({ ok: false, error: "RESTORE_PREFLIGHT_FAILED", rejected_tables: rejectedTables, results });
+    }
+    const deletedTables = new Set<string>();
     if (payload.strategy === "replace") {
       for (const table of [...sorted].reverse()) {
         const pk = TABLE_PK[table] ?? "id";
-        const { error } = await (client as any).from(table).delete().not(pk, "is", null);
+        const { error } = await Promise.resolve((client as any).from(table).delete().not(pk, "is", null)).catch(() => ({ error: { message: "DELETE_OUTCOME_UNKNOWN" } }));
         if (error) {
           results[table] = {
             success: false, total: tables[table].length, inserted: 0, updated: 0, skipped: 0, failed: 0,
             errors: [], deleteError: error.message,
           };
+          // Stop before deleting any more tables after a failed or ambiguous delete.
+          break;
+        }
+        deletedTables.add(table);
+      }
+    }
+
+    {
+      for (const table of sorted) {
+        // Restore every table already cleared, even after a later delete failed.
+        if (payload.strategy === "replace" && !deletedTables.has(table)) continue;
+        try { results[table] = await restoreTable(client, table, tables[table], userIds); }
+        catch {
+          results[table] = { success: false, total: tables[table].length, inserted: 0, updated: 0, skipped: 0,
+            failed: tables[table].length, errors: [{ row: 0, id: "", reason: "RESTORE_OUTCOME_UNKNOWN" }] };
+          // Continue recovery of other tables already cleared.
         }
       }
     }
 
-    const userIds = await loadIds(client, "profiles", "user_id");
-    for (const table of sorted) {
-      if (results[table]?.deleteError) continue;
-      results[table] = await restoreTable(client, table, tables[table], userIds);
-    }
-
     return json({
-      ok: true,
+      ok: !incomplete(),
+      ...(incomplete() ? { error: "RESTORE_INCOMPLETE" } : {}),
+      counts_estimated: true,
       backup_schema_version: 3,
       rejected_tables: rejectedTables,
       results,

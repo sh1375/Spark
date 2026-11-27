@@ -7,10 +7,10 @@ const source=readFileSync('supabase/functions/minutes-attachment-cleanup/index.t
 const {code}=await transform(source,{loader:'ts'});
 async function invoke(storageError){
  let handler, deletes=0, removed=0;
- const client={from(table){
+ const client={async rpc(name){assert.equal(name,"claim_stale_minutes_attachments_service");return {data:[{id:"fixture-id",storage_path:"fixture-path"}],error:null};},from(table){
   if(table==='profiles'){const q={select(){return q;},eq(){return q;},async maybeSingle(){return {data:{is_admin:true,is_active:true},error:null};}};return q;}
   assert.equal(table,'minutes_attachments');
-  const q={select(){return q;},eq(){return q;},async lt(){return {data:[{id:'fixture-id',storage_path:'fixture-path'}],error:null};},delete(){deletes++;return q;},async in(){return {error:null};}};
+  const q={async select(){return {data:[{id:"fixture-id"}],error:null};},eq(key,value){assert.equal(key,"upload_status");assert.equal(value,"cleanup_claimed");return q;},delete(){deletes++;return q;},in(){return q;}};
   return q;
  },storage:{from(bucket){assert.equal(bucket,'minutes-attachments');return {async remove(paths){assert.equal(paths.length,1);removed++;return {error:storageError?{message:'synthetic storage failure'}:null};}};}}};
  vm.runInNewContext(code,{Request,Response,Date,createClient(){return client;},Deno:{serve(fn){handler=fn;},env:{get(){return 'fixture';}}},

@@ -51,14 +51,15 @@ Deno.serve(async (req: Request) => {
   } catch {
     body = {};
   }
-  const maxAgeHours = body.max_age_hours ?? 24;
+  const maxAgeHours = body?.max_age_hours ?? 24;
+  if (!Number.isInteger(maxAgeHours) || maxAgeHours < 24 || maxAgeHours > 87600) {
+    return json({ error: "INVALID_CLEANUP_AGE" }, 400);
+  }
 
-  // 1. Fetch pending attachments older than threshold
-  const { data: orphans, error: fetchErr } = await adminClient
-    .from("minutes_attachments")
-    .select("id,storage_path")
-    .eq("upload_status", "pending_upload")
-    .lt("created_at", new Date(Date.now() - maxAgeHours * 3600 * 1000).toISOString());
+  // Atomically reserve and mark stale rows before touching Storage.
+  const { data: orphans, error: fetchErr } = await adminClient.rpc(
+    "claim_stale_minutes_attachments_service", { p_max_age_hours: maxAgeHours },
+  );
 
   if (fetchErr) {
     return json({ error: "fetch_failed" }, 500);
@@ -78,14 +79,16 @@ Deno.serve(async (req: Request) => {
 
   // 3. Delete DB records
   const ids = orphans.map((o: { id: string }) => o.id);
-  const { error: delErr } = await adminClient
+  const { data: deleted, error: delErr } = await adminClient
     .from("minutes_attachments")
     .delete()
-    .in("id", ids);
+    .in("id", ids)
+    .eq("upload_status", "cleanup_claimed")
+    .select("id");
 
   if (delErr) {
     return json({ error: "delete_records_failed", deleted_objects: deletedObjects }, 500);
   }
 
-  return json({ deleted_records: ids.length, deleted_objects: deletedObjects });
+  return json({ deleted_records: deleted?.length ?? 0, deleted_objects: deletedObjects });
 });

@@ -8,6 +8,9 @@ begin
   foreach v_signature in array array[
     'public._create_minutes_notification(uuid, text, text, text, text, uuid, uuid, integer, uuid, jsonb, text)',
     'public._get_minute_notif_context(uuid)',
+    'public._has_permission(uuid, text)',
+    'public._minutes_user_belongs_to_meeting(uuid, uuid)',
+    'public._minutes_user_exists(uuid)',
     'public._sync_minutes_decisions_legacy_periodic_v1(uuid, jsonb, uuid[])',
     'public._write_minutes_audit(uuid, text, text, uuid, integer, jsonb, jsonb, jsonb)',
     'public.admin_revoke_user_session(uuid, uuid, uuid, text)',
@@ -94,6 +97,7 @@ begin
     'public.get_phone_auth_identity_state_v1(uuid, text)',
     'public.get_pwa_vapid_config_service()',
     'public.get_registration_phone_otp_secret_service()',
+    'public.has_active_custom_mfa_grant(uuid, uuid)',
     'public.heartbeat_avatar_cleanup_job(uuid, text)',
     'public.heartbeat_avatar_job(uuid, text)',
     'public.hmac_with_pepper(text, text)',

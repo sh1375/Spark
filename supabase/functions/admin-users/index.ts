@@ -74,26 +74,29 @@ Deno.serve(async (req: Request) => {
 
       const normalizedUsername = username.toLowerCase();
 
-      const { data: existingUsername } = await supabase
+      const { data: existingUsername, error: usernameLookupError } = await supabase
         .from("profiles")
         .select("user_id")
         .eq("normalized_username", normalizedUsername)
         .maybeSingle();
+      if (usernameLookupError) return json({ error: "ACCOUNT_LOOKUP_FAILED" }, 503);
       if (existingUsername) return json({ error: "این نام کاربری قبلاً استفاده شده است" }, 400);
 
-      const { data: existingEmail } = await supabase
+      const { data: existingEmail, error: emailLookupError } = await supabase
         .from("profiles")
         .select("user_id")
         .eq("normalized_email", trimmedEmail)
         .maybeSingle();
+      if (emailLookupError) return json({ error: "ACCOUNT_LOOKUP_FAILED" }, 503);
       if (existingEmail) return json({ error: "این ایمیل قبلاً ثبت شده است" }, 400);
 
       const canonicalPhone = `+${normalizedPhone}`;
-      const { data: existingPhone } = await supabase
+      const { data: existingPhone, error: phoneLookupError } = await supabase
         .from("profiles")
         .select("user_id")
         .eq("normalized_phone", canonicalPhone)
         .maybeSingle();
+      if (phoneLookupError) return json({ error: "ACCOUNT_LOOKUP_FAILED" }, 503);
       if (existingPhone) return json({ error: "این شماره موبایل قبلاً ثبت شده است" }, 400);
 
       const createParams: Record<string, unknown> = {

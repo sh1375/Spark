@@ -47,13 +47,312 @@ const ALLOWED_TABLES = new Set([
   "rahyab_settings", "rahyab_inbox", "bale_link_tokens", "telegram_link_tokens", "hr_sso_config", "audit_log",
 ]);
 
-const TABLE_PK: Record<string, string> = {
-  user_preferences: "user_id",
-  user_auto_accept_organizers: "user_id",
-  bale_link_tokens: "token",
-  telegram_link_tokens: "token",
-  notification_event_registry: "event_key",
-  sms_delivery_policies: "category",
+const TABLE_PK: Record<string, string[]> = {
+  "all_day_events": [
+    "id"
+  ],
+  "audit_log": [
+    "id"
+  ],
+  "bale_link_tokens": [
+    "token"
+  ],
+  "banned_users": [
+    "id"
+  ],
+  "broadcast_messages": [
+    "id"
+  ],
+  "broadcast_recipients": [
+    "id"
+  ],
+  "calendar_occasions": [
+    "id"
+  ],
+  "calendar_subscriptions": [
+    "id"
+  ],
+  "calendars": [
+    "id"
+  ],
+  "call_sessions": [
+    "id"
+  ],
+  "channel_broadcasts": [
+    "id"
+  ],
+  "channel_group_task_activities": [
+    "id"
+  ],
+  "channel_group_task_assignments": [
+    "id"
+  ],
+  "channel_group_tasks": [
+    "id"
+  ],
+  "channel_members": [
+    "id"
+  ],
+  "channel_message_private_pins": [
+    "id"
+  ],
+  "channel_message_reactions": [
+    "id"
+  ],
+  "channel_message_read_log": [
+    "message_id",
+    "user_id"
+  ],
+  "channel_message_stars": [
+    "id"
+  ],
+  "channel_messages": [
+    "id"
+  ],
+  "channel_notification_rules": [
+    "id"
+  ],
+  "channel_sms_rules": [
+    "id"
+  ],
+  "channel_work_topics": [
+    "id"
+  ],
+  "channels": [
+    "id"
+  ],
+  "chat_conversations": [
+    "id"
+  ],
+  "chat_group_members": [
+    "id"
+  ],
+  "chat_message_reactions": [
+    "id"
+  ],
+  "chat_message_read_log": [
+    "message_id",
+    "user_id"
+  ],
+  "chat_message_read_receipts": [
+    "conversation_id",
+    "user_id"
+  ],
+  "chat_message_stars": [
+    "id"
+  ],
+  "chat_message_tag_assignments": [
+    "id"
+  ],
+  "chat_messages": [
+    "id"
+  ],
+  "chat_reminders": [
+    "id"
+  ],
+  "chat_tags": [
+    "id"
+  ],
+  "conference_breakout_rooms": [
+    "id"
+  ],
+  "conference_messages": [
+    "id"
+  ],
+  "conference_participants": [
+    "id"
+  ],
+  "conference_poll_votes": [
+    "id"
+  ],
+  "conference_polls": [
+    "id"
+  ],
+  "conference_quality_metrics": [
+    "id"
+  ],
+  "conference_reactions": [
+    "id"
+  ],
+  "conference_rooms": [
+    "id"
+  ],
+  "conference_waiting_room": [
+    "id"
+  ],
+  "conference_whiteboard": [
+    "id"
+  ],
+  "contacts_email": [
+    "id"
+  ],
+  "daily_report_config": [
+    "id"
+  ],
+  "hr_sso_config": [
+    "id"
+  ],
+  "meeting_agenda_items": [
+    "id"
+  ],
+  "meeting_inbox": [
+    "id"
+  ],
+  "meetings": [
+    "id"
+  ],
+  "minutes_agenda_results": [
+    "id"
+  ],
+  "minutes_approval_comments": [
+    "id"
+  ],
+  "minutes_approvals": [
+    "id"
+  ],
+  "minutes_attachments": [
+    "id"
+  ],
+  "minutes_audit_log": [
+    "id"
+  ],
+  "minutes_decision_reminders": [
+    "id"
+  ],
+  "minutes_decision_updates": [
+    "id"
+  ],
+  "minutes_decisions": [
+    "id"
+  ],
+  "minutes_external_participants": [
+    "id"
+  ],
+  "minutes_participants": [
+    "id"
+  ],
+  "minutes": [
+    "id"
+  ],
+  "notes": [
+    "id"
+  ],
+  "notification_event_registry": [
+    "event_key"
+  ],
+  "notification_group_rules": [
+    "id"
+  ],
+  "notification_templates": [
+    "id"
+  ],
+  "notifications": [
+    "id"
+  ],
+  "org_level_definitions": [
+    "id"
+  ],
+  "org_level_permissions": [
+    "id"
+  ],
+  "org_organizations": [
+    "id"
+  ],
+  "org_position_members": [
+    "id"
+  ],
+  "org_position_permissions": [
+    "id"
+  ],
+  "org_positions": [
+    "id"
+  ],
+  "org_units": [
+    "id"
+  ],
+  "participants": [
+    "id"
+  ],
+  "pending_approvals": [
+    "id"
+  ],
+  "rahyab_inbox": [
+    "id"
+  ],
+  "rahyab_settings": [
+    "id"
+  ],
+  "room_mod_actions": [
+    "id"
+  ],
+  "shared_meetings": [
+    "id"
+  ],
+  "sms_delivery_policies": [
+    "category",
+    "event_type"
+  ],
+  "sms_dispatch_logs": [
+    "id"
+  ],
+  "sms_group_rules": [
+    "id"
+  ],
+  "sms_providers": [
+    "id"
+  ],
+  "sms_templates": [
+    "id"
+  ],
+  "social_channel_configs": [
+    "id"
+  ],
+  "spark_ai_settings": [
+    "id"
+  ],
+  "spark_assistant_logs": [
+    "id"
+  ],
+  "spark_config": [
+    "id"
+  ],
+  "spark_field_keywords": [
+    "id"
+  ],
+  "spark_memory": [
+    "id"
+  ],
+  "system_config": [
+    "id"
+  ],
+  "task_workflow_steps": [
+    "id"
+  ],
+  "tasks": [
+    "id"
+  ],
+  "telegram_link_tokens": [
+    "id"
+  ],
+  "user_access_relations": [
+    "id"
+  ],
+  "user_auto_accept_organizers": [
+    "user_id",
+    "organizer_user_id"
+  ],
+  "user_bale_mapping": [
+    "id"
+  ],
+  "user_group_members": [
+    "id"
+  ],
+  "user_groups": [
+    "id"
+  ],
+  "user_preferences": [
+    "user_id"
+  ]
 };
 
 Deno.serve(async (req: Request) => {
@@ -81,24 +380,11 @@ Deno.serve(async (req: Request) => {
 
     const offset = Math.max(0, Number.isFinite(Number(body.offset)) ? Math.floor(Number(body.offset)) : 0);
     const limit = Math.min(1000, Math.max(1, Number.isFinite(Number(body.limit)) ? Math.floor(Number(body.limit)) : 1000));
-    const pk = TABLE_PK[table] ?? "id";
-
-    let query = (client as any)
-      .from(table)
-      .select("*")
-      .order(pk, { ascending: true })
-      .range(offset, offset + limit - 1);
-
-    let { data, error } = await query;
-    // Some legacy tables may not expose the conventional id key; retry without ordering.
-    if (error?.code === "42703" || error?.code === "PGRST204") {
-      const retry = await (client as any)
-        .from(table)
-        .select("*")
-        .range(offset, offset + limit - 1);
-      data = retry.data;
-      error = retry.error;
-    }
+    const keys = TABLE_PK[table];
+    if (!keys?.length) return json({ error: "BACKUP_STABLE_KEY_UNAVAILABLE" }, 409);
+    let query = (client as any).from(table).select("*");
+    for (const key of keys) query = query.order(key, { ascending: true });
+    const { data, error } = await query.range(offset, offset + limit - 1);
     if (error) return json({ error: "BACKUP_READ_FAILED", code: error.code }, 500);
 
     return json({

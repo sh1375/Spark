@@ -136,11 +136,11 @@ function UserAccessPanel({ user, onBack, onNavigateToGroup }: AccessPanelProps) 
 
   const mergedPerms = (key: string): { has: boolean; source: string } => {
     if (user.is_active === false) return { has: false, source: 'کاربر غیرفعال' };
-    if (user.is_admin || resolvedPermissions === null) return { has: true, source: user.is_admin ? 'ادمین' : 'دسترسی کامل' };
-    if (resolvedPermissions === undefined) {
+    if (user.is_admin) return { has: true, source: 'ادمین' };
+    if (resolvedPermissions == null) {
       return { has: false, source: permissionLoadFailed ? 'خطا در بارگذاری دسترسی‌ها' : 'در حال بارگذاری دسترسی‌ها' };
     }
-    if (resolvedPermissions[key] === true) return { has: true, source: 'دسترسی مؤثر' };
+    if (resolvedPermissions[key] === true) return { has: true, source: 'مجوز قابل مشاهده' };
     return { has: false, source: 'بدون منبع اعطا' };
   };
 
@@ -223,8 +223,8 @@ function UserAccessPanel({ user, onBack, onNavigateToGroup }: AccessPanelProps) 
               </div>
               <div className="flex items-center gap-2">
                 <div className="flex flex-wrap gap-1 max-w-xs">
-                  {g.permissions['all'] && <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">همه دسترسی‌ها</span>}
-                  {!g.permissions['all'] && MINUTES_PERMISSION_KEYS.filter(k => g.permissions[k]).map(k => (
+                  {g.permissions['all'] && <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-full">all</span>}
+                  {MINUTES_PERMISSION_KEYS.filter(k => g.permissions[k]).map(k => (
                     <span key={k} className="text-xs bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 px-2 py-0.5 rounded-full">{getPermissionLabel(k)}</span>
                   ))}
                   {!g.permissions['all'] && MINUTES_PERMISSION_KEYS.every(k => !g.permissions[k]) && Object.values(g.permissions).every(v => !v) && (
