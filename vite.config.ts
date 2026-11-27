@@ -3,8 +3,7 @@ import react from '@vitejs/plugin-react';
 import { readdirSync, mkdirSync, copyFileSync, statSync, existsSync } from 'fs';
 import { join } from 'path';
 
-// Copies public/ to dist/ file-by-file so a single locked/unreadable file
-// (like the sandbox-injected "logo_spark copy copy.png") never aborts the build.
+// Copies required public assets; a failed copy must fail the build.
 function safeCopyPublicDir(): Plugin {
   let root = '';
   let isBuild = false;
@@ -25,31 +24,21 @@ function safeCopyPublicDir(): Plugin {
       // source PNG for the same small UI surface. The public URL stays stable.
       const compactLogo = join(publicDir, 'icons', 'icon-192x192.png');
       if (existsSync(compactLogo)) {
-        try {
-          copyFileSync(compactLogo, join(distDir, 'logo_spark.png'));
-        } catch {
-          // Asset fallback: keep the original copied logo if replacement fails.
-        }
+        copyFileSync(compactLogo, join(distDir, 'logo_spark.png'));
       }
     },
   };
 }
 
 function copyDirSafe(src: string, dest: string) {
-  if (!existsSync(src)) return;
   mkdirSync(dest, { recursive: true });
   for (const entry of readdirSync(src)) {
-    try {
-      const srcPath = join(src, entry);
-      const destPath = join(dest, entry);
-      const stat = statSync(srcPath);
-      if (stat.isDirectory()) {
-        copyDirSafe(srcPath, destPath);
-      } else {
-        copyFileSync(srcPath, destPath);
-      }
-    } catch {
-      // Skip files the OS won't let us read (EAGAIN, permission errors, etc.)
+    const srcPath = join(src, entry);
+    const destPath = join(dest, entry);
+    if (statSync(srcPath).isDirectory()) {
+      copyDirSafe(srcPath, destPath);
+    } else {
+      copyFileSync(srcPath, destPath);
     }
   }
 }
@@ -58,7 +47,7 @@ export default defineConfig(({ command }) => ({
   plugins: [react(), safeCopyPublicDir()],
   build: {
     // Disable Vite's built-in public dir copy; safeCopyPublicDir handles it
-    // with per-file error handling so locked sandbox files don't abort builds.
+    // and propagates failures instead of publishing incomplete assets.
     copyPublicDir: false,
     // Explicitly disable sourcemaps in production. Without this, a future
     // accidental change to sourcemap: true would expose original source code.
