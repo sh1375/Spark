@@ -169,26 +169,12 @@ export function ChatMessage({
     onStatusChange(next[message.status || 'pending']);
   };
 
-  const StatusSquare = () => {
-    const status = message.status || 'pending';
-    if (status === 'pending') {
-      return (
-        <button onClick={cycleStatus} title="در انتظار — کلیک" className={`w-5 h-5 rounded border-2 flex-shrink-0 transition-colors ${isOwn ? 'border-emerald-300 hover:border-white' : 'border-gray-300 dark:border-gray-500 hover:border-gray-500'}`} />
-      );
-    }
-    if (status === 'in_progress') {
-      return (
-        <button onClick={cycleStatus} title="در حال رسیدگی — کلیک" className="w-5 h-5 rounded border-2 border-amber-400 bg-amber-400 flex items-center justify-center flex-shrink-0">
-          <Loader className="w-3 h-3 text-white animate-spin" />
-        </button>
-      );
-    }
-    return (
-      <button onClick={cycleStatus} title="رسیدگی شده — کلیک" className="w-5 h-5 rounded border-2 border-teal-500 bg-teal-500 flex items-center justify-center flex-shrink-0">
-        <Check className="w-3 h-3 text-white" />
-      </button>
-    );
-  };
+  const status = message.status || 'pending';
+  const statusLabel = {
+    pending: 'در انتظار',
+    in_progress: 'در حال رسیدگی',
+    done: 'رسیدگی شده',
+  }[status];
 
   const theme = useChatTheme();
   const isDark = useDarkMode();
@@ -204,7 +190,7 @@ export function ChatMessage({
     : { backgroundColor: isDark ? '#4d5049' : theme.receivedBubbleColor };
   const cardBg = 'text-gray-900 dark:text-white';
   const borderClass = 'border-gray-200 dark:border-gray-700';
-  const dividerClass = 'border-gray-100 dark:border-gray-700';
+  const actionButtonClass = 'chat-icon-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors sm:h-7 sm:w-7';
   const iconClass = 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white';
 
   const typeBorderStyle: CSSProperties = {};
@@ -234,7 +220,7 @@ export function ChatMessage({
             <UserAvatar name={message.senderProfile?.full_name || 'U'} size="sm" avatarUrl={message.senderProfile?.avatar_url} />
           </div>
 
-          <div className="flex-1 flex flex-col">
+          <div className="min-w-0 flex-1 flex flex-col">
             {message.replyTarget && (
               <button onClick={() => onScrollToMessage?.(message.replyTarget!.id)} className="w-full text-right text-xs px-3 py-1.5 rounded-t-xl border-r-2 border-blue-400 bg-blue-50 dark:bg-blue-900/30 text-gray-600 dark:text-gray-300 truncate hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors cursor-pointer">
                 {message.replyTarget.body || '📎 فایل'}
@@ -312,22 +298,22 @@ export function ChatMessage({
               </div>
 
               {!isDeleted && (
-                <div className={`flex items-center gap-1 px-2 pb-2 pt-1 border-t ${dividerClass} ${isOwn ? 'flex-row-reverse' : ''}`}>
-                  <StatusSquare />
-                  <button onClick={onStar} title={message.isStarred ? 'برداشتن ستاره' : 'نشانه‌دار'} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${message.isStarred ? 'text-yellow-500' : iconClass}`}>
+                <div className={`flex items-center gap-0.5 px-2 pb-1 sm:gap-1 sm:pb-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+                  <button
+                    onClick={cycleStatus}
+                    title={`تغییر وضعیت رسیدگی: ${statusLabel}`}
+                    className={`${actionButtonClass} ${iconClass}`}
+                  >
+                    {status === 'pending' && <span className="h-3.5 w-3.5 rounded-full border-2 border-slate-500 dark:border-slate-400" />}
+                    {status === 'in_progress' && <Loader className="h-4 w-4 text-amber-600 dark:text-amber-400 motion-safe:animate-spin" />}
+                    {status === 'done' && <Check className="h-4 w-4 text-teal-700 dark:text-teal-400" />}
+                  </button>
+                  <button onClick={onStar} title={message.isStarred ? 'برداشتن ستاره' : 'نشانه‌دار'} className={`${actionButtonClass} ${message.isStarred ? 'text-yellow-500' : iconClass}`}>
                     <Star className={`w-4 h-4 ${message.isStarred ? 'fill-yellow-400' : ''}`} />
                   </button>
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <button onClick={() => setShowTagModal(true)} title="تگ" className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${iconClass}`}><Tag className="w-4 h-4" /></button>
-                    {tags.slice(0, 3).map(tag => (
-                      <button key={tag.id} onClick={() => removeTag(tag.id)} title="کلیک برای حذف تگ" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-white leading-none hover:opacity-75 transition-opacity group" style={{ backgroundColor: tag.color }}>
-                        {tag.name}<X className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
-                    {tags.length > 3 && <span className="text-[10px] text-gray-400">+{tags.length - 3}</span>}
-                  </div>
+                  <button onClick={() => setShowTagModal(true)} title="تگ" className={`${actionButtonClass} ${iconClass}`}><Tag className="w-4 h-4" /></button>
                   <div ref={reactRef}>
-                    <button onClick={openEmojiPicker} title="ایموجی" className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${iconClass}`}><Smile className="w-4 h-4" /></button>
+                    <button onClick={openEmojiPicker} title="ایموجی" className={`${actionButtonClass} ${iconClass}`}><Smile className="w-4 h-4" /></button>
                     {showReactPicker && (
                       <div style={emojiPickerStyle}>
                         <EmojiPicker onSelect={emoji => { onReact(emoji); setShowReactPicker(false); }} onClose={() => setShowReactPicker(false)} />
@@ -336,13 +322,23 @@ export function ChatMessage({
                   </div>
                   <div className="flex-1" />
                   {isOwn && (
-                    <button onClick={() => setShowViewersModal(true)} className="flex-shrink-0 p-0.5 rounded hover:bg-black/10 dark:hover:bg-white/10 transition-colors" title={seenByOther ? 'دیده شده — کلیک برای جزئیات' : 'دیده نشده'}>
+                    <button onClick={() => setShowViewersModal(true)} className={`${actionButtonClass} ${iconClass}`} title={seenByOther ? 'دیده شده — کلیک برای جزئیات' : 'دیده نشده'}>
                       <Eye className={`w-3.5 h-3.5 ${seenByOther ? 'text-emerald-500' : 'text-gray-300 dark:text-gray-600'}`} />
                     </button>
                   )}
                   <div className="relative" ref={menuRef}>
-                    <button onClick={() => setShowMenu(value => !value)} className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${iconClass}`}><MoreVertical className="w-4 h-4" /></button>
+                    <button onClick={() => setShowMenu(value => !value)} aria-label="گزینه‌های پیام" aria-expanded={showMenu} className={`${actionButtonClass} ${iconClass}`}><MoreVertical className="w-4 h-4" /></button>
                   </div>
+                </div>
+              )}
+              {!isDeleted && tags.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap px-3 pb-2">
+                  {tags.slice(0, 3).map(tag => (
+                    <button key={tag.id} onClick={() => removeTag(tag.id)} title="کلیک برای حذف تگ" className="chat-icon-button inline-flex max-w-full items-center [overflow-wrap:anywhere] gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-white leading-none hover:opacity-75 transition-opacity group" style={{ backgroundColor: tag.color }}>
+                      {tag.name}<X className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                  ))}
+                  {tags.length > 3 && <span className="text-[10px] text-gray-400">+{tags.length - 3}</span>}
                 </div>
               )}
             </div>
