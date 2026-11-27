@@ -15,6 +15,19 @@ type SubscriptionRow = {
   auth_key: string;
 };
 
+// Restrict outbound delivery to the supported browser push services.
+// Exact Google/Apple/Mozilla hosts and the Windows notification service domain.
+function isSupportedPushEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== "https:" || url.username || url.password || url.port || url.hash || url.pathname === "/") return false;
+    return ["fcm.googleapis.com", "web.push.apple.com", "updates.push.services.mozilla.com", "jmt17.google.com"].includes(url.hostname) ||
+      /^[a-z0-9-]+\.notify\.windows\.com$/.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -78,6 +91,17 @@ Deno.serve(async (req: Request) => {
   const rows = (Array.isArray(claimed) ? claimed : []) as OutboxRow[];
   let sentRows = 0;
   let failedRows = 0;
+  let recordingFailures = 0;
+  const recordCompletion = async (id: string, success: boolean, reason: string | null): Promise<boolean> => {
+    try {
+      const { error } = await service.rpc("complete_pwa_push_outbox_service", {
+        p_id: id, p_success: success, p_error: reason,
+      });
+      if (!error) return true;
+    } catch { /* response may have been lost after commit */ }
+    recordingFailures++;
+    return false;
+  };
 
   for (const row of rows) {
     const { data: subscriptions, error: subscriptionsError } = await service
@@ -87,23 +111,13 @@ Deno.serve(async (req: Request) => {
       .is("disabled_at", null);
 
     if (subscriptionsError) {
-      await service.rpc("complete_pwa_push_outbox_service", {
-        p_id: row.id,
-        p_success: false,
-        p_error: "SUBSCRIPTIONS_READ_FAILED",
-      });
-      failedRows++;
+      if (await recordCompletion(row.id, false, "SUBSCRIPTIONS_READ_FAILED")) failedRows++;
       continue;
     }
 
     const activeSubscriptions = (subscriptions || []) as SubscriptionRow[];
     if (activeSubscriptions.length === 0) {
-      await service.rpc("complete_pwa_push_outbox_service", {
-        p_id: row.id,
-        p_success: true,
-        p_error: null,
-      });
-      sentRows++;
+      if (await recordCompletion(row.id, true, null)) sentRows++;
       continue;
     }
 
@@ -120,6 +134,11 @@ Deno.serve(async (req: Request) => {
     });
 
     for (const subscription of activeSubscriptions) {
+      if (!isSupportedPushEndpoint(subscription.endpoint)) {
+        transientFailureCount++;
+        errors.push("PUSH_DESTINATION_NOT_APPROVED");
+        continue;
+      }
       try {
         await webpush.sendNotification(
           {
@@ -162,15 +181,11 @@ Deno.serve(async (req: Request) => {
     }
 
     const success = successCount > 0 || transientFailureCount === 0;
-    await service.rpc("complete_pwa_push_outbox_service", {
-      p_id: row.id,
-      p_success: success,
-      p_error: success ? null : errors.join(" | ").slice(0, 1000),
-    });
-
-    if (success) sentRows++;
-    else failedRows++;
+    if (await recordCompletion(row.id, success, success ? null : errors.join(" | ").slice(0, 1000))) {
+      if (success) sentRows++;
+      else failedRows++;
+    }
   }
 
-  return json({ ok: true, claimed: rows.length, sentRows, failedRows });
+  return json({ ok: recordingFailures === 0, claimed: rows.length, sentRows, failedRows, recordingFailures }, recordingFailures ? 503 : 200);
 });

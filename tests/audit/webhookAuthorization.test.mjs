@@ -6,7 +6,7 @@ import { transform } from 'esbuild';
 import { webcrypto, createHash } from 'node:crypto';
 const secret='fixture-secret-32-character-long';
 const derived=createHash('sha256').update('spark:bale:webhook:v1:'+secret).digest('hex');
-async function invoke(channel, {active=true, configured=secret, credential, envToken=''}={}) {
+async function invoke(channel, {active=true, configured=secret, credential, envToken='', chatType='private', edited=false}={}) {
   const src=readFileSync('supabase/functions/'+channel+'-webhook/index.ts','utf8').replace(/^import.*$/gm,'');
   const {code}=await transform(src,{loader:'ts'});
   let handler, writes=0, sends=0;
@@ -21,7 +21,7 @@ async function invoke(channel, {active=true, configured=secret, credential, envT
     if(channel==='telegram')headers['x-telegram-bot-api-secret-token']=credential;
     else url.searchParams.set('proof',credential);
   }
-  const res=await handler(new Request(url,{method:'POST',headers,body:JSON.stringify({message:{chat:{id:123,type:'private'},text:'/start '+'a'.repeat(32)}})}));
+  const res=await handler(new Request(url,{method:'POST',headers,body:JSON.stringify({[edited?'edited_message':'message']:{chat:{id:123,type:chatType},text:'/start '+'a'.repeat(32)}})}));
   return {status:res.status,writes,sends};
 }
 for(const channel of ['telegram','bale']) {
@@ -42,3 +42,10 @@ for(const channel of ['telegram','bale']) {
     assert.equal(result.status,200);assert.ok(result.writes>0);assert.equal(result.sends,1);
   });
 }
+
+test('Bale never links an account to a group or an edited message',async()=>{
+  for(const options of [{chatType:'group'},{chatType:'channel'},{edited:true}]){
+    const result=await invoke('bale',{credential:derived,...options});
+    assert.equal(result.writes,0);assert.equal(result.sends,0);
+  }
+});

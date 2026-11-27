@@ -27,9 +27,11 @@ Deno.serve(async (req: Request) => {
       return ok();
     }
 
-    const msg = update.message ?? update.edited_message;
+    // Account links must originate in a new private conversation, not a group or edited message.
+    const msg = update?.message;
+    if (msg?.chat?.type !== "private") return ok();
     const chatId: number | undefined = msg?.chat?.id;
-    const text: string = (msg?.text ?? "").trim();
+    const text = typeof msg?.text === "string" ? msg.text.trim() : "";
     if (!chatId || !/^\/start(?:@\w+)?(?:[\s=]|$)/i.test(text)) return ok();
 
     const startMatch = text.match(/^\/start(?:@\w+)?(?:[\s=]+(\S+))?/i);

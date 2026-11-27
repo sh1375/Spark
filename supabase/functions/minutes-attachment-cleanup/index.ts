@@ -64,7 +64,10 @@ Deno.serve(async (req: Request) => {
   if (fetchErr) {
     return json({ error: "fetch_failed" }, 500);
   }
-  if (!orphans || orphans.length === 0) {
+  if (!Array.isArray(orphans) || orphans.some(o => !o || typeof o.id !== "string" || !o.id || typeof o.storage_path !== "string" || !o.storage_path)) {
+    return json({ error: "invalid_cleanup_claim" }, 500);
+  }
+  if (orphans.length === 0) {
     return json({ deleted_records: 0, deleted_objects: 0 });
   }
 
@@ -72,9 +75,15 @@ Deno.serve(async (req: Request) => {
   const paths = orphans.map((o: { storage_path: string }) => o.storage_path);
   let deletedObjects = 0;
   if (paths.length > 0) {
-    const { error: rmErr } = await adminClient.storage.from("minutes-attachments").remove(paths);
-    if (rmErr) return json({ error: "delete_objects_failed", deleted_records: 0 }, 500);
-    deletedObjects = paths.length;
+    try {
+      const { data: removed, error: rmErr } = await adminClient.storage.from("minutes-attachments").remove(paths);
+      if (rmErr || !Array.isArray(removed)) return json({ error: "delete_objects_failed", deleted_records: 0 }, 500);
+      // Storage returns the objects it removed. A retry may find none remaining.
+      deletedObjects = removed.length;
+    } catch {
+      // A lost response is ambiguous; preserve the reserved metadata for retry.
+      return json({ error: "delete_objects_failed", deleted_records: 0 }, 500);
+    }
   }
 
   // 3. Delete DB records

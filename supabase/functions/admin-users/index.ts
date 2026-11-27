@@ -50,9 +50,9 @@ Deno.serve(async (req: Request) => {
     if (!authResult.ok) return deniedResponse();
     const callerUserId = authResult.userId!;
 
-    const { data: callerProfile } = await supabase
-      .from("profiles").select("is_admin").eq("user_id", callerUserId).maybeSingle();
-    if (!callerProfile?.is_admin) {
+    const { data: callerProfile, error: callerError } = await supabase
+      .from("profiles").select("is_admin, is_active").eq("user_id", callerUserId).maybeSingle();
+    if (callerError || callerProfile?.is_admin !== true || callerProfile.is_active !== true) {
       await recordAccessDenial(req, callerUserId, "ADMIN_REQUIRED");
       return json({ error: "Admin access required" }, 403);
     }
@@ -136,19 +136,29 @@ Deno.serve(async (req: Request) => {
       );
 
       if (createErr) {
-        console.error("[admin-users/create] auth.admin.createUser failed", createErr.message);
+        console.error("[admin-users/create] auth.admin.createUser failed");
         if (createErr.message?.includes("already been registered") || createErr.message?.includes("already exists")) {
           return json({ error: "ایمیل، نام کاربری یا شماره موبایل قبلاً ثبت شده است" }, 400);
         }
         return json({ error: "خطا در ایجاد حساب کاربری" }, 400);
       }
 
-      const userId = userData.user.id;
-      const { data: verifyProfile, error: verifyProfileError } = await supabase
-        .from("profiles")
-        .select("user_id, account_status, registration_source")
-        .eq("user_id", userId)
-        .maybeSingle();
+      const userId = userData?.user?.id;
+      if (!userId) return json({ error: "PROVISIONING_OUTCOME_UNKNOWN" }, 503);
+      // Retry only the read, never creation or destructive compensation.
+      const readProfile = async () => {
+        try {
+          return await supabase.from("profiles")
+            .select("user_id, account_status, registration_source")
+            .eq("user_id", userId).maybeSingle();
+        } catch {
+          return { data: null, error: { message: "PROFILE_READ_UNAVAILABLE" } };
+        }
+      };
+      let { data: verifyProfile, error: verifyProfileError } = await readProfile();
+      if (verifyProfileError || !verifyProfile) {
+        ({ data: verifyProfile, error: verifyProfileError } = await readProfile());
+      }
 
       if (verifyProfileError || !verifyProfile || verifyProfile.registration_source !== "admin_created") {
         const code = verifyProfileError
@@ -167,7 +177,8 @@ Deno.serve(async (req: Request) => {
           .update({ hire_date: profile.hire_date })
           .eq("user_id", userId);
         if (hireDateError) {
-          console.error("[admin-users/create] hire_date update failed", hireDateError.message);
+          console.error("[admin-users/create] hire_date update failed");
+          return json({ error: "PROFILE_METADATA_UPDATE_FAILED", code: "PROFILE_METADATA_UPDATE_FAILED", user_id: userId }, 500);
         }
       }
 
@@ -220,7 +231,7 @@ Deno.serve(async (req: Request) => {
 
     return json({ error: "Not found" }, 404);
   } catch (error) {
-    console.error("[admin-users] unhandled error", error);
+    console.error("[admin-users] unhandled error");
     return json({ error: "خطا در پردازش درخواست" }, 500);
   }
 });

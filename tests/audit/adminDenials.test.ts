@@ -13,7 +13,7 @@ for (const slug of ['admin-users', 'backup-data', 'restore-backup', 'admin-delet
       data: { is_admin: false, is_security_admin: false, is_active: true, account_status: 'ACTIVE' },
     }), insert() { mutations++; throw new Error('must not write'); }, delete() { mutations++; throw new Error('must not delete'); } };
     const client = { from: () => query };
-    const code = (await transform(readFileSync(`supabase/functions/${slug}/index.ts`, 'utf8').replace(/^import .*;\n/gm, ''), { loader: 'ts', format: 'cjs' })).code;
+    const code = (await transform(readFileSync(`supabase/functions/${slug}/index.ts`, 'utf8').replace(/^import .*;\r?\n/gm, ''), { loader: 'ts', format: 'cjs' })).code;
     vm.runInNewContext(code, {
       module: { exports: {} }, exports: {}, Request, Response, URL, console,
       Deno: { serve: (callback: typeof handler) => { handler = callback; }, env: { get: () => 'test-only' } },

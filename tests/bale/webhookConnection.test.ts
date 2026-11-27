@@ -45,7 +45,7 @@ async function invoke(options: {
   const method = options.method ?? 'POST';
   const response = await handler(new Request('https://spark.test/functions/v1/bale-webhook?proof='+proof, {
     method, ...(method === 'POST' ? { body: options.malformed ? '{' : JSON.stringify({
-      message: { chat: { id: 1234 }, text: options.text ?? '/start ' + 'a'.repeat(64), bot_token: 'untrusted-token' },
+      message: { chat: { id: 1234, type: "private" }, text: options.text ?? '/start ' + 'a'.repeat(64), bot_token: 'untrusted-token' },
       bot_token: 'untrusted-token',
     }) } : {}),
   }));

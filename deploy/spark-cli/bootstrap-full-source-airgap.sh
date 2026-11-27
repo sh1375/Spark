@@ -131,8 +131,7 @@ move_exact() {
   fi
 }
 
-move_from=()
-move_to=()
+moves=()
 backups=()
 staging_dirs=()
 migrate_dir=''
@@ -140,9 +139,13 @@ migrate_created=0
 committed=0
 
 record_move() {
-  move_exact "$1" "$2" || return 1
-  move_from+=("$1")
-  move_to+=("$2")
+  # Record intent before rename, so even a lost return status can be recovered.
+  if ! path_exists "$1" || path_exists "$2"; then
+    printf 'Invalid rename source or occupied destination: %s -> %s.\n' "$1" "$2" >&2
+    return 1
+  fi
+  moves+=("$1" "$2")
+  move_exact "$1" "$2"
 }
 
 save_previous() {
@@ -238,11 +241,16 @@ PY
 finish_install() {
   local status=$? index from to rollback_failed=0
   trap - EXIT
+  trap '' INT TERM HUP
   if (( ! committed )); then
-    for ((index=${#move_from[@]} - 1; index >= 0; index--)); do
-      from="${move_from[index]}"
-      to="${move_to[index]}"
-      if ! move_exact "$to" "$from"; then
+    for ((index=${#moves[@]} - 2; index >= 0; index-=2)); do
+      from="${moves[index]}"
+      to="${moves[index+1]}"
+      if path_exists "$from" && ! path_exists "$to"; then
+        # The recorded rename never happened.
+        continue
+      fi
+      if path_exists "$from" || ! path_exists "$to" || ! move_exact "$to" "$from"; then
         printf 'Could not restore %s from %s.\n' "$from" "$to" >&2
         rollback_failed=1
       fi
@@ -266,6 +274,9 @@ finish_install() {
 
 install -d -m 0755 /opt /usr/local/lib
 trap finish_install EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 stage="$(mktemp -d /usr/local/lib/spark-manager.airgap.XXXXXX)"
 staging_dirs+=("$stage")
 source_stage_parent="$(mktemp -d /opt/spark.airgap.XXXXXX)"
