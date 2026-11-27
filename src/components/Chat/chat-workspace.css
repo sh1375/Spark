@@ -10,6 +10,31 @@
   border: 1px solid var(--color-slate-200);
 }
 
+[data-spark-navigation='web'] .chat-workspace--inline-tabs {
+  position: relative;
+  --chat-tabs-inset: 0.5rem;
+  --chat-tabs-row: 3.5rem;
+}
+
+/* The switcher occupies only the top of the conversation-list column. */
+[data-spark-navigation='web'] .chat-workspace--inline-tabs > .chat-workspace-tabs {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: calc(0.625rem + var(--chat-tabs-inset));
+  inset-inline-start: calc(0.75rem + var(--chat-tabs-inset) + 1px);
+  max-inline-size: calc(310px - 2 * var(--chat-tabs-inset));
+}
+
+[data-spark-navigation='web'] .chat-workspace--inline-tabs .chat-workspace-sidebar {
+  padding-block-start: var(--chat-tabs-row);
+}
+
+[data-spark-navigation='web'] .chat-workspace--inline-tabs .chat-workspace-tab {
+  flex-shrink: 1;
+  padding-inline: 0.5rem;
+  white-space: nowrap;
+}
+
 .dark[data-spark-navigation='web'] .chat-workspace-tabs {
   border-color: var(--color-slate-800);
 }
