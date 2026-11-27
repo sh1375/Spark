@@ -34,22 +34,27 @@
 }
 
 @font-face {
-  font-family: 'IRANYekan Web';
-  src: url('/fonts/web/IranYekan-Web-Regular-FaNum.woff') format('woff');
+  font-family: 'IRANYekanX';
+  src: url('/fonts/web/IranYekanX-Medium.woff2') format('woff2');
   font-style: normal;
   font-weight: 400 500;
   font-display: swap;
-  /* Keep literal ASCII digits in identifiers and mixed-language text. */
-  unicode-range: U+0000-002F, U+003A-10FFFF;
 }
 
 @font-face {
-  font-family: 'IRANYekan Web';
-  src: url('/fonts/web/Iran-Yekan-Web-Bold-FaNum.woff') format('woff');
+  font-family: 'IRANYekanX';
+  src: url('/fonts/web/IranYekanX-Bold.woff2') format('woff2');
   font-style: normal;
-  font-weight: 600 900;
+  font-weight: 600 700;
   font-display: swap;
-  unicode-range: U+0000-002F, U+003A-10FFFF;
+}
+
+@font-face {
+  font-family: 'IRANYekanX';
+  src: url('/fonts/web/IranYekanX-Black.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 800 900;
+  font-display: swap;
 }
 
 @font-face {
@@ -100,7 +105,7 @@
 }
 
 :root[data-spark-navigation='web'] {
-  --spark-font-ui: 'IRANYekan Web', system-ui, sans-serif;
+  --spark-font-ui: 'IRANYekanX', system-ui, sans-serif;
   --spark-font-icons: 'Spark Web Icons';
   --spark-chat-message-glyph: '\f075';
 }
