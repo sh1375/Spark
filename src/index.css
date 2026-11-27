@@ -2,23 +2,62 @@
 @config "../tailwind.config.js";
 
 @font-face {
-  font-family: 'Vazirmatn';
-  src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2');
-  font-weight: normal;
+  font-family: 'IRANSans Web';
+  src: url('/fonts/IRANSans-Web.woff2') format('woff2');
+  font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'Vazirmatn';
-  src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2');
-  font-weight: bold;
+  font-family: 'IRANSans Web';
+  src: url('/fonts/IRANSans-Web-Medium.woff2') format('woff2');
+  font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Spark Awesome';
+  src: url('/fonts/Awesome-Web.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Spark Mobile Menu';
+  src: url('/fonts/Mobmenu.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+}
+
+@theme inline {
+  --font-sans: var(--spark-font-ui);
+}
+
+.spark-font-icon {
+  display: inline-grid;
+  inline-size: 1em;
+  block-size: 1em;
+  flex-shrink: 0;
+  place-items: center;
+  font-family: 'Spark Awesome';
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  font-synthesis: none;
+  direction: ltr;
+}
+
+.spark-font-icon--mobile-menu {
+  font-family: 'Spark Mobile Menu';
+}
+
 :root {
-  font-family: 'Vazirmatn', system-ui, sans-serif;
+  --spark-font-ui: 'IRANSans Web', system-ui, sans-serif;
+  font-family: var(--spark-font-ui);
   /* Safe-area insets for PWA notch/status-bar support */
   --sat: env(safe-area-inset-top, 0px);
   --sar: env(safe-area-inset-right, 0px);
@@ -236,7 +275,7 @@ input[data-password-input='true'] {
 
 /* DatePicker Styles */
 .react-datepicker {
-  font-family: 'Vazirmatn', system-ui, sans-serif !important;
+  font-family: var(--spark-font-ui) !important;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
 }
@@ -290,7 +329,7 @@ input[data-password-input='true'] {
   padding: 0.5rem 1rem;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
-  font-family: 'Vazirmatn', system-ui, sans-serif;
+  font-family: var(--spark-font-ui);
 }
 
 .dark .react-datepicker__input-container input {
@@ -352,13 +391,13 @@ input[data-password-input='true'] {
 /* Fix for html-to-image font rendering */
 @media print {
   body {
-    font-family: 'Vazirmatn', system-ui, sans-serif !important;
+    font-family: var(--spark-font-ui) !important;
   }
 }
 
 /* Ensure proper font rendering in images */
 canvas, img {
-  font-family: 'Vazirmatn', system-ui, sans-serif !important;
+  font-family: var(--spark-font-ui) !important;
 }
 
 /* Floating @ mention marker is only decorative. It was positioned absolutely

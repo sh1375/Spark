@@ -966,7 +966,7 @@ const getJalaliDate = (): string => {
           style={{
             width: 380,
             backgroundColor: '#ffffff',
-            fontFamily: 'Vazirmatn, system-ui, sans-serif',
+            fontFamily: 'var(--spark-font-ui)',
             direction: 'rtl',
             borderRadius: 20,
             overflow: 'hidden',

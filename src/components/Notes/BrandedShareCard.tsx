@@ -9,7 +9,7 @@ export function BrandedShareCard({ shareNote, brandedCardRef }: { shareNote: Not
         style={{
           width: '380px',
           backgroundColor: '#ffffff',
-          fontFamily: 'Vazirmatn, system-ui, sans-serif',
+          fontFamily: 'var(--spark-font-ui)',
           direction: 'rtl',
           borderRadius: '20px',
           overflow: 'hidden',

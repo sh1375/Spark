@@ -7,7 +7,7 @@ const source = readFileSync(new URL('../../public/sw.js', import.meta.url), 'utf
 const origin = 'https://spark.test';
 function worker() {
   const handlers = new Map();
-  const cacheNames = ['spark-static-v10', 'spark-runtime-v10', 'spark-notification-events-v1', 'unrelated'];
+  const cacheNames = ['spark-static-v11', 'spark-runtime-v11', 'spark-notification-events-v1', 'unrelated'];
   const deleted = [];
   vm.runInNewContext(source, {
     URL, Request, Response, console,
@@ -30,7 +30,9 @@ test('only declared application assets are eligible for cache interception', () 
   assert.equal(intercepted('/assets/app-123.js'), true);
   assert.equal(intercepted('/logo-ui.webp'), true);
   assert.equal(intercepted('/icons/icon-192x192.png'), true);
-  assert.equal(intercepted('/fonts/Vazirmatn-Regular.woff2'), true);
+  for (const name of ['IRANSans-Web', 'IRANSans-Web-Medium', 'Awesome-Web', 'Mobmenu']) {
+    assert.equal(intercepted(`/fonts/${name}.woff2`), true);
+  }
   assert.equal(intercepted('/manifest.json'), true);
   assert.equal(intercepted('/storage/v1/object/sign/example/attachment.png?token=synthetic'), false);
   assert.equal(intercepted('/rest/v1/example.png'), false);
@@ -48,6 +50,6 @@ test('activation retires previous cache versions while keeping unrelated and not
   let completion;
   handlers.get('activate')({ waitUntil: p => { completion = p; } });
   await completion;
-  assert.deepEqual(deleted.sort(), ['spark-runtime-v10', 'spark-static-v10']);
+  assert.deepEqual(deleted.sort(), ['spark-runtime-v11', 'spark-static-v11']);
 });
 
