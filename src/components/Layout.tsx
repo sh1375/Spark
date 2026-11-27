@@ -76,6 +76,16 @@ export function Layout({
     })();
   }, []);
 
+  const pageContentRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const animation = pageContentRef.current?.animate?.(
+      [{ opacity: 0.86 }, { opacity: 1 }],
+      { duration: 160, easing: 'ease-out' },
+    );
+    return () => animation?.cancel();
+  }, [activePage]);
+
   const handleInstall = async () => {
     await promptInstall();
     dismissInstallBanner();
@@ -176,6 +186,7 @@ export function Layout({
 
         {isFullHeightPage ? (
           <main
+            ref={pageContentRef}
             className={`app-responsive-content flex-1 min-h-0 min-w-0 max-w-full ${
               isScrollableFullHeightPage ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'
             }`}
@@ -184,6 +195,7 @@ export function Layout({
           </main>
         ) : (
           <main
+            ref={pageContentRef}
             className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 min-w-0 max-w-full"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
