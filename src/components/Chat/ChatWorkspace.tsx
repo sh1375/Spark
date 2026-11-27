@@ -35,7 +35,7 @@ export function ChatWorkspace({ canChat, openGroups, onOpenGroups, directUserId,
   }
 
   return (
-    <div className={`chat-workspace flex h-full min-h-0 flex-col gap-1.5 ${availableTabs.length > 1 && active !== 'calls' ? 'chat-workspace--inline-tabs' : ''}`} dir="rtl">
+    <div className={`chat-workspace flex h-full min-h-0 flex-col gap-1.5 ${availableTabs.length > 1 ? 'chat-workspace--inline-tabs' : ''}`} dir="rtl">
       {availableTabs.length > 1 && (
         <div role="tablist" aria-label="بخش‌های چت سازمانی" className="chat-workspace-tabs mx-1 flex shrink-0 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900 sm:mx-0">
           {availableTabs.map(({ id, label, glyph }, index) => (
